@@ -4,6 +4,7 @@
 // replaces the bundled @deepseek-ai/dsh runtime.
 import { app, dialog } from 'electron'
 import electronUpdater from 'electron-updater'
+import { installDownloadedUpdate } from './macos-install.js'
 import {
   resolveAutoCheckIntervalMs,
   resolveUpdateFeed,
@@ -54,7 +55,9 @@ export function initAutoUpdater({
   if (feed) autoUpdater.setFeedURL(feed)
 
   autoUpdater.autoDownload = true
-  autoUpdater.autoInstallOnAppQuit = true
+  // On macOS the actual install is Squirrel.Mac, which refuses ad-hoc-signed
+  // builds; installation happens through our own bundle swap on request.
+  autoUpdater.autoInstallOnAppQuit = false
 
   const showMessage = async (options) => {
     try {
@@ -112,18 +115,36 @@ export function initAutoUpdater({
       if (response === 1) {
         updateState({ state: 'installing' })
         onBeforeInstall()
-        try {
-          autoUpdater.quitAndInstall(false, true)
-        } catch (error) {
-          console.warn('quitAndInstall failed:', error)
-          updateState({ state: 'error', lastError: error })
-          void showMessage({
-            type: 'error',
-            title: '更新安装失败',
-            message: '无法自动安装更新。',
-            detail: '请到 GitHub Releases 页面手动下载新版本安装。',
-            buttons: ['好'],
-          })
+        if (process.platform === 'darwin') {
+          void installDownloadedUpdate()
+            .then(() => {
+              app.quit()
+            })
+            .catch((error) => {
+              console.warn('self-install failed:', error)
+              updateState({ state: 'error', lastError: error })
+              void showMessage({
+                type: 'error',
+                title: '更新安装失败',
+                message: '无法自动安装更新。',
+                detail: '请到 GitHub Releases 页面手动下载新版本安装。',
+                buttons: ['好'],
+              })
+            })
+        } else {
+          try {
+            autoUpdater.quitAndInstall(false, true)
+          } catch (error) {
+            console.warn('quitAndInstall failed:', error)
+            updateState({ state: 'error', lastError: error })
+            void showMessage({
+              type: 'error',
+              title: '更新安装失败',
+              message: '无法自动安装更新。',
+              detail: '请到 GitHub Releases 页面手动下载新版本安装。',
+              buttons: ['好'],
+            })
+          }
         }
       }
     }).catch(() => {
