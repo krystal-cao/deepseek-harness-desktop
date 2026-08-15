@@ -1,7 +1,8 @@
 export const MAC_TITLEBAR_HEIGHT = 38
 
-// hiddenInset paints page content over the native title bar, so the reserved
-// inset needs an explicit CSS drag region or the window cannot be moved.
+// Immersive layout: the web UI runs edge-to-edge underneath the macOS traffic
+// lights. A small drag region behind the lights keeps the window draggable
+// without covering the sidebar's interactive controls.
 export const MAC_TITLEBAR_CSS = `
   html {
     background-color: Canvas;
@@ -12,9 +13,9 @@ export const MAC_TITLEBAR_CSS = `
     position: fixed;
     z-index: 2147483647;
     top: 0;
-    left: env(titlebar-area-x, 0px);
-    width: env(titlebar-area-width, 100%);
-    height: env(titlebar-area-height, ${MAC_TITLEBAR_HEIGHT}px);
+    left: 0;
+    width: 130px;
+    height: ${MAC_TITLEBAR_HEIGHT}px;
     -webkit-app-region: drag;
     app-region: drag;
   }
@@ -22,8 +23,6 @@ export const MAC_TITLEBAR_CSS = `
   body {
     box-sizing: border-box !important;
     height: 100vh !important;
-    padding-top: env(titlebar-area-height, ${MAC_TITLEBAR_HEIGHT}px) !important;
-    background-color: var(--dsw-alias-bg-base, Canvas) !important;
     overflow: hidden !important;
   }
 `

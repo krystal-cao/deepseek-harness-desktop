@@ -2,11 +2,12 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createWindowOptions } from '../src/window-options.js'
 
-test('macOS extends themed web content into the native title bar', () => {
+test('macOS uses hiddenInset traffic lights without a title bar overlay', () => {
   const options = createWindowOptions('darwin')
 
   assert.equal(options.titleBarStyle, 'hiddenInset')
-  assert.equal(options.titleBarOverlay, true)
+  assert.equal(options.titleBarOverlay, undefined)
+  assert.deepEqual(options.trafficLightPosition, { x: 16, y: 18 })
 })
 
 test('Windows keeps the menu bar hidden', () => {
