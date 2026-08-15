@@ -15,6 +15,7 @@ test('macOS menu template is fully in Chinese with expected roles', () => {
   const template = buildAppMenuTemplate({
     platform: 'darwin',
     appName: 'DeepSeek Harness',
+    onShowAbout: () => {},
     onCheckForUpdates: () => {},
   })
   const topLevel = template.map((item) => item.label)
@@ -29,9 +30,11 @@ test('macOS menu template is fully in Chinese with expected roles', () => {
 
   const items = collect(template)
   const roles = items.map((item) => item.role).filter(Boolean)
-  for (const role of ['about', 'services', 'hide', 'hideOthers', 'unhide', 'quit', 'close']) {
+  for (const role of ['services', 'hide', 'hideOthers', 'unhide', 'quit', 'close']) {
     assert.ok(roles.includes(role), `missing role ${role}`)
   }
+  const aboutItem = items.find((item) => item.label === '关于 DeepSeek Harness')
+  assert.equal(typeof aboutItem?.click, 'function')
   for (const label of ['撤销', '重做', '剪切', '复制', '粘贴', '全选', '重新加载', '检查更新…']) {
     assert.ok(items.some((item) => item.label === label), `missing label ${label}`)
   }

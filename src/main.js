@@ -30,11 +30,6 @@ let isQuitting = false
 let updater
 
 app.setName(APP_NAME)
-app.setAboutPanelOptions({
-  applicationName: APP_NAME,
-  applicationVersion: app.getVersion(),
-  authors: ['曹参参'],
-})
 
 async function showMainWindow() {
   if (!mainWindow) {
@@ -123,6 +118,15 @@ function createAppMenu() {
   if (process.platform !== 'darwin') return
   Menu.setApplicationMenu(Menu.buildFromTemplate(buildAppMenuTemplate({
     appName: APP_NAME,
+    onShowAbout: () => {
+      void dialog.showMessageBox({
+        type: 'info',
+        title: `关于 ${APP_NAME}`,
+        message: APP_NAME,
+        detail: `版本 ${app.getVersion()}\n作者：曹参参`,
+        buttons: ['好'],
+      })
+    },
     onCheckForUpdates: () => void updater?.checkForUpdates({ manual: true }),
   })))
 }
