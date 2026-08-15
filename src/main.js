@@ -11,6 +11,7 @@ import {
 } from 'electron'
 import { startDshService } from './dsh-service.js'
 import { applyMacTitleBarStyle } from './mac-titlebar.js'
+import { initAutoUpdater } from './updater.js'
 import { createWindowOptions } from './window-options.js'
 import { createTrayMenuTemplate, shouldHideWindowOnClose } from './window-lifecycle.js'
 
@@ -25,6 +26,7 @@ let serviceUrl
 let tray
 let trayAvailable = false
 let isQuitting = false
+let updater
 
 app.setName(APP_NAME)
 
@@ -89,6 +91,7 @@ function createTray() {
     locale: app.getLocale(),
     showWindow: () => void showMainWindow(),
     hideWindow: () => mainWindow?.hide(),
+    checkForUpdates: () => void updater?.checkForUpdates({ manual: true }),
     quit: () => {
       isQuitting = true
       app.quit()
@@ -98,10 +101,23 @@ function createTray() {
   trayAvailable = true
 }
 
+function createUpdater() {
+  updater = initAutoUpdater({
+    appName: APP_NAME,
+    getMainWindow: () => mainWindow,
+    onBeforeInstall: () => {
+      isQuitting = true
+      service?.stop()
+    },
+    setTrayTooltip: (text) => tray?.setToolTip(text || APP_NAME),
+  })
+}
+
 async function launch() {
   const startupReady = createWindow()
   try {
     createTray()
+    createUpdater()
   } catch (error) {
     console.warn(`System tray is unavailable: ${error instanceof Error ? error.message : String(error)}`)
   }

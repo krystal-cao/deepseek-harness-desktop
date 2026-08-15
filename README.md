@@ -145,7 +145,39 @@ Every release package is built on a matching GitHub-hosted runner and runs a pac
 - Apple Developer ID signing and notarization are not integrated
 - Commercial Windows code signing is not integrated, so SmartScreen may appear
 - Windows ARM64 and Linux ARM64 packages are not currently provided
-- Automatic updates are not integrated
+
+## Updating
+
+This fork ships whole-app auto-updates through `electron-updater`. An update
+replaces the entire app, including the bundled `@deepseek-ai/dsh` runtime, so
+following upstream is a matter of releasing a new desktop build.
+
+- The packaged app checks its feed 5 seconds after launch and every 4 hours;
+  the tray menu also has **Check for Updates…**.
+- The feed is baked into `app-update.yml` at build time. CI points it at this
+  repository's GitHub Releases automatically; for local builds edit
+  `build.publish.owner` / `build.publish.repo` in `package.json`.
+- Runtime overrides: set `DSH_UPDATE_URL` to switch to a generic provider
+  (useful for testing or a non-GitHub mirror), or `DSH_DISABLE_AUTO_UPDATE=1`
+  to turn updates off.
+
+### Release flow
+
+1. `node scripts/check-upstream.mjs` — compare the pinned dsh version with npm.
+2. `node scripts/bump-dsh.mjs 0.1.0-rc.x` — bump every `@deepseek-ai/dsh*` pin
+   to the same version, reinstall and run the test suite.
+3. `npm run dist:mac:arm64 && npm run smoke:packaged` — verify the packaged app
+   boots and serves HTTP 200.
+4. Bump `version` in `package.json`, push a `vX.Y.Z` tag. The Release workflow
+   builds, smoke-tests, and publishes the DMG, ZIP and `latest-mac.yml` to
+   GitHub Releases; installed apps then prompt the user to restart and update.
+
+The daily `check-upstream.yml` workflow opens a bump pull request whenever
+upstream publishes a new `0.1.0-rc.*` version on npm.
+
+Note: macOS auto-update requires the app to be signed. These builds use ad-hoc
+signing, which is sufficient for personal or small-group use; public
+distribution should switch to Apple Developer ID signing plus notarization.
 
 ## Upstream version and license
 

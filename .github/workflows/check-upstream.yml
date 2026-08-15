@@ -1,0 +1,42 @@
+name: Check dsh upstream
+
+on:
+  schedule:
+    # Daily at 03:00 UTC (11:00 Asia/Shanghai).
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Compare with npm registry
+        id: upstream
+        run: node scripts/check-upstream.mjs --github-output
+      - name: Prepare dependency bump
+        if: steps.upstream.outputs.update == 'true'
+        run: node scripts/check-upstream.mjs --write
+      - name: Open bump pull request
+        if: steps.upstream.outputs.update == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: chore/dsh-${{ steps.upstream.outputs.target }}
+          title: 'chore: bump dsh to ${{ steps.upstream.outputs.target }}'
+          commit-message: 'chore(deps): bump @deepseek-ai/dsh to ${{ steps.upstream.outputs.target }}'
+          body: |
+            Upstream published `@deepseek-ai/dsh@${{ steps.upstream.outputs.target }}`
+            (current pin: `${{ steps.upstream.outputs.current }}`).
+
+            Merge only after the release smoke test passes:
+            `npm run dist:mac:arm64 && npm run smoke:packaged`.
+          delete-branch: true

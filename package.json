@@ -5,21 +5,23 @@
   "type": "module",
   "main": "src/main.js",
   "author": {
-    "name": "Steven",
-    "email": "96154058+steven-kid@users.noreply.github.com"
+    "name": "参参 曹",
+    "email": "jerry.caocc@liunian.org"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/steven-kid/deepseek-harness-desktop.git"
+    "url": "git+https://github.com/krystal-cao/deepseek-harness-desktop.git"
   },
-  "homepage": "https://deepseek-harness-desktop.vercel.app",
+  "homepage": "https://github.com/krystal-cao/deepseek-harness-desktop",
   "bugs": {
-    "url": "https://github.com/steven-kid/deepseek-harness-desktop/issues"
+    "url": "https://github.com/krystal-cao/deepseek-harness-desktop/issues"
   },
   "scripts": {
     "start": "electron .",
     "test": "node --test test/*.test.js",
+    "check:upstream": "node scripts/check-upstream.mjs",
+    "bump:dsh": "node scripts/bump-dsh.mjs",
     "postinstall": "node scripts/prepare-dependencies.mjs",
     "prepare:windows": "node scripts/prepare-dependencies.mjs && npm run build:win-launcher",
     "build:win-launcher": "powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows-launcher.ps1",
@@ -53,7 +55,8 @@
     "@deepseek-ai/dsh-subagent-in-process-driver": "0.1.0-rc.6",
     "@deepseek-ai/dsh-subprocess": "0.1.0-rc.6",
     "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
-    "@deepseek-ai/dsh-workflow": "0.1.0-rc.6"
+    "@deepseek-ai/dsh-workflow": "0.1.0-rc.6",
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "electron": "43.4.0",
@@ -64,6 +67,11 @@
     "appId": "io.github.steven-kid.deepseek-harness-desktop",
     "productName": "DeepSeek Harness",
     "artifactName": "DeepSeek-Harness-Desktop-${version}-${arch}.${ext}",
+    "publish": {
+      "provider": "github",
+      "owner": "krystal-cao",
+      "repo": "deepseek-harness-desktop"
+    },
     "asar": false,
     "files": [
       "src/**/*",
@@ -169,5 +177,13 @@
         }
       ]
     }
+  },
+  "allowScripts": {
+    "@deepseek-ai/dsh-subprocess-local@0.1.0-rc.6": true,
+    "@google/genai@1.52.0": true,
+    "electron-winstaller@5.4.0": true,
+    "koffi@3.1.4": true,
+    "node-pty@1.1.0": true,
+    "protobufjs@7.6.5": true
   }
 }

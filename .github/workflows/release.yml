@@ -30,7 +30,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: npm run ${{ matrix.script }}
+      # Point the baked-in update feed at this repository so electron-updater
+      # checks this repo's releases after the fork.
+      - name: Build with update feed
+        run: npm run ${{ matrix.script }} -- -c.publish.owner=${{ github.repository_owner }} -c.publish.repo=${{ github.event.repository.name }}
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       - run: npm run smoke:packaged
@@ -40,6 +43,7 @@ jobs:
           path: |
             dist/*.dmg
             dist/*.zip
+            dist/*.yml
 
   windows:
     runs-on: windows-2022
@@ -101,6 +105,7 @@ jobs:
           files: |
             dist/*.dmg
             dist/*.zip
+            dist/*.yml
             dist/*.exe
             dist/*.AppImage
             dist/*.deb

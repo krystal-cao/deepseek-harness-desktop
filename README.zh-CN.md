@@ -145,7 +145,36 @@ DeepSeek Harness Desktop
 - macOS 尚未接入 Developer ID 和 notarization
 - Windows 尚未接入商业代码签名，首次启动可能出现 SmartScreen
 - 尚未提供 Windows ARM64 和 Linux ARM64 构建
-- 尚未集成自动更新
+
+## 自动更新
+
+本 fork 通过 `electron-updater` 提供整包自动更新。一次更新会替换整个应用，
+包括内置的 `@deepseek-ai/dsh` 运行时，因此"跟上上游"本质上就是发布一个新版
+桌面包。
+
+- 打包后的应用会在启动 5 秒后检查更新，之后每 4 小时检查一次；托盘菜单也提供
+  **检查更新…** 入口。
+- 更新源在构建时写入 `app-update.yml`。CI 会自动指向本仓库的 GitHub Releases；
+  本地构建则修改 `package.json` 中 `build.publish.owner` / `build.publish.repo`。
+- 运行时覆盖：设置 `DSH_UPDATE_URL` 可切换到 generic 更新源（适合测试或非
+  GitHub 镜像）；设置 `DSH_DISABLE_AUTO_UPDATE=1` 可关闭更新。
+
+### 发版流程
+
+1. `node scripts/check-upstream.mjs` — 对比当前固定的 dsh 版本与 npm 最新版。
+2. `node scripts/bump-dsh.mjs 0.1.0-rc.x` — 把所有 `@deepseek-ai/dsh*` 固定依赖
+   升到同一版本，重新安装并运行测试。
+3. `npm run dist:mac:arm64 && npm run smoke:packaged` — 验证打包后的应用能启动
+   并返回 HTTP 200。
+4. 修改 `package.json` 的 `version`，推送 `vX.Y.Z` tag。Release 工作流会构建、
+   冒烟测试并把 DMG、ZIP、`latest-mac.yml` 发布到 GitHub Releases；已安装的
+   应用会提示用户重启完成更新。
+
+`check-upstream.yml` 工作流每天检查一次：上游在 npm 发布新的 `0.1.0-rc.*`
+版本时，会自动开一个升级 PR。
+
+注意：macOS 自动更新要求应用已签名。当前使用 ad-hoc 签名，适合自用或小范围
+分发；公开发布时应切换到 Apple Developer ID 签名并做公证。
 
 ## 上游版本与许可
 
