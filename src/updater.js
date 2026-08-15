@@ -3,7 +3,7 @@
 // the update is downloaded. The shell itself is updated whole-app, which also
 // replaces the bundled @deepseek-ai/dsh runtime.
 import { app, dialog } from 'electron'
-import { autoUpdater } from 'electron-updater'
+import electronUpdater from 'electron-updater'
 import {
   formatReleaseNotes,
   resolveAutoCheckIntervalMs,
@@ -12,6 +12,7 @@ import {
 } from './updater-config.js'
 
 const CHECK_DELAY_MS = 5_000
+const { autoUpdater } = electronUpdater
 
 const autoUpdateEnabled = () => shouldEnableAutoUpdate(process.env, app.isPackaged)
 
