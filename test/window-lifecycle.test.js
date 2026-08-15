@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { createTrayMenuTemplate, shouldHideWindowOnClose } from '../src/window-lifecycle.js'
 
@@ -45,12 +44,4 @@ test('tray menu falls back to English labels', () => {
     'separator',
     'Quit',
   ])
-})
-
-test('startup screen contains only the logo and loading indicator', async () => {
-  const html = await readFile(new URL('../src/startup.html', import.meta.url), 'utf8')
-
-  assert.match(html, /trayTemplate@2x\.png/)
-  assert.match(html, /class="progress"/)
-  assert.doesNotMatch(html, /<h1|<p/)
 })

@@ -13,11 +13,12 @@ import { startDshService } from './dsh-service.js'
 import { buildAppMenuTemplate } from './app-menu.js'
 import { applyMacTitleBarStyle } from './mac-titlebar.js'
 import { initAutoUpdater } from './updater.js'
+import { hidePluginLoadingScreen } from './hide-plugin-loading.js'
+import { waitForWebUiReady } from './webui-ready.js'
 import { createWindowOptions } from './window-options.js'
 import { createTrayMenuTemplate, shouldHideWindowOnClose } from './window-lifecycle.js'
 
 const APP_NAME = 'DeepSeek Harness'
-const STARTUP_PAGE = fileURLToPath(new URL('./startup.html', import.meta.url))
 const TRAY_ICON = fileURLToPath(new URL('../assets/tray.png', import.meta.url))
 const TRAY_TEMPLATE_ICON = fileURLToPath(new URL('../assets/trayTemplate.png', import.meta.url))
 
@@ -37,16 +38,13 @@ app.setAboutPanelOptions({
 })
 
 async function showMainWindow() {
-  if (!mainWindow) {
-    await createWindow()
-    if (serviceUrl) await mainWindow?.loadURL(serviceUrl)
-  }
+  if (!mainWindow) return
   if (mainWindow.isMinimized()) mainWindow.restore()
   mainWindow.show()
   mainWindow.focus()
 }
 
-function createWindow() {
+function createWindow(serviceUrl) {
   if (process.platform === 'win32') Menu.setApplicationMenu(null)
 
   mainWindow = new BrowserWindow(createWindowOptions(process.platform, nativeTheme.shouldUseDarkColors))
@@ -73,17 +71,27 @@ function createWindow() {
     if (process.platform === 'darwin') void applyMacTitleBarStyle(mainWindow.webContents)
   })
 
-  mainWindow.once('ready-to-show', () => mainWindow?.show())
+  mainWindow.webContents.once('dom-ready', () => {
+    void hidePluginLoadingScreen(mainWindow.webContents)
+  })
+
   mainWindow.on('close', (event) => {
     if (!shouldHideWindowOnClose(isQuitting, trayAvailable)) return
     event.preventDefault()
     mainWindow?.hide()
   })
   mainWindow.on('closed', () => {
+    if (!mainWindow?.isDestroyed()) return
     mainWindow = undefined
   })
 
-  return mainWindow.loadFile(STARTUP_PAGE)
+  return (async () => {
+    await mainWindow.loadURL(serviceUrl)
+    await waitForWebUiReady(mainWindow.webContents)
+    if (mainWindow.isDestroyed()) return
+    mainWindow.show()
+    mainWindow.focus()
+  })()
 }
 
 function createTray() {
@@ -128,7 +136,6 @@ function createAppMenu() {
 }
 
 async function launch() {
-  const startupReady = createWindow()
   try {
     createTray()
     createUpdater()
@@ -148,8 +155,7 @@ async function launch() {
 
   try {
     serviceUrl = await service.ready
-    await startupReady
-    await mainWindow?.loadURL(serviceUrl)
+    await createWindow(serviceUrl)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     await dialog.showMessageBox({
