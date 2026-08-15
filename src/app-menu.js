@@ -3,7 +3,6 @@
 
 export function buildAppMenuTemplate({
   appName = 'DeepSeek Harness',
-  onShowAbout,
   onCheckForUpdates,
   platform = process.platform,
 } = {}) {
@@ -14,7 +13,7 @@ export function buildAppMenuTemplate({
     template.push({
       label: appName,
       submenu: [
-        { label: `关于 ${appName}`, click: onShowAbout },
+        { role: 'about', label: `关于 ${appName}` },
         { type: 'separator' },
         { role: 'services', label: '服务' },
         { type: 'separator' },
