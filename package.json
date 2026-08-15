@@ -1,11 +1,11 @@
 {
   "name": "deepseek-harness-desktop",
-  "version": "0.3.4",
+  "version": "0.0.1",
   "description": "An unofficial desktop wrapper for DeepSeek Harness.",
   "type": "module",
   "main": "src/main.js",
   "author": {
-    "name": "参参 曹",
+    "name": "曹参参",
     "email": "jerry.caocc@liunian.org"
   },
   "license": "MIT",

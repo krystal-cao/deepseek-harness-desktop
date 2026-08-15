@@ -30,6 +30,11 @@ let isQuitting = false
 let updater
 
 app.setName(APP_NAME)
+app.setAboutPanelOptions({
+  applicationName: APP_NAME,
+  applicationVersion: app.getVersion(),
+  authors: ['曹参参'],
+})
 
 async function showMainWindow() {
   if (!mainWindow) {
