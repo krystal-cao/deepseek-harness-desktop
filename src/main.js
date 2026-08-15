@@ -10,6 +10,7 @@ import {
   Tray,
 } from 'electron'
 import { startDshService } from './dsh-service.js'
+import { buildAppMenuTemplate } from './app-menu.js'
 import { applyMacTitleBarStyle } from './mac-titlebar.js'
 import { initAutoUpdater } from './updater.js'
 import { createWindowOptions } from './window-options.js'
@@ -113,11 +114,20 @@ function createUpdater() {
   })
 }
 
+function createAppMenu() {
+  if (process.platform !== 'darwin') return
+  Menu.setApplicationMenu(Menu.buildFromTemplate(buildAppMenuTemplate({
+    appName: APP_NAME,
+    onCheckForUpdates: () => void updater?.checkForUpdates({ manual: true }),
+  })))
+}
+
 async function launch() {
   const startupReady = createWindow()
   try {
     createTray()
     createUpdater()
+    createAppMenu()
   } catch (error) {
     console.warn(`System tray is unavailable: ${error instanceof Error ? error.message : String(error)}`)
   }
