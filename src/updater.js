@@ -5,7 +5,6 @@
 import { app, dialog } from 'electron'
 import electronUpdater from 'electron-updater'
 import {
-  formatReleaseNotes,
   resolveAutoCheckIntervalMs,
   resolveUpdateFeed,
   shouldEnableAutoUpdate,
@@ -72,12 +71,11 @@ export function initAutoUpdater({
   autoUpdater.on('update-available', (info) => {
     updateState({ state: 'downloading', info })
     setTrayTooltip(`${appName} 更新 ${info.version} 下载中…`)
-    const notes = formatReleaseNotes(info)
     void showMessage({
       type: 'info',
       title: '发现新版本',
       message: `${appName} 有新版本 ${info.version}`,
-      detail: notes ? `更新内容：\n${notes}` : '正在后台下载，完成后会提示你重启安装。',
+      detail: '正在后台下载，完成后会提示你重启安装。',
       buttons: ['知道了'],
     })
   })

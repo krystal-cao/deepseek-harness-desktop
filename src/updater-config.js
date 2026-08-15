@@ -49,19 +49,3 @@ export function shouldEnableAutoUpdate(env = process.env, isPackaged = false) {
   if (env.DSH_DISABLE_AUTO_UPDATE === '1') return false
   return isPackaged
 }
-
-/**
- * Collapse electron-updater release notes (string, or the localized object
- * some providers deliver) into one readable string, preferring Chinese.
- */
-export function formatReleaseNotes(info) {
-  const notes = info?.releaseNotes
-  if (typeof notes === 'string') return notes
-  if (notes && typeof notes === 'object') {
-    const zh = notes['zh-CN'] ?? notes.zh
-    if (typeof zh === 'string') return zh
-    const strings = Object.values(notes).filter((value) => typeof value === 'string')
-    if (strings.length > 0) return strings.join('\n')
-  }
-  return ''
-}

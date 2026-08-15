@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   DSH_VERSION_PATTERN,
-  formatReleaseNotes,
   isNewerVersion,
   resolveAutoCheckIntervalMs,
   resolveUpdateFeed,
@@ -47,15 +46,4 @@ test('shouldEnableAutoUpdate only runs in packaged builds unless disabled', () =
   assert.equal(shouldEnableAutoUpdate({}, false), false)
   assert.equal(shouldEnableAutoUpdate({}, true), true)
   assert.equal(shouldEnableAutoUpdate({ DSH_DISABLE_AUTO_UPDATE: '1' }, true), false)
-})
-
-test('formatReleaseNotes prefers Chinese and collapses objects', () => {
-  assert.equal(formatReleaseNotes({ releaseNotes: 'plain notes' }), 'plain notes')
-  assert.equal(
-    formatReleaseNotes({ releaseNotes: { 'zh-CN': '中文说明', en: 'English' } }),
-    '中文说明',
-  )
-  assert.equal(formatReleaseNotes({ releaseNotes: { en: 'English' } }), 'English')
-  assert.equal(formatReleaseNotes({}), '')
-  assert.equal(formatReleaseNotes({ releaseNotes: 42 }), '')
 })
