@@ -11,6 +11,9 @@ permissions:
 
 jobs:
   macos:
+    # arm64 only: two macOS jobs used to upload colliding latest-mac.yml files
+    # (the x64 one won), so arm64 users were served the x64 update. Extend the
+    # matrix only when multi-arch metadata can be published without collision.
     strategy:
       fail-fast: false
       matrix:
@@ -18,9 +21,6 @@ jobs:
           - runner: macos-15
             arch: arm64
             script: dist:mac:arm64
-          - runner: macos-15-intel
-            arch: x64
-            script: dist:mac:x64
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4

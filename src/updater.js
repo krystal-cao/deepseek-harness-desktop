@@ -112,8 +112,22 @@ export function initAutoUpdater({
       if (response === 1) {
         updateState({ state: 'installing' })
         onBeforeInstall()
-        autoUpdater.quitAndInstall(false, true)
+        try {
+          autoUpdater.quitAndInstall(false, true)
+        } catch (error) {
+          console.warn('quitAndInstall failed:', error)
+          updateState({ state: 'error', lastError: error })
+          void showMessage({
+            type: 'error',
+            title: '更新安装失败',
+            message: '无法自动安装更新。',
+            detail: '请到 GitHub Releases 页面手动下载新版本安装。',
+            buttons: ['好'],
+          })
+        }
       }
+    }).catch(() => {
+      // The dialog was closed before a choice was made.
     })
   })
 
