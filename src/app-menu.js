@@ -4,6 +4,7 @@
 export function buildAppMenuTemplate({
   appName = 'DeepSeek Harness',
   onCheckForUpdates,
+  onRestartService,
   platform = process.platform,
 } = {}) {
   const isMac = platform === 'darwin'
@@ -72,7 +73,9 @@ export function buildAppMenuTemplate({
     label: '帮助',
     role: 'help',
     submenu: [
-      { label: '检查更新…', click: onCheckForUpdates },
+      ...(onRestartService ? [{ label: '重启 dsh 服务', click: onRestartService }] : []),
+      ...(onRestartService && onCheckForUpdates ? [{ type: 'separator' }] : []),
+      ...(onCheckForUpdates ? [{ label: '检查更新…', click: onCheckForUpdates }] : []),
     ],
   })
 

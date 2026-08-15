@@ -28,6 +28,7 @@ let serviceUrl
 let tray
 let trayAvailable = false
 let isQuitting = false
+let isRestartingService = false
 let updater
 
 app.setName(APP_NAME)
@@ -71,7 +72,7 @@ function createWindow(serviceUrl) {
     if (process.platform === 'darwin') void applyMacTitleBarStyle(mainWindow.webContents)
   })
 
-  mainWindow.webContents.once('dom-ready', () => {
+  mainWindow.webContents.on('dom-ready', () => {
     void hidePluginLoadingScreen(mainWindow.webContents)
   })
 
@@ -132,7 +133,61 @@ function createAppMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(buildAppMenuTemplate({
     appName: APP_NAME,
     onCheckForUpdates: () => void updater?.checkForUpdates({ manual: true }),
+    onRestartService: () => void restartDshService(),
   })))
+}
+
+function startHarnessService() {
+  service = startDshService({
+    electronExecutable: process.execPath,
+    environment: {
+      ...process.env,
+      NODE_OPTIONS: '',
+      DSH_DESKTOP: '1',
+    },
+  })
+  return service
+}
+
+function stopHarnessService() {
+  const current = service
+  if (!current) return Promise.resolve()
+  return new Promise((resolve) => {
+    if (current.child.exitCode !== null || current.child.killed) {
+      resolve()
+      return
+    }
+    const timer = setTimeout(resolve, 5_000)
+    current.child.once('exit', () => {
+      clearTimeout(timer)
+      resolve()
+    })
+    current.stop()
+  })
+}
+
+async function restartDshService() {
+  if (isRestartingService) return
+  isRestartingService = true
+  try {
+    await stopHarnessService()
+    const next = startHarnessService()
+    const url = await next.ready
+    serviceUrl = url
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      await mainWindow.loadURL(url)
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    await dialog.showMessageBox({
+      type: 'error',
+      title: '重启 dsh 服务失败',
+      message: 'DeepSeek Harness 服务重启失败。',
+      detail: message,
+    })
+  } finally {
+    isRestartingService = false
+  }
 }
 
 async function launch() {
@@ -144,14 +199,7 @@ async function launch() {
     console.warn(`System tray is unavailable: ${error instanceof Error ? error.message : String(error)}`)
   }
 
-  service = startDshService({
-    electronExecutable: process.execPath,
-    environment: {
-      ...process.env,
-      NODE_OPTIONS: '',
-      DSH_DESKTOP: '1',
-    },
-  })
+  startHarnessService()
 
   try {
     serviceUrl = await service.ready
