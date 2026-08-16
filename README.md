@@ -47,22 +47,21 @@ DeepSeek Harness already provides the complete agent runtime and Web UI. This pr
 - Wait for Harness readiness before displaying the window
 - Provide a single-instance desktop window and safe external navigation
 - Enable sandboxing, `contextIsolation`, and navigation restrictions
-- Package installable releases for macOS, Windows, and Linux
+- Package installable macOS releases for Apple Silicon and Intel
 
 ## Features
 
 - Opens the official Harness interface as soon as the local service is ready
 - Shows a lightweight loading screen while the local Harness service starts
-- Keeps running in the system tray when the main window is closed
+- Hides to the Dock when the window is closed on macOS (no tray icon)
 - Preserves the complete settings, models, sessions, plugins, and agent experience
 - Gracefully terminates the Harness child process on application exit
 - Listens only on a random local loopback port
 - Supports macOS on Apple Silicon and Intel
-- Blends the macOS title bar with the active DSH light or dark theme
-- Provides a Windows x64 installer and portable ZIP
-- Provides Linux x64 AppImage and deb packages
-- Uses the official in-app directory browser on Windows to avoid packaged native-dialog worker failures
-- Removes the default Electron File, Edit, View, and Window menu bar on Windows
+- Blends the macOS title bar with the active DSH light or dark theme and keeps
+  the traffic lights on the sidebar even when it is collapsed
+- Manages official `@deepseek-ai/dsh` versions at runtime: install, switch, and
+  uninstall versions from the npm registry without rebuilding the app
 
 ## Installation
 
@@ -77,19 +76,6 @@ The macOS builds are integrity-signed but are not Apple-notarized. On first laun
 5. Confirm by clicking **Open** once more.
 
 This confirmation is normally required only once.
-
-### Windows
-
-The Windows installer is not commercially code-signed. If Microsoft Defender SmartScreen appears:
-
-1. Click **More info**.
-2. Click **Run anyway**.
-3. Complete the setup wizard.
-
-### Linux
-
-- AppImage: run `chmod +x DeepSeek-Harness-Desktop-*.AppImage`, then launch it directly.
-- Debian / Ubuntu: open the deb with the system software installer, or run `sudo apt install ./DeepSeek-Harness-Desktop-*.deb`.
 
 ## Security model
 
@@ -124,8 +110,6 @@ DeepSeek Harness Desktop
 | --- | --- | --- | --- |
 | macOS Apple Silicon | DMG / ZIP passed | Passed | HTTP 200 |
 | macOS Intel | DMG / ZIP passed | Passed | HTTP 200 |
-| Windows x64 | NSIS / ZIP passed | Passed | HTTP 200 |
-| Linux x64 | AppImage / deb passed | Passed | HTTP 200 |
 
 Every release package is built on a matching GitHub-hosted runner and runs a packaged-app smoke test before publication.
 
@@ -133,17 +117,18 @@ Every release package is built on a matching GitHub-hosted runner and runs a pac
 
 - Upstream DSH is still an RC release and may change rapidly
 - Apple Developer ID signing and notarization are not integrated
-- Commercial Windows code signing is not integrated, so SmartScreen may appear
-- Windows ARM64 and Linux ARM64 packages are not currently provided
+- Only macOS builds are provided (Apple Silicon and Intel)
 
 ## Updating
 
 This fork ships whole-app auto-updates through `electron-updater`. An update
-replaces the entire app, including the bundled `@deepseek-ai/dsh` runtime, so
-following upstream is a matter of releasing a new desktop build.
+replaces the entire app, including the bundled `@deepseek-ai/dsh` runtime. For
+faster upstream tracking, the built-in **DSH version manager** (Help → dsh
+Version Manager…) can also install and switch to newer official
+`@deepseek-ai/dsh` versions from npm without waiting for a new desktop build.
 
 - The packaged app checks its feed 5 seconds after launch and every 4 hours;
-  the tray menu also has **Check for Updates…**.
+  the **Help** menu also has **Check for Updates…**.
 - The feed is baked into `app-update.yml` at build time. CI points it at this
   repository's GitHub Releases automatically; for local builds edit
   `build.publish.owner` / `build.publish.repo` in `package.json`.
@@ -156,8 +141,8 @@ following upstream is a matter of releasing a new desktop build.
 1. `node scripts/check-upstream.mjs` — compare the pinned dsh version with npm.
 2. `node scripts/bump-dsh.mjs 0.1.0-rc.x` — bump every `@deepseek-ai/dsh*` pin
    to the same version, reinstall and run the test suite.
-3. `npm run dist:mac:arm64 && npm run smoke:packaged` — verify the packaged app
-   boots and serves HTTP 200.
+3. `npm run dist:mac:all && npm run smoke:packaged` — verify the packaged app
+   boots and serves HTTP 200 (builds Apple Silicon and Intel together).
 4. `npm run clean:dist` — remove local build output so Spotlight/Finder never
    indexes a second copy of the app.
 5. Bump `version` in `package.json`, push a `vX.Y.Z` tag. The Release workflow
@@ -173,7 +158,9 @@ distribution should switch to Apple Developer ID signing plus notarization.
 
 ## Upstream version and license
 
-The project currently pins `@deepseek-ai/dsh@0.1.0-rc.6` for reproducible packaging.
+The project currently pins `@deepseek-ai/dsh@0.1.0-rc.6` as the bundled default
+for reproducible packaging. Additional official versions can be installed from
+the DSH version manager at runtime.
 
 The desktop wrapper is available under the [MIT License](LICENSE). The bundled DeepSeek Harness package is also MIT-licensed; its notice is preserved in [`third-party-licenses/deepseek-harness-LICENSE`](third-party-licenses/deepseek-harness-LICENSE).
 

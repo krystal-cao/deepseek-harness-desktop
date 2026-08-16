@@ -47,22 +47,19 @@ DeepSeek Harness 已经提供完整的 Agent Runtime 和 Web UI。本项目不�
 - 等待 Harness 就绪后再显示应用窗口
 - 提供单实例桌面窗口和外部链接安全处理
 - 为渲染进程启用沙箱、`contextIsolation` 和导航限制
-- 为 macOS、Windows 和 Linux 提供可直接安装的发行包
+- 为 macOS（Apple Silicon 与 Intel）提供可直接安装的发行包
 
 ## 主要特性
 
 - Harness 就绪后直接进入官方界面，无额外操作步骤
 - 启动 Harness 服务时显示轻量等待界面，不再出现无响应感
-- 支持系统托盘驻留，关闭主窗口后可继续在后台运行
+- macOS 下关闭窗口时隐藏到 Dock（不再使用托盘图标）
 - 保留完整的设置、模型、会话、插件和 Agent 能力
 - 应用退出时自动终止 Harness 子进程
 - Web 服务仅监听随机本地回环端口，不暴露到局域网
 - macOS 支持 Apple Silicon 和 Intel
-- macOS 标题栏会与 DSH 当前浅色或深色主题自然融合
-- Windows 支持 x64 安装程序与便携 ZIP
-- Linux 支持 x64 AppImage 和 deb
-- Windows 使用官方应用内目录浏览器，避免打包环境下的原生文件夹对话框异常
-- Windows 隐藏 Electron 默认的 File、Edit、View 和 Window 菜单栏
+- macOS 标题栏会与 DSH 当前浅色或深色主题自然融合，侧边栏收起时红绿灯也始终落在栏上
+- 内置 dsh 版本管理：可从 npm 安装、切换、卸载官方 `@deepseek-ai/dsh` 版本，无需重新打包应用
 
 ## 安装说明
 
@@ -77,19 +74,6 @@ macOS 构建已进行完整性签名，但尚未经过 Apple 公证。首次启�
 5. 再次点击“打开”确认。
 
 该确认通常只需完成一次。
-
-### Windows
-
-Windows 安装包尚未进行商业代码签名。如果 Microsoft Defender SmartScreen 出现提示：
-
-1. 点击“更多信息”。
-2. 点击“仍要运行”。
-3. 按安装向导完成安装。
-
-### Linux
-
-- AppImage：执行 `chmod +x DeepSeek-Harness-Desktop-*.AppImage` 后直接运行。
-- Debian / Ubuntu：使用系统软件安装器打开 deb，或运行 `sudo apt install ./DeepSeek-Harness-Desktop-*.deb`。
 
 ## 安全模型
 
@@ -124,8 +108,6 @@ DeepSeek Harness Desktop
 | --- | --- | --- | --- |
 | macOS Apple Silicon | DMG / ZIP 通过 | 通过 | HTTP 200 |
 | macOS Intel | DMG / ZIP 通过 | 通过 | HTTP 200 |
-| Windows x64 | NSIS / ZIP 通过 | 通过 | HTTP 200 |
-| Linux x64 | AppImage / deb 通过 | 通过 | HTTP 200 |
 
 所有发行包都由匹配平台的 GitHub-hosted runner 构建，并在发布前执行打包后 smoke test。
 
@@ -133,17 +115,17 @@ DeepSeek Harness Desktop
 
 - 上游 DSH 仍是 RC 版本，接口和行为可能快速变化
 - macOS 尚未接入 Developer ID 和 notarization
-- Windows 尚未接入商业代码签名，首次启动可能出现 SmartScreen
-- 尚未提供 Windows ARM64 和 Linux ARM64 构建
+- 目前只提供 macOS 构建（Apple Silicon 与 Intel）
 
 ## 自动更新
 
 本 fork 通过 `electron-updater` 提供整包自动更新。一次更新会替换整个应用，
-包括内置的 `@deepseek-ai/dsh` 运行时，因此"跟上上游"本质上就是发布一个新版
-桌面包。
+包括内置的 `@deepseek-ai/dsh` 运行时。想更快跟上上游，也可以使用内置的
+**dsh 版本管理**（帮助 → dsh 版本管理…）直接从 npm 安装并切换到新版官方
+`@deepseek-ai/dsh`，不必等待新版桌面包。
 
-- 打包后的应用会在启动 5 秒后检查更新，之后每 4 小时检查一次；托盘菜单也提供
-  **检查更新…** 入口。
+- 打包后的应用会在启动 5 秒后检查更新，之后每 4 小时检查一次；**帮助**菜单也
+  提供**检查更新…**入口。
 - 更新源在构建时写入 `app-update.yml`。CI 会自动指向本仓库的 GitHub Releases；
   本地构建则修改 `package.json` 中 `build.publish.owner` / `build.publish.repo`。
 - 运行时覆盖：设置 `DSH_UPDATE_URL` 可切换到 generic 更新源（适合测试或非
@@ -154,8 +136,8 @@ DeepSeek Harness Desktop
 1. `node scripts/check-upstream.mjs` — 对比当前固定的 dsh 版本与 npm 最新版。
 2. `node scripts/bump-dsh.mjs 0.1.0-rc.x` — 把所有 `@deepseek-ai/dsh*` 固定依赖
    升到同一版本，重新安装并运行测试。
-3. `npm run dist:mac:arm64 && npm run smoke:packaged` — 验证打包后的应用能启动
-   并返回 HTTP 200。
+3. `npm run dist:mac:all && npm run smoke:packaged` — 验证打包后的应用能启动
+   并返回 HTTP 200（同时构建 Apple Silicon 与 Intel）。
 4. `npm run clean:dist` — 删除本地构建产物，避免 Spotlight/Finder 索引到第二份应用。
 5. 修改 `package.json` 的 `version`，推送 `vX.Y.Z` tag。Release 工作流会构建、
    冒烟测试并把 DMG、ZIP、`latest-mac.yml` 发布到 GitHub Releases；已安装的
@@ -169,7 +151,8 @@ DeepSeek Harness Desktop
 
 ## 上游版本与许可
 
-当前固定使用 `@deepseek-ai/dsh@0.1.0-rc.6`，以保证打包结果可复现。
+当前固定使用 `@deepseek-ai/dsh@0.1.0-rc.6` 作为内置默认版本，以保证打包结果
+可复现。其他官方版本可通过 dsh 版本管理在运行时安装。
 
 桌面封装采用 [MIT License](LICENSE)。内置的 DeepSeek Harness 同样采用 MIT License，其许可声明保存在 [`third-party-licenses/deepseek-harness-LICENSE`](third-party-licenses/deepseek-harness-LICENSE)。
 
