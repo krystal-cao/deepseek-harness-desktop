@@ -46,19 +46,29 @@ const expression = `(() => {
   }
 })()`
 
-const result = await new Promise((resolve, reject) => {
+const evaluateOnce = (id, expression) => new Promise((resolve, reject) => {
   const timer = setTimeout(() => reject(new Error('Runtime.evaluate timed out')), 15_000)
   const onMessage = (event) => {
     const message = JSON.parse(event.data)
-    if (message.id !== 1) return
+    if (message.id !== id) return
     clearTimeout(timer)
     ws.removeEventListener('message', onMessage)
     if (message.error) reject(new Error(JSON.stringify(message.error)))
     else resolve(message.result?.result?.value)
   }
   ws.addEventListener('message', onMessage)
-  ws.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression, returnByValue: true } }))
+  ws.send(JSON.stringify({ id, method: 'Runtime.evaluate', params: { expression, returnByValue: true } }))
 })
+
+// The page target exists as soon as navigation starts, but the layout (and
+// sidebarCol) only mounts after the client plugins finish loading. Retry the
+// geometry read until the sidebar exists.
+let result
+for (let attempt = 0; attempt < 60; attempt++) {
+  result = await evaluateOnce(1, expression)
+  if (result && !result.error) break
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+}
 ws.close()
 
 const trafficLightBottom = 18 + 14
