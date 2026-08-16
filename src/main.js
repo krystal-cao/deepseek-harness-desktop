@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import { execFile } from 'node:child_process'
 import {
   app,
   BrowserWindow,
@@ -191,6 +192,30 @@ async function restartDshService() {
   }
 }
 
+/**
+ * When the dsh host exits on its own (e.g. dshmarket's self-restart kills the
+ * host and spawns a detached replacement), the shell must stay the single
+ * supervisor: drop the stray replacement and restart the host in place, then
+ * reload the window so plugin changes take effect.
+ */
+function watchServiceExit() {
+  service.child.on('exit', () => {
+    if (isQuitting || isRestartingService) return
+    setTimeout(() => {
+      if (isQuitting || isRestartingService) return
+      const pattern = `${process.resourcesPath}/app/node_modules/@deepseek-ai/dsh/lib/bin.js`
+      execFile('pkill', ['-f', pattern], (error) => {
+        if (error && error.code !== 1) {
+          console.warn('cleanup of detached dsh host failed:', error)
+        }
+        setTimeout(() => {
+          void restartDshService()
+        }, 500)
+      })
+    }, 2500)
+  })
+}
+
 async function launch() {
   try {
     createTray()
@@ -201,6 +226,7 @@ async function launch() {
   }
 
   startHarnessService()
+  watchServiceExit()
 
   try {
     serviceUrl = await service.ready

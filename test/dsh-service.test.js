@@ -10,6 +10,7 @@ import {
   resolveWindowsNodeExecutable,
   resolveWindowsPickerPatch,
   unpackedPath,
+  withBundledBinPath,
 } from '../src/dsh-service.js'
 
 test('extractReadyUrl reads the canonical loopback readiness URL', () => {
@@ -17,6 +18,14 @@ test('extractReadyUrl reads the canonical loopback readiness URL', () => {
     extractReadyUrl('booting\ndsh web: http://127.0.0.1:60882\n'),
     'http://127.0.0.1:60882',
   )
+})
+
+test('withBundledBinPath prepends the bundled bin directory to PATH', () => {
+  assert.deepEqual(withBundledBinPath({ PATH: '/usr/bin:/bin' }, '/opt/app/assets/bin'), {
+    PATH: '/opt/app/assets/bin:/usr/bin:/bin',
+  })
+  assert.deepEqual(withBundledBinPath({ PATH: '/usr/bin' }, undefined), { PATH: '/usr/bin' })
+  assert.deepEqual(withBundledBinPath({}, '/opt/app/assets/bin'), { PATH: '/opt/app/assets/bin' })
 })
 
 test('extractReadyUrl ignores non-loopback output', () => {

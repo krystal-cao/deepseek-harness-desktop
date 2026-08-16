@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { delimiter, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const READY_PATTERN = /^dsh web: (http:\/\/127\.0\.0\.1:\d+)\b/m
@@ -9,6 +11,24 @@ export function resolveDshEntry() {
 
 export function unpackedPath(path) {
   return path.replace(/([/\\])app\.asar([/\\])/, '$1app.asar.unpacked$2')
+}
+
+/** Directory with the bundled node shim and pnpm, when packaged. */
+export function bundledBinDir() {
+  const resources = typeof process.resourcesPath === 'string' ? process.resourcesPath : undefined
+  if (!resources) return undefined
+  const dir = join(resources, 'app', 'assets', 'bin')
+  return existsSync(dir) ? dir : undefined
+}
+
+/** Prepend the bundled bin directory so GUI launches find node/pnpm. */
+export function withBundledBinPath(env, binDir = bundledBinDir()) {
+  if (!binDir) return env
+  const pathValue = env.PATH ?? ''
+  return {
+    ...env,
+    PATH: pathValue === '' ? binDir : `${binDir}${delimiter}${pathValue}`,
+  }
 }
 
 export function extractReadyUrl(output) {
@@ -79,10 +99,10 @@ export function startDshService({
   })
 
   const child = spawn(command, args, {
-    env: {
+    env: withBundledBinPath({
       ...environment,
       ...(platform === 'win32' ? {} : { ELECTRON_RUN_AS_NODE: '1' }),
-    },
+    }),
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 

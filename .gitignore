@@ -7,4 +7,5 @@ output/
 .DS_Store
 assets/dsh-node.exe
 assets/windows-hidden-console.exe
+assets/bin/
 third-party-licenses/nodejs-LICENSE

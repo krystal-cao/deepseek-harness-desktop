@@ -1,6 +1,6 @@
 {
   "name": "deepseek-harness-desktop",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "description": "An unofficial desktop wrapper for DeepSeek Harness.",
   "type": "module",
   "main": "src/main.js",
@@ -61,7 +61,8 @@
   },
   "devDependencies": {
     "electron": "43.4.0",
-    "electron-builder": "26.0.12"
+    "electron-builder": "26.0.12",
+    "pnpm": "^11.22.0"
   },
   "build": {
     "afterSign": "scripts/after-pack.cjs",
@@ -81,8 +82,10 @@
       "assets/tray.png",
       "assets/trayTemplate.png",
       "assets/trayTemplate@2x.png",
+      "assets/bin/**/*",
       "assets/dsh-node.exe",
       "assets/windows-hidden-console.exe",
+      "!node_modules/pnpm",
       "package.json",
       "LICENSE",
       "third-party-licenses/**/*",
