@@ -159,7 +159,8 @@ DeepSeek Harness Desktop
    升到同一版本，重新安装并运行测试。
 3. `npm run dist:mac:arm64 && npm run smoke:packaged` — 验证打包后的应用能启动
    并返回 HTTP 200。
-4. 修改 `package.json` 的 `version`，推送 `vX.Y.Z` tag。Release 工作流会构建、
+4. `npm run clean:dist` — 删除本地构建产物，避免 Spotlight/Finder 索引到第二份应用。
+5. 修改 `package.json` 的 `version`，推送 `vX.Y.Z` tag。Release 工作流会构建、
    冒烟测试并把 DMG、ZIP、`latest-mac.yml` 发布到 GitHub Releases；已安装的
    应用会提示用户重启完成更新。
 

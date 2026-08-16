@@ -161,7 +161,9 @@ following upstream is a matter of releasing a new desktop build.
    to the same version, reinstall and run the test suite.
 3. `npm run dist:mac:arm64 && npm run smoke:packaged` — verify the packaged app
    boots and serves HTTP 200.
-4. Bump `version` in `package.json`, push a `vX.Y.Z` tag. The Release workflow
+4. `npm run clean:dist` — remove local build output so Spotlight/Finder never
+   indexes a second copy of the app.
+5. Bump `version` in `package.json`, push a `vX.Y.Z` tag. The Release workflow
    builds, smoke-tests, and publishes the DMG, ZIP and `latest-mac.yml` to
    GitHub Releases; installed apps then prompt the user to restart and update.
 
