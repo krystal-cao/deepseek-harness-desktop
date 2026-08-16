@@ -22,7 +22,7 @@ test('extractReadyUrl reads the canonical loopback readiness URL', () => {
 
 test('withBundledBinPath prepends the bundled bin directory to PATH', () => {
   assert.deepEqual(withBundledBinPath({ PATH: '/usr/bin:/bin' }, '/opt/app/assets/bin'), {
-    PATH: '/opt/app/assets/bin:/usr/bin:/bin',
+    PATH: `/opt/app/assets/bin${path.delimiter}/usr/bin:/bin`,
   })
   assert.deepEqual(withBundledBinPath({ PATH: '/usr/bin' }, undefined), { PATH: '/usr/bin' })
   assert.deepEqual(withBundledBinPath({}, '/opt/app/assets/bin'), { PATH: '/opt/app/assets/bin' })
