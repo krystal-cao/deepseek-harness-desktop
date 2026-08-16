@@ -1,5 +1,7 @@
-import { fileURLToPath } from 'node:url'
 import { execFile } from 'node:child_process'
+import { homedir } from 'node:os'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   app,
   BrowserWindow,
@@ -31,6 +33,7 @@ let trayAvailable = false
 let isQuitting = false
 let isRestartingService = false
 let updater
+let resolvedUserPath
 
 app.setName(APP_NAME)
 app.setAboutPanelOptions({
@@ -139,16 +142,40 @@ function createAppMenu() {
   })))
 }
 
-function startHarnessService() {
+function startHarnessService({ userPath = resolvedUserPath } = {}) {
   service = startDshService({
     electronExecutable: process.execPath,
     environment: {
       ...process.env,
+      ...(userPath !== undefined ? { PATH: userPath } : {}),
       NODE_OPTIONS: '',
       DSH_DESKTOP: '1',
     },
   })
   return service
+}
+
+/**
+ * Resolve the user's real shell PATH so plugins can find Homebrew, nvm,
+ * pyenv and other tools that GUI launches do not inherit. Falls back to the
+ * well-known user bin directories when the shell cannot be read.
+ */
+async function loadUserPath() {
+  if (process.platform !== 'darwin') return undefined
+  try {
+    const { stdout } = await execFile('/bin/zsh', ['-ilc', 'print -r -- "$PATH"'], {
+      timeout: 3_000,
+    })
+    const shellPath = String(stdout ?? '').trim()
+    if (shellPath !== '') return shellPath
+  } catch {
+    // Shell profile unavailable or too slow; fall through to known dirs.
+  }
+  const parts = (process.env.PATH ?? '').split(path.delimiter).filter((part) => part !== '')
+  for (const dir of ['/opt/homebrew/bin', '/usr/local/bin', path.join(homedir(), '.local', 'bin')]) {
+    if (!parts.includes(dir)) parts.push(dir)
+  }
+  return parts.join(path.delimiter)
 }
 
 function stopHarnessService() {
@@ -225,6 +252,7 @@ async function launch() {
     console.warn(`System tray is unavailable: ${error instanceof Error ? error.message : String(error)}`)
   }
 
+  resolvedUserPath = await loadUserPath()
   startHarnessService()
   watchServiceExit()
 
