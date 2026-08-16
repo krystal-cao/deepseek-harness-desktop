@@ -33,6 +33,7 @@
     "dist": "electron-builder",
     "dist:mac": "npm run dist:mac:arm64",
     "dist:mac:arm64": "electron-builder --mac dmg zip --arm64 --publish never",
+    "dist:mac:all": "electron-builder --mac dmg zip --arm64 --x64 --publish never",
     "dist:mac:x64": "electron-builder --mac dmg zip --x64 --publish never",
     "dist:win": "npm run prepare:windows && electron-builder --win nsis zip --x64 --publish never",
     "dist:linux": "electron-builder --linux AppImage deb --x64 --publish never"

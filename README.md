@@ -17,9 +17,7 @@
   <a href="https://github.com/krystal-cao/deepseek-harness-desktop/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/krystal-cao/deepseek-harness-desktop?style=flat-square&color=171513" /></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-171513.svg?style=flat-square" /></a>
   <a href="https://github.com/krystal-cao/deepseek-harness-desktop/actions/workflows/release.yml"><img alt="Release build" src="https://github.com/krystal-cao/deepseek-harness-desktop/actions/workflows/release.yml/badge.svg" /></a>
-  <img alt="macOS" src="https://img.shields.io/badge/macOS-Apple%20Silicon-171513.svg?style=flat-square" />
-  <img alt="Windows" src="https://img.shields.io/badge/Windows-x64-171513.svg?style=flat-square" />
-  <img alt="Linux" src="https://img.shields.io/badge/Linux-x64-171513.svg?style=flat-square" />
+  <img alt="macOS" src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-171513.svg?style=flat-square" />
 </p>
 
 <img width="2880" height="1882" alt="image" src="https://github.com/user-attachments/assets/4252ec13-c09b-4e74-996f-cf4d1bcb74c8" />
@@ -36,8 +34,7 @@ This project focuses on desktop hosting. It does not fork, modify, inject into, 
 | Platform | Architecture | Package | Download |
 | --- | --- | --- | --- |
 | macOS | Apple Silicon | DMG / ZIP | [Download](https://github.com/krystal-cao/deepseek-harness-desktop/releases/latest) |
-| Windows | x64 | Setup installer / portable ZIP | [Download](https://github.com/krystal-cao/deepseek-harness-desktop/releases/latest) |
-| Linux | x64 | AppImage / deb | [Download](https://github.com/krystal-cao/deepseek-harness-desktop/releases/latest) |
+| macOS | Intel | DMG / ZIP | [Download](https://github.com/krystal-cao/deepseek-harness-desktop/releases/latest) |
 
 All current and historical packages are available on the [GitHub Releases page](https://github.com/krystal-cao/deepseek-harness-desktop/releases).
 
