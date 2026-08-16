@@ -8,30 +8,8 @@ export const MAC_TITLEBAR_HEIGHT = 40
 // hashed class names; the substring attribute selector keeps working across
 // hash changes (verified live: pI_x6G_sidebarCol).
 export const MAC_TITLEBAR_CSS = `
-body {
-  background: transparent !important;
-}
-
 [class*="sidebarCol"] {
   padding-top: ${MAC_TITLEBAR_HEIGHT}px !important;
-  background: color-mix(in srgb, var(--dsw-specific-sidebar-fill) 72%, transparent) !important;
-}
-
-/* The sidebar's inner root paints an opaque surface over most of the column;
-   let the translucent column and the window vibrancy show through. */
-[class*="sidebarCol"] [class*="_root"] {
-  background: transparent !important;
-}
-
-/* The AppFrame is the direct parent of the sidebar column; :has keeps this
-   away from unrelated classes whose names also contain "frame". */
-[class*="frame"]:has(> [class*="sidebarCol"]) {
-  background: transparent !important;
-}
-
-[class*="centerCol"],
-[class*="detailsCol"] {
-  background: var(--dsw-alias-bg-base) !important;
 }
 
 body::before {

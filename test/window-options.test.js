@@ -2,15 +2,13 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createWindowOptions } from '../src/window-options.js'
 
-test('macOS uses an immersive transparent window with a positioned traffic-light strip', () => {
+test('macOS uses an immersive window with a positioned traffic-light strip', () => {
   const options = createWindowOptions('darwin')
 
   assert.equal(options.titleBarStyle, 'hiddenInset')
   assert.equal(options.titleBarOverlay, undefined)
   assert.deepEqual(options.trafficLightPosition, { x: 16, y: 18 })
-  assert.equal(options.vibrancy, 'sidebar')
-  assert.equal(options.transparent, true)
-  assert.equal(options.backgroundColor, '#00000000')
+  assert.equal(options.backgroundColor, '#ffffff')
 })
 
 test('Windows keeps the menu bar hidden', () => {
