@@ -10,14 +10,7 @@ export function createWindowOptions(platform = process.platform, useDarkColors =
     title: 'DeepSeek Harness',
     backgroundColor: useDarkColors ? '#151517' : '#ffffff',
     titleBarStyle: isMac ? 'hiddenInset' : 'default',
-    ...(isMac
-      ? {
-          trafficLightPosition: { x: 16, y: 18 },
-        }
-      : {
-          titleBarOverlay: false,
-        }),
-    autoHideMenuBar: platform === 'win32',
+    ...(isMac ? { trafficLightPosition: { x: 16, y: 18 } } : {}),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

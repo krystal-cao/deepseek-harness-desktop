@@ -23,9 +23,6 @@
     "check:upstream": "node scripts/check-upstream.mjs",
     "bump:dsh": "node scripts/bump-dsh.mjs",
     "postinstall": "node scripts/prepare-dependencies.mjs",
-    "prepare:windows": "node scripts/prepare-dependencies.mjs && npm run build:win-launcher",
-    "build:win-launcher": "powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows-launcher.ps1",
-    "test:win-console": "node scripts/test-windows-hidden-console.mjs",
     "smoke:packaged": "node scripts/smoke-packaged.mjs",
     "verify:inset": "node scripts/verify-inset.mjs",
     "clean:dist": "node scripts/clean-dist.mjs",
@@ -34,9 +31,7 @@
     "dist:mac": "npm run dist:mac:arm64",
     "dist:mac:arm64": "electron-builder --mac dmg zip --arm64 --publish never",
     "dist:mac:all": "electron-builder --mac dmg zip --arm64 --x64 --publish never",
-    "dist:mac:x64": "electron-builder --mac dmg zip --x64 --publish never",
-    "dist:win": "npm run prepare:windows && electron-builder --win nsis zip --x64 --publish never",
-    "dist:linux": "electron-builder --linux AppImage deb --x64 --publish never"
+    "dist:mac:x64": "electron-builder --mac dmg zip --x64 --publish never"
   },
   "dependencies": {
     "@deepseek-ai/cordis-plugin-group": "1.0.1",
@@ -82,8 +77,6 @@
       "config/**/*",
       "assets/icon.png",
       "assets/bin/**/*",
-      "assets/dsh-node.exe",
-      "assets/windows-hidden-console.exe",
       "!node_modules/pnpm",
       "package.json",
       "LICENSE",
@@ -115,51 +108,6 @@
         }
       ]
     },
-    "win": {
-      "icon": "assets/icon.ico",
-      "artifactName": "DeepSeek-Harness-Desktop-${version}-windows-${arch}.${ext}",
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "runAfterFinish": false
-    },
-    "linux": {
-      "icon": "assets/icon.png",
-      "category": "Development",
-      "executableName": "deepseek-harness",
-      "artifactName": "DeepSeek-Harness-Desktop-${version}-linux-${arch}.${ext}",
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
     "dmg": {
       "title": "DeepSeek Harness Desktop ${version}",
       "backgroundColor": "#f5f7fb",
@@ -184,7 +132,6 @@
   "allowScripts": {
     "@deepseek-ai/dsh-subprocess-local@0.1.0-rc.6": true,
     "@google/genai@1.52.0": true,
-    "electron-winstaller@5.4.0": true,
     "koffi@3.1.4": true,
     "node-pty@1.1.0": true,
     "protobufjs@7.6.5": true

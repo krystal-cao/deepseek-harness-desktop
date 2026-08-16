@@ -57,14 +57,7 @@ async function showMainWindow() {
 }
 
 function createWindow(serviceUrl) {
-  if (process.platform === 'win32') Menu.setApplicationMenu(null)
-
   mainWindow = new BrowserWindow(createWindowOptions(process.platform, nativeTheme.shouldUseDarkColors))
-
-  if (process.platform === 'win32') {
-    mainWindow.setMenu(null)
-    mainWindow.setMenuBarVisibility(false)
-  }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url)

@@ -8,9 +8,6 @@ import {
   buildDshArgs,
   extractReadyUrl,
   resolveDshEntry,
-  resolveWindowsHiddenConsoleLauncher,
-  resolveWindowsNodeExecutable,
-  resolveWindowsPickerPatch,
   unpackedPath,
   withBundledBinPath,
 } from '../src/dsh-service.js'
@@ -77,7 +74,7 @@ test('unpackedPath maps packaged dependencies to Electron unpacked resources', (
 })
 
 test('buildDshArgs includes the runtime flag required by upstream HMR', () => {
-  assert.deepEqual(buildDshArgs('/app/dsh.js', { platform: 'darwin' }), [
+  assert.deepEqual(buildDshArgs('/app/dsh.js'), [
     '--expose-internals',
     '/app/dsh.js',
     '--profile',
@@ -89,80 +86,21 @@ test('buildDshArgs includes the runtime flag required by upstream HMR', () => {
   ])
 })
 
-test('buildDshArgs pins the browse directory picker on Windows', () => {
-  assert.deepEqual(buildDshArgs('C:\\app\\dsh.js', {
-    platform: 'win32',
-    windowsPickerPatch: 'C:\\app\\windows-picker.yml',
-  }), [
-    '--expose-internals',
-    'C:\\app\\dsh.js',
-    '--profile',
-    'web',
-    '--patch',
-    'C:\\app\\windows-picker.yml',
-    '--host',
-    '127.0.0.1',
-    '--port',
-    '0',
-  ])
-  assert.equal(resolveWindowsPickerPatch().endsWith('windows-directory-picker.patch.yml'), true)
-})
-
-test('buildDshCommand uses the hidden-console launcher on Windows', () => {
+test('buildDshCommand starts Electron directly with the dsh args', () => {
   assert.deepEqual(buildDshCommand({
     electronExecutable: 'C:\\app\\DeepSeek Harness.exe',
     entry: 'C:\\app\\dsh.js',
-    platform: 'win32',
-    windowsLauncher: 'C:\\app\\windows-hidden-console.exe',
-    windowsNodeExecutable: 'C:\\app\\dsh-node.exe',
   }), {
-    command: 'C:\\app\\windows-hidden-console.exe',
+    command: 'C:\\app\\DeepSeek Harness.exe',
     args: [
-      'C:\\app\\dsh-node.exe',
       '--expose-internals',
       'C:\\app\\dsh.js',
       '--profile',
       'web',
-      '--patch',
-      resolveWindowsPickerPatch(),
       '--host',
       '127.0.0.1',
       '--port',
       '0',
     ],
   })
-})
-
-test('buildDshCommand starts Electron directly on other platforms', () => {
-  assert.deepEqual(buildDshCommand({
-    electronExecutable: '/app/electron',
-    entry: '/app/dsh.js',
-    platform: 'linux',
-  }), {
-    command: '/app/electron',
-    args: [
-      '--expose-internals',
-      '/app/dsh.js',
-      '--profile',
-      'web',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      '0',
-    ],
-  })
-})
-
-test('resolveWindowsHiddenConsoleLauncher points to the packaged launcher', () => {
-  assert.equal(
-    resolveWindowsHiddenConsoleLauncher().endsWith(path.join('assets', 'windows-hidden-console.exe')),
-    true,
-  )
-})
-
-test('resolveWindowsNodeExecutable points to the packaged console-subsystem Node runtime', () => {
-  assert.equal(
-    resolveWindowsNodeExecutable().endsWith(path.join('assets', 'dsh-node.exe')),
-    true,
-  )
 })

@@ -1,7 +1,7 @@
 // electron-updater wiring for the desktop shell: silent auto-check on launch,
-// periodic re-checks, tray-tooltip download progress, and a restart prompt once
-// the update is downloaded. The shell itself is updated whole-app, which also
-// replaces the bundled @deepseek-ai/dsh runtime.
+// periodic re-checks, download progress, and a restart prompt once the update
+// is downloaded. The shell itself is updated whole-app, which also replaces
+// the bundled @deepseek-ai/dsh runtime.
 import { app, dialog } from 'electron'
 import electronUpdater from 'electron-updater'
 import { installDownloadedUpdate } from './macos-install.js'
@@ -20,7 +20,6 @@ export function initAutoUpdater({
   appName,
   getMainWindow = () => undefined,
   onBeforeInstall = () => {},
-  setTrayTooltip = () => {},
   intervalMs = resolveAutoCheckIntervalMs(),
 } = {}) {
   const updater = {
@@ -73,7 +72,6 @@ export function initAutoUpdater({
 
   autoUpdater.on('update-available', (info) => {
     updateState({ state: 'downloading', info })
-    setTrayTooltip(`${appName} 更新 ${info.version} 下载中…`)
     void showMessage({
       type: 'info',
       title: '发现新版本',
@@ -95,14 +93,8 @@ export function initAutoUpdater({
     }
   })
 
-  autoUpdater.on('download-progress', (progress) => {
-    const percent = Math.min(100, Math.round(progress.percent))
-    setTrayTooltip(`正在下载 ${appName} 更新：${percent}%`)
-  })
-
   autoUpdater.on('update-downloaded', (info) => {
     updateState({ state: 'downloaded', info })
-    setTrayTooltip(`${appName} 更新已就绪`)
     void showMessage({
       type: 'info',
       title: '更新已就绪',

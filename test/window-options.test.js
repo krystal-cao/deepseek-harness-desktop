@@ -11,14 +11,6 @@ test('macOS uses an immersive window with a positioned traffic-light strip', () 
   assert.equal(options.backgroundColor, '#ffffff')
 })
 
-test('Windows keeps the menu bar hidden', () => {
-  const options = createWindowOptions('win32')
-
-  assert.equal(options.autoHideMenuBar, true)
-  assert.equal(options.titleBarStyle, 'default')
-  assert.equal(options.titleBarOverlay, false)
-})
-
 test('non-macOS window background follows the system appearance before content loads', () => {
   assert.equal(createWindowOptions('linux', false).backgroundColor, '#ffffff')
   assert.equal(createWindowOptions('linux', true).backgroundColor, '#151517')

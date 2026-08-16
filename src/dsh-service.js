@@ -45,28 +45,12 @@ export function extractReadyUrl(output) {
   return READY_PATTERN.exec(output)?.[1]
 }
 
-export function resolveWindowsPickerPatch() {
-  return fileURLToPath(new URL('../config/windows-directory-picker.patch.yml', import.meta.url))
-}
-
-export function resolveWindowsHiddenConsoleLauncher() {
-  return fileURLToPath(new URL('../assets/windows-hidden-console.exe', import.meta.url))
-}
-
-export function resolveWindowsNodeExecutable() {
-  return fileURLToPath(new URL('../assets/dsh-node.exe', import.meta.url))
-}
-
-export function buildDshArgs(entry, {
-  platform = process.platform,
-  windowsPickerPatch = resolveWindowsPickerPatch(),
-} = {}) {
+export function buildDshArgs(entry) {
   return [
     '--expose-internals',
     entry,
     '--profile',
     'web',
-    ...(platform === 'win32' ? ['--patch', windowsPickerPatch] : []),
     '--host',
     '127.0.0.1',
     '--port',
@@ -77,41 +61,29 @@ export function buildDshArgs(entry, {
 export function buildDshCommand({
   electronExecutable,
   entry = resolveDshEntry(),
-  platform = process.platform,
-  windowsLauncher = resolveWindowsHiddenConsoleLauncher(),
-  windowsNodeExecutable = resolveWindowsNodeExecutable(),
 } = {}) {
   if (!electronExecutable) {
     throw new Error('electronExecutable is required')
   }
 
-  const args = buildDshArgs(entry, { platform })
-  return platform === 'win32'
-    ? { command: windowsLauncher, args: [windowsNodeExecutable, ...args] }
-    : { command: electronExecutable, args }
+  return { command: electronExecutable, args: buildDshArgs(entry) }
 }
 
 export function startDshService({
   electronExecutable,
   entry = resolveDshEntry(),
   environment = process.env,
-  platform = process.platform,
   timeoutMs = 60_000,
-  windowsLauncher = resolveWindowsHiddenConsoleLauncher(),
-  windowsNodeExecutable = resolveWindowsNodeExecutable(),
 } = {}) {
   const { command, args } = buildDshCommand({
     electronExecutable,
     entry,
-    platform,
-    windowsLauncher,
-    windowsNodeExecutable,
   })
 
   const finalEnv = withBundledBinPath({
-      ...environment,
-      ...(platform === 'win32' ? {} : { ELECTRON_RUN_AS_NODE: '1' }),
-    })
+    ...environment,
+    ELECTRON_RUN_AS_NODE: '1',
+  })
   if (process.env.DSH_DEBUG_HOST_PATH === '1') {
     console.error('[dsh-service] host PATH:', finalEnv.PATH)
   }
