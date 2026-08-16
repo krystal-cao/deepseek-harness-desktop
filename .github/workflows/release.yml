@@ -57,3 +57,4 @@ jobs:
           else
             gh release create "$GITHUB_REF_NAME" dist/*.dmg dist/*.zip dist/*.yml --generate-notes
           fi
+          gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false
