@@ -4,10 +4,17 @@
 // geometry of the sidebar against the traffic-light strip.
 const DEBUG_PORT = process.env.DSH_MAC_DEBUG_PORT ?? '9333'
 
-const targets = await fetch(`http://127.0.0.1:${DEBUG_PORT}/json`).then((res) => res.json())
-const page = targets.find((target) => target.type === 'page' && target.url.startsWith('http://127.0.0.1'))
+let page
+for (let attempt = 0; attempt < 60; attempt++) {
+  const targets = await fetch(`http://127.0.0.1:${DEBUG_PORT}/json`)
+    .then((res) => res.json())
+    .catch(() => [])
+  page = targets.find((target) => target.type === 'page' && target.url.startsWith('http://127.0.0.1'))
+  if (page) break
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+}
 if (!page) {
-  console.error(`no localhost page target on :${DEBUG_PORT}`)
+  console.error(`no localhost page target on :${DEBUG_PORT} after 60s (app may still be booting)`)
   process.exit(1)
 }
 

@@ -45,10 +45,15 @@ jobs:
           APP_PID=$!
           trap 'kill $APP_PID 2>/dev/null || true' EXIT
           for i in $(seq 1 40); do
-            if curl -sf http://127.0.0.1:9333/json >/dev/null 2>&1; then break; fi
+            if curl -sf http://127.0.0.1:9333/json 2>/dev/null | grep -q '"url": "http://127.0.0.1:'; then
+              break
+            fi
             sleep 1
           done
           npm run verify:inset
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then cat /tmp/dsh-inset.log; fi
+          exit $STATUS
       - uses: actions/upload-artifact@v4
         with:
           name: macos-${{ matrix.arch }}
