@@ -9,6 +9,16 @@ import {
 test('macOS title bar reserves the traffic-light strip inside the sidebar', () => {
   assert.match(MAC_TITLEBAR_CSS, /\[class\*="sidebarCol"\]/)
   assert.match(MAC_TITLEBAR_CSS, new RegExp(`padding-top:\\s*${MAC_TITLEBAR_HEIGHT}px`))
+  // The collapsed sidebar (56px) is narrower than the traffic-light strip;
+  // force a minimum width so the lights never float over the workspace content.
+  assert.match(MAC_TITLEBAR_CSS, /min-width:\s*88px/)
+  // The app's grid frame keeps its content at 56px when collapsed; widen the
+  // first grid track too so the content column stops covering the sidebar.
+  assert.match(MAC_TITLEBAR_CSS, /\[class\*="frame"\]:has\(\[class\*="collapsed"\]\)/)
+  assert.match(MAC_TITLEBAR_CSS, /grid-template-columns:\s*88px/)
+  // The collapsed rail centers its icon buttons in the widened strip.
+  assert.match(MAC_TITLEBAR_CSS, /\[class\*="railIn"\] \[class\*="iconButton"\]/)
+  assert.match(MAC_TITLEBAR_CSS, /margin-left:\s*auto/)
 })
 
 test('macOS title bar provides a full-width drag region and keeps controls clickable', () => {

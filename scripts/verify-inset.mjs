@@ -69,6 +69,32 @@ for (let attempt = 0; attempt < 60; attempt++) {
   if (result && !result.error) break
   await new Promise((resolve) => setTimeout(resolve, 1000))
 }
+
+// The collapsed sidebar must stay wide enough to cover the macOS traffic
+// lights (measured via the accessibility API: three 16px lights span
+// x 15..77 with trafficLightPosition {16,18}); otherwise the lights float over
+// the workspace content. Best effort: the aria-labels differ by locale, so a
+// missed toggle is not a failure on its own.
+let collapsedSidebarWidth = null
+if (result && !result.error) {
+  await evaluateOnce(2, `(() => {
+    const toggle = [...document.querySelectorAll('button')].find((b) =>
+      ['收起', 'Collapse'].some((word) => (b.getAttribute('aria-label') ?? '').includes(word)))
+    toggle?.click()
+    return true
+  })()`)
+  await new Promise((resolve) => setTimeout(resolve, 800))
+  collapsedSidebarWidth = await evaluateOnce(3, `(() => {
+    const sidebar = document.querySelector('[class*="sidebarCol"]')
+    return sidebar ? Math.round(sidebar.getBoundingClientRect().width) : null
+  })()`)
+  await evaluateOnce(4, `(() => {
+    const toggle = [...document.querySelectorAll('button')].find((b) =>
+      ['打开侧边栏', 'Open sidebar'].includes((b.getAttribute('aria-label') ?? '').trim()))
+    toggle?.click()
+    return true
+  })()`)
+}
 ws.close()
 
 const trafficLightBottom = 18 + 14
@@ -84,6 +110,9 @@ if (result.interactiveControlRegion !== undefined && result.interactiveControlRe
 if (result.logoRowTop === undefined) failures.push('logoRow not found inside sidebar')
 if (result.logoRowTop !== undefined && result.logoRowTop < trafficLightBottom) {
   failures.push(`logo row top ${result.logoRowTop} overlaps traffic lights (bottom ${trafficLightBottom})`)
+}
+if (collapsedSidebarWidth !== null && (typeof collapsedSidebarWidth !== 'number' || collapsedSidebarWidth < 88)) {
+  failures.push(`collapsed sidebar width ${collapsedSidebarWidth} < 88px (traffic-light strip)`)
 }
 
 if (failures.length > 0) {

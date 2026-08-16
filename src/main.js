@@ -10,10 +10,8 @@ import {
   dialog,
   ipcMain,
   Menu,
-  nativeImage,
   nativeTheme,
   shell,
-  Tray,
 } from 'electron'
 import { resolveDshEntry, startDshService } from './dsh-service.js'
 import { buildAppMenuTemplate } from './app-menu.js'
@@ -22,7 +20,6 @@ import { initAutoUpdater } from './updater.js'
 import { hidePluginLoadingScreen } from './hide-plugin-loading.js'
 import { waitForWebUiReady } from './webui-ready.js'
 import { createWindowOptions } from './window-options.js'
-import { createTrayMenuTemplate, shouldHideWindowOnClose } from './window-lifecycle.js'
 import { bundledDshVersion, installDshVersion, listInstalledVersions, versionsDirFor } from './dsh-versions.js'
 import { fetchDshCatalog } from './dsh-registry.js'
 import { readDshState, writeDshState } from './dsh-state.js'
@@ -30,14 +27,10 @@ import { DSH_ANY_VERSION_PATTERN, isNewerVersion, sortDshVersions } from './upda
 
 const APP_NAME = 'DeepSeek Harness'
 const execFileAsync = promisify(execFile)
-const TRAY_ICON = fileURLToPath(new URL('../assets/tray.png', import.meta.url))
-const TRAY_TEMPLATE_ICON = fileURLToPath(new URL('../assets/trayTemplate.png', import.meta.url))
 
 let mainWindow
 let service
 let serviceUrl
-let tray
-let trayAvailable = false
 let isQuitting = false
 let isRestartingService = false
 let updater
@@ -96,9 +89,13 @@ function createWindow(serviceUrl) {
   mainWindow.webContents.on('dom-ready', injectShellStyles)
 
   mainWindow.on('close', (event) => {
-    if (!shouldHideWindowOnClose(isQuitting, trayAvailable)) return
-    event.preventDefault()
-    mainWindow?.hide()
+    // No tray icon anymore: on macOS keep the app running in the dock and
+    // hide the window on close (reopen via the dock); elsewhere closing the
+    // window quits the app.
+    if (process.platform === 'darwin' && !isQuitting) {
+      event.preventDefault()
+      mainWindow?.hide()
+    }
   })
   mainWindow.on('closed', () => {
     if (!mainWindow?.isDestroyed()) return
@@ -114,27 +111,6 @@ function createWindow(serviceUrl) {
   })()
 }
 
-function createTray() {
-  const trayIcon = nativeImage.createFromPath(
-    process.platform === 'darwin' ? TRAY_TEMPLATE_ICON : TRAY_ICON,
-  )
-  if (process.platform === 'darwin') trayIcon.setTemplateImage(true)
-  tray = new Tray(trayIcon)
-  tray.setToolTip(APP_NAME)
-  tray.setContextMenu(Menu.buildFromTemplate(createTrayMenuTemplate({
-    locale: app.getLocale(),
-    showWindow: () => void showMainWindow(),
-    hideWindow: () => mainWindow?.hide(),
-    checkForUpdates: () => void updater?.checkForUpdates({ manual: true }),
-    quit: () => {
-      isQuitting = true
-      app.quit()
-    },
-  })))
-  tray.on('click', () => void showMainWindow())
-  trayAvailable = true
-}
-
 function createUpdater() {
   updater = initAutoUpdater({
     appName: APP_NAME,
@@ -143,7 +119,6 @@ function createUpdater() {
       isQuitting = true
       service?.stop()
     },
-    setTrayTooltip: (text) => tray?.setToolTip(text || APP_NAME),
   })
 }
 
@@ -422,11 +397,10 @@ function watchServiceExit() {
 
 async function launch() {
   try {
-    createTray()
     createUpdater()
     createAppMenu()
   } catch (error) {
-    console.warn(`System tray is unavailable: ${error instanceof Error ? error.message : String(error)}`)
+    console.warn(`Shell setup failed: ${error instanceof Error ? error.message : String(error)}`)
   }
 
   resolvedUserPath = await loadUserPath()
@@ -474,7 +448,7 @@ app.on('activate', () => {
 })
 
 app.on('window-all-closed', () => {
-  if (isQuitting || (!trayAvailable && process.platform !== 'darwin')) app.quit()
+  if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('before-quit', () => {
