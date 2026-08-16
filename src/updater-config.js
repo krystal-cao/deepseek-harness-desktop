@@ -4,6 +4,9 @@
 /** The npm version train the desktop wrapper follows upstream. */
 export const DSH_VERSION_PATTERN = /^0\.1\.0-rc\.\d+$/
 
+/** Any official dsh version the version manager may install (semver-ish). */
+export const DSH_ANY_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-rc\.\d+)?$/
+
 /** Bundle identifier baked into the macOS app by electron-builder (build.appId). */
 export const DESKTOP_BUNDLE_ID = 'io.github.steven-kid.deepseek-harness-desktop'
 
@@ -15,6 +18,11 @@ export const DESKTOP_BUNDLE_ID = 'io.github.steven-kid.deepseek-harness-desktop'
  */
 export function resolveUpdaterCacheDirName(packageName = 'deepseek-harness-desktop') {
   return `${packageName}-updater`
+}
+
+/** Sort dsh version strings newest-first, comparing rc numbers numerically. */
+export function sortDshVersions(versions) {
+  return [...versions].sort((a, b) => (isNewerVersion(a, b) ? -1 : isNewerVersion(b, a) ? 1 : 0))
 }
 
 /**

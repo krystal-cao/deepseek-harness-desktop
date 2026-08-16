@@ -2,10 +2,20 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { delimiter, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { DSH_ANY_VERSION_PATTERN } from './updater-config.js'
 
 const READY_PATTERN = /^dsh web: (http:\/\/127\.0\.0\.1:\d+)\b/m
 
-export function resolveDshEntry() {
+/**
+ * Resolve the dsh CLI entry. When a user-installed version is selected, prefer
+ * its tree under <versionsDir>/<version>; otherwise fall back to the bundled
+ * @deepseek-ai/dsh that ships with the shell.
+ */
+export function resolveDshEntry(version, versionsDir) {
+  if (version && versionsDir && DSH_ANY_VERSION_PATTERN.test(version)) {
+    const candidate = join(versionsDir, version, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+    if (existsSync(candidate)) return candidate
+  }
   return unpackedPath(fileURLToPath(import.meta.resolve('@deepseek-ai/dsh/lib/bin.js')))
 }
 

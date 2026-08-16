@@ -2,18 +2,28 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
+  DSH_ANY_VERSION_PATTERN,
   DESKTOP_BUNDLE_ID,
   DSH_VERSION_PATTERN,
   isNewerVersion,
   resolveAutoCheckIntervalMs,
   resolveUpdaterCacheDirName,
   resolveUpdateFeed,
+  sortDshVersions,
   shouldEnableAutoUpdate,
 } from '../src/updater-config.js'
 
 test('resolveUpdaterCacheDirName follows the electron-builder convention', () => {
   assert.equal(resolveUpdaterCacheDirName('deepseek-harness-desktop'), 'deepseek-harness-desktop-updater')
   assert.equal(resolveUpdaterCacheDirName(), 'deepseek-harness-desktop-updater')
+})
+
+test('sortDshVersions orders rc versions newest-first numerically', () => {
+  assert.deepEqual(
+    sortDshVersions(['0.1.0-rc.6', '0.1.0-rc.10', '0.1.0-rc.5']),
+    ['0.1.0-rc.10', '0.1.0-rc.6', '0.1.0-rc.5'],
+  )
+  assert.deepEqual(sortDshVersions([]), [])
 })
 
 test('updater cache dir name and bundle id stay in sync with package.json', () => {
@@ -39,6 +49,15 @@ test('DSH_VERSION_PATTERN accepts only the 0.1.0-rc train', () => {
   assert.doesNotMatch('0.0.1-rc.5', DSH_VERSION_PATTERN)
   assert.doesNotMatch('0.1.0', DSH_VERSION_PATTERN)
   assert.doesNotMatch('0.1.0-rc', DSH_VERSION_PATTERN)
+})
+
+test('DSH_ANY_VERSION_PATTERN accepts every official dsh version', () => {
+  for (const version of ['0.0.1-rc.1', '0.0.1-rc.2', '0.0.1-rc.5', '0.1.0-rc.2', '0.1.0-rc.3', '0.1.0-rc.6']) {
+    assert.match(version, DSH_ANY_VERSION_PATTERN)
+  }
+  assert.doesNotMatch('0.1.0-rc', DSH_ANY_VERSION_PATTERN)
+  assert.doesNotMatch('../../etc', DSH_ANY_VERSION_PATTERN)
+  assert.doesNotMatch('latest', DSH_ANY_VERSION_PATTERN)
 })
 
 test('resolveUpdateFeed returns a generic feed only when configured', () => {

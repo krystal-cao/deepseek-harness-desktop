@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import {
   buildDshCommand,
@@ -35,6 +37,33 @@ test('extractReadyUrl ignores non-loopback output', () => {
 test('resolveDshEntry finds the pinned CLI package', () => {
   assert.equal(
     resolveDshEntry().endsWith(path.join('@deepseek-ai', 'dsh', 'lib', 'bin.js')),
+    true,
+  )
+})
+
+test('resolveDshEntry prefers an installed version when present', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dsh-entry-'))
+  try {
+    const entry = path.join(dir, '0.1.0-rc.6', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+    mkdirSync(path.dirname(entry), { recursive: true })
+    writeFileSync(entry, '')
+    assert.equal(resolveDshEntry('0.1.0-rc.6', dir), entry)
+    const older = path.join(dir, '0.0.1-rc.5', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+    mkdirSync(path.dirname(older), { recursive: true })
+    writeFileSync(older, '')
+    assert.equal(resolveDshEntry('0.0.1-rc.5', dir), older)
+    assert.equal(
+      resolveDshEntry('0.1.0-rc.5', dir).endsWith(path.join('@deepseek-ai', 'dsh', 'lib', 'bin.js')),
+      true,
+    )
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('resolveDshEntry ignores unsafe version paths', () => {
+  assert.equal(
+    resolveDshEntry('../../etc', '/tmp').endsWith(path.join('@deepseek-ai', 'dsh', 'lib', 'bin.js')),
     true,
   )
 })

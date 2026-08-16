@@ -17,6 +17,7 @@ test('macOS menu template is fully in Chinese with expected roles', () => {
     appName: 'DeepSeek Harness',
     onCheckForUpdates: () => {},
     onRestartService: () => {},
+    onOpenVersionManager: () => {},
   })
   const topLevel = template.map((item) => item.label)
   assert.deepEqual(topLevel, [
@@ -33,7 +34,7 @@ test('macOS menu template is fully in Chinese with expected roles', () => {
   for (const role of ['about', 'services', 'hide', 'hideOthers', 'unhide', 'quit', 'close']) {
     assert.ok(roles.includes(role), `missing role ${role}`)
   }
-  for (const label of ['撤销', '重做', '剪切', '复制', '粘贴', '全选', '重新加载', '重启 dsh 服务', '检查更新…']) {
+  for (const label of ['撤销', '重做', '剪切', '复制', '粘贴', '全选', '重新加载', 'dsh 版本管理…', '重启 dsh 服务', '检查更新…']) {
     assert.ok(items.some((item) => item.label === label), `missing label ${label}`)
   }
   assert.ok(items.every(

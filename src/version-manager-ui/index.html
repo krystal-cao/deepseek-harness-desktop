@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self'; script-src 'self'"
+    >
+    <title>dsh 版本管理</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <header>
+      <h1>dsh 版本管理</h1>
+      <button id="refresh" type="button">刷新</button>
+    </header>
+    <p id="status" class="status" hidden></p>
+    <section>
+      <h2>已安装</h2>
+      <ul id="installed" class="versions"></ul>
+    </section>
+    <section>
+      <h2>官方版本</h2>
+      <p class="hint">从 npm 安装官方 @deepseek-ai/dsh，可随时切换版本。</p>
+      <ul id="available" class="versions"></ul>
+    </section>
+    <script src="./app.js"></script>
+  </body>
+</html>
