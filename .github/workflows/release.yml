@@ -16,8 +16,8 @@ jobs:
     # the right one by arch in the filename (Provider.js matches process.arch).
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -47,7 +47,7 @@ jobs:
           STATUS=$?
           if [ $STATUS -ne 0 ]; then cat /tmp/dsh-inset.log; fi
           exit $STATUS
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: macos
           path: |
@@ -61,15 +61,17 @@ jobs:
       - macos
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           pattern: '*'
           merge-multiple: true
           path: dist
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/*.dmg
-            dist/*.zip
-            dist/*.yml
-          generate_release_notes: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/*.dmg dist/*.zip dist/*.yml --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/*.dmg dist/*.zip dist/*.yml --generate-notes
+          fi
