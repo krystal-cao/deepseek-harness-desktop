@@ -20,7 +20,7 @@
   <img alt="macOS" src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-171513.svg?style=flat-square" />
 </p>
 
-<img width="2880" height="1882" alt="image" src="https://github.com/user-attachments/assets/4252ec13-c09b-4e74-996f-cf4d1bcb74c8" />
+<img alt="DeepSeek Harness Desktop screenshot" src="assets/screenshot.png" />
 
 DeepSeek Harness Desktop packages the official DeepSeek Harness Web experience as a standalone desktop application. It removes the need to start the CLI manually or manage local ports while preserving the full Harness interface.
 

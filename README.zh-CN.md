@@ -20,7 +20,7 @@
   <img alt="macOS" src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-171513.svg?style=flat-square" />
 </p>
 
-<img width="2880" height="1882" alt="DeepSeek Harness Desktop 截图" src="https://github.com/user-attachments/assets/4252ec13-c09b-4e74-996f-cf4d1bcb74c8" />
+<img alt="DeepSeek Harness Desktop 截图" src="assets/screenshot.png" />
 
 DeepSeek Harness Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。无需手动启动 CLI 或管理端口，打开应用即可使用完整 Harness 界面。
 
