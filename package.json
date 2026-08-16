@@ -27,6 +27,7 @@
     "build:win-launcher": "powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows-launcher.ps1",
     "test:win-console": "node scripts/test-windows-hidden-console.mjs",
     "smoke:packaged": "node scripts/smoke-packaged.mjs",
+    "verify:inset": "node scripts/verify-inset.mjs",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "dist:mac": "npm run dist:mac:arm64",

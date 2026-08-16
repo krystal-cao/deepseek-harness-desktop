@@ -68,13 +68,14 @@ function createWindow(serviceUrl) {
     }
   })
 
-  mainWindow.webContents.on('did-finish-load', () => {
-    if (process.platform === 'darwin') void applyMacTitleBarStyle(mainWindow.webContents)
-  })
-
-  mainWindow.webContents.on('dom-ready', () => {
-    void hidePluginLoadingScreen(mainWindow.webContents)
-  })
+  const injectShellStyles = () => {
+    if (process.platform === 'darwin') {
+      void applyMacTitleBarStyle(mainWindow.webContents).catch(() => {})
+    }
+    void hidePluginLoadingScreen(mainWindow.webContents).catch(() => {})
+  }
+  injectShellStyles()
+  mainWindow.webContents.on('dom-ready', injectShellStyles)
 
   mainWindow.on('close', (event) => {
     if (!shouldHideWindowOnClose(isQuitting, trayAvailable)) return

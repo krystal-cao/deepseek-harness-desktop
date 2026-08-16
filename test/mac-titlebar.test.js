@@ -6,16 +6,16 @@ import {
   MAC_TITLEBAR_HEIGHT,
 } from '../src/mac-titlebar.js'
 
-test('macOS title bar uses the active DSH background token', () => {
-  assert.match(MAC_TITLEBAR_CSS, /var\(--dsw-alias-bg-base,\s*Canvas\)/)
-  assert.match(MAC_TITLEBAR_CSS, new RegExp(`env\\(titlebar-area-height, ${MAC_TITLEBAR_HEIGHT}px\\)`))
+test('macOS title bar reserves the traffic-light strip inside the sidebar', () => {
+  assert.match(MAC_TITLEBAR_CSS, /\[class\*="sidebarCol"\]/)
+  assert.match(MAC_TITLEBAR_CSS, new RegExp(`padding-top:\\s*${MAC_TITLEBAR_HEIGHT}px`))
 })
 
-test('macOS title bar overlay is an explicit window drag region', () => {
-  assert.match(MAC_TITLEBAR_CSS, /html::after/)
+test('macOS title bar provides a full-width drag region and keeps controls clickable', () => {
+  assert.match(MAC_TITLEBAR_CSS, /body::before/)
   assert.match(MAC_TITLEBAR_CSS, /-webkit-app-region:\s*drag/)
-  assert.match(MAC_TITLEBAR_CSS, /env\(titlebar-area-x,\s*0px\)/)
-  assert.match(MAC_TITLEBAR_CSS, /env\(titlebar-area-width,\s*100%\)/)
+  assert.match(MAC_TITLEBAR_CSS, /-webkit-app-region:\s*no-drag/)
+  assert.match(MAC_TITLEBAR_CSS, new RegExp(`height:\\s*${MAC_TITLEBAR_HEIGHT}px`))
 })
 
 test('macOS title bar styling is inserted into each loaded page', async () => {
