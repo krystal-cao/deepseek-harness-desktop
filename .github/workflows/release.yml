@@ -47,26 +47,8 @@ jobs:
           STATUS=$?
           if [ $STATUS -ne 0 ]; then cat /tmp/dsh-inset.log; fi
           exit $STATUS
-      - uses: actions/upload-artifact@v5
-        with:
-          name: macos
-          path: |
-            dist/*.dmg
-            dist/*.zip
-            dist/*.yml
-
-  release:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs:
-      - macos
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v5
-        with:
-          pattern: '*'
-          merge-multiple: true
-          path: dist
       - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
