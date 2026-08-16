@@ -4,6 +4,19 @@
 /** The npm version train the desktop wrapper follows upstream. */
 export const DSH_VERSION_PATTERN = /^0\.1\.0-rc\.\d+$/
 
+/** Bundle identifier baked into the macOS app by electron-builder (build.appId). */
+export const DESKTOP_BUNDLE_ID = 'io.github.steven-kid.deepseek-harness-desktop'
+
+/**
+ * electron-builder derives the updater cache directory from the package name:
+ * `sanitizedName.toLowerCase() + "-updater"`. electron-updater downloads the
+ * macOS update into `<cache>/<this name>/update.zip`; our self-install must
+ * only ever look inside that exact directory (never scan other apps' caches).
+ */
+export function resolveUpdaterCacheDirName(packageName = 'deepseek-harness-desktop') {
+  return `${packageName}-updater`
+}
+
 /**
  * Compare two dsh-style versions (`x.y.z` or `x.y.z-rc.n`). A stable release
  * outranks every rc of the same x.y.z. Returns false on unparsable input.

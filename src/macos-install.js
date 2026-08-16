@@ -4,10 +4,11 @@
 // are absent). For this shell, the downloaded update.zip is extracted and the
 // app bundle is swapped by a detached helper script, then relaunched.
 import { app } from 'electron'
-import { execFile, spawn } from 'node:child_process'
-import { constants, existsSync, mkdtempSync, readdirSync, writeFileSync, accessSync } from 'node:fs'
+import { execFile, execFileSync, spawn } from 'node:child_process'
+import { constants, existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync, accessSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { DESKTOP_BUNDLE_ID, resolveUpdaterCacheDirName } from './updater-config.js'
 
 function currentAppBundlePath() {
   const executable = app.getPath('exe')
@@ -18,25 +19,64 @@ function currentAppBundlePath() {
   return bundle
 }
 
-function findUpdateZip() {
-  const cacheRoot = app.getPath('cache')
-  const candidates = existsSync(cacheRoot)
-    ? readdirSync(cacheRoot).filter((name) => name.endsWith('-updater'))
-    : []
-  for (const dir of candidates) {
-    const zipPath = path.join(cacheRoot, dir, 'update.zip')
-    if (existsSync(zipPath)) return zipPath
+/**
+ * The packaged app embeds `updaterCacheDirName` in app-update.yml (the same
+ * file electron-updater reads). Fall back to the electron-builder convention
+ * (package name + "-updater") for dev runs where the file is absent.
+ */
+function readUpdaterCacheDirName() {
+  try {
+    const configPath = path.join(process.resourcesPath, 'app-update.yml')
+    const match = /^updaterCacheDirName:\s*(\S+)/m.exec(readFileSync(configPath, 'utf8'))
+    if (match) return match[1]
+  } catch {
+    // fall through to the naming convention
   }
+  return resolveUpdaterCacheDirName()
+}
+
+/**
+ * Only ever look at OUR updater cache directory. Scanning `~/Library/Caches`
+ * for any `*-updater/update.zip` can pick up another app's downloaded update
+ * (e.g. opencode's) and install it over this app.
+ */
+function findUpdateZip() {
+  const zipPath = path.join(app.getPath('cache'), readUpdaterCacheDirName(), 'update.zip')
+  if (existsSync(zipPath)) return zipPath
   throw new Error('downloaded update.zip was not found in the updater cache')
 }
 
+function readBundleIdentifier(bundlePath) {
+  const plistPath = path.join(bundlePath, 'Contents', 'Info.plist')
+  try {
+    return execFileSync('plutil', ['-extract', 'CFBundleIdentifier', 'raw', '-o', '-', plistPath], {
+      encoding: 'utf8',
+    }).trim()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Pick the extracted bundle that is actually ours. Never install a bundle
+ * whose identifier does not match, even if the zip came from the right cache
+ * directory: a wrong bundle (e.g. another app's update) must abort the install.
+ */
 function findAppBundle(stagingRoot) {
   const candidates = readdirSync(stagingRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name.endsWith('.app'))
   if (candidates.length === 0) {
     throw new Error(`no .app bundle found inside ${stagingRoot}`)
   }
-  return path.join(stagingRoot, candidates[0].name)
+  const match = candidates.find((entry) => readBundleIdentifier(path.join(stagingRoot, entry.name)) === DESKTOP_BUNDLE_ID)
+  if (!match) {
+    const found = candidates
+      .map((entry) => readBundleIdentifier(path.join(stagingRoot, entry.name)))
+      .map((identifier) => identifier ?? '<unreadable>')
+      .join(', ')
+    throw new Error(`update bundle identity check failed: expected ${DESKTOP_BUNDLE_ID}, found ${found}`)
+  }
+  return path.join(stagingRoot, match.name)
 }
 
 function assertReplaceableBundle(bundlePath) {
@@ -52,11 +92,22 @@ function scheduleSwap({ stagingRoot, extractedApp, bundlePath }) {
   const logPath = path.join(stagingRoot, 'install.log')
   const escapedBundle = bundlePath.replaceAll('"', '\\"')
   const escapedApp = extractedApp.replaceAll('"', '\\"')
+  const backupPath = `${bundlePath}.dsh-old`
+  const escapedBackup = backupPath.replaceAll('"', '\\"')
   const script = `#!/bin/sh
 exec >> "${logPath}" 2>&1
 while kill -0 ${process.pid} 2>/dev/null; do sleep 0.5; done
-rm -rf "${escapedBundle}"
-mv "${escapedApp}" "${escapedBundle}"
+rm -rf "${escapedBackup}"
+if ! mv "${escapedBundle}" "${escapedBackup}"; then
+  echo "failed to move current app aside: ${bundlePath}" >&2
+  exit 1
+fi
+if ! mv "${escapedApp}" "${escapedBundle}"; then
+  mv "${escapedBackup}" "${escapedBundle}"
+  echo "failed to install update; previous app restored: ${bundlePath}" >&2
+  exit 1
+fi
+rm -rf "${escapedBackup}"
 open "${escapedBundle}"
 `
   writeFileSync(scriptPath, script, { mode: 0o755 })
