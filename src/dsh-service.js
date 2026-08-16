@@ -98,11 +98,15 @@ export function startDshService({
     windowsNodeExecutable,
   })
 
-  const child = spawn(command, args, {
-    env: withBundledBinPath({
+  const finalEnv = withBundledBinPath({
       ...environment,
       ...(platform === 'win32' ? {} : { ELECTRON_RUN_AS_NODE: '1' }),
-    }),
+    })
+  if (process.env.DSH_DEBUG_HOST_PATH === '1') {
+    console.error('[dsh-service] host PATH:', finalEnv.PATH)
+  }
+  const child = spawn(command, args, {
+    env: finalEnv,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 

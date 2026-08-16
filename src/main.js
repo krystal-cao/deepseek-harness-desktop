@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { promisify } from 'node:util'
 import {
   app,
   BrowserWindow,
@@ -22,6 +23,7 @@ import { createWindowOptions } from './window-options.js'
 import { createTrayMenuTemplate, shouldHideWindowOnClose } from './window-lifecycle.js'
 
 const APP_NAME = 'DeepSeek Harness'
+const execFileAsync = promisify(execFile)
 const TRAY_ICON = fileURLToPath(new URL('../assets/tray.png', import.meta.url))
 const TRAY_TEMPLATE_ICON = fileURLToPath(new URL('../assets/trayTemplate.png', import.meta.url))
 
@@ -163,7 +165,7 @@ function startHarnessService({ userPath = resolvedUserPath } = {}) {
 async function loadUserPath() {
   if (process.platform !== 'darwin') return undefined
   try {
-    const { stdout } = await execFile('/bin/zsh', ['-ilc', 'print -r -- "$PATH"'], {
+    const { stdout } = await execFileAsync('/bin/zsh', ['-ilc', 'print -r -- "$PATH"'], {
       timeout: 3_000,
     })
     const shellPath = String(stdout ?? '').trim()
