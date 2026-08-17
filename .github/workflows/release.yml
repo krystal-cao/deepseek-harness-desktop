@@ -57,12 +57,24 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Release notes are maintained when the tag is created: annotated
-          # tag messages become the GitHub release body. Lightweight tags
-          # (empty message) fall back to commit-derived notes.
+          # tag messages become the GitHub release body. Read them from the
+          # server via the git-data API: checkout may materialize the tag as
+          # a lightweight ref pointing at the commit, in which case
+          # `git tag -l --format='%(contents)'` would yield the commit message
+          # instead of the release notes. Lightweight tags (empty notes) fall
+          # back to commit-derived notes.
           NOTES_FILE="$RUNNER_TEMP/release-notes.md"
-          git tag -l "$GITHUB_REF_NAME" --format='%(contents)' > "$NOTES_FILE"
+          REF_JSON="$(gh api "/repos/${{ github.repository }}/git/refs/tags/$GITHUB_REF_NAME")"
+          OBJ_SHA="$(printf '%s' "$REF_JSON" | jq -r '.object.sha')"
+          OBJ_TYPE="$(printf '%s' "$REF_JSON" | jq -r '.object.type')"
+          if [ "$OBJ_TYPE" = "tag" ]; then
+            gh api "/repos/${{ github.repository }}/git/tags/$OBJ_SHA" --jq '.message' > "$NOTES_FILE"
+          fi
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" dist/*.dmg dist/*.zip dist/*.yml --clobber
+            if [ -s "$NOTES_FILE" ]; then
+              gh release edit "$GITHUB_REF_NAME" --notes-file "$NOTES_FILE"
+            fi
           elif [ -s "$NOTES_FILE" ]; then
             gh release create "$GITHUB_REF_NAME" dist/*.dmg dist/*.zip dist/*.yml --notes-file "$NOTES_FILE"
           else
