@@ -17,11 +17,13 @@ export const MAC_TITLEBAR_CSS = `
 }
 
 /* The app shell is a CSS grid whose first track is hardcoded to 56px when the
-   sidebar is collapsed (inline style). The sidebar overflows that track and
-   its right side gets covered by the content column, so the visible strip
-   stays 56px and the traffic lights stick out. Widen the first track to match
-   the min-width above while collapsed; expanded state is untouched. */
-[class*="frame"]:has([class*="collapsed"]) {
+   sidebar is collapsed (inline style, upstream JS constant). The sidebar
+   overflows that track and its right side gets covered by the content column,
+   so the visible strip stays 56px and the traffic lights stick out. Widen the
+   first track to match the min-width above while collapsed. The collapsed
+   state is detected through the stable "data-sidebar-collapsed" attribute the
+   frame emits (verified in dsh-client-ui-layout), not a hashed class. */
+[data-sidebar-collapsed] {
   grid-template-columns: 88px minmax(0px, 1fr) 0px !important;
 }
 
@@ -34,15 +36,6 @@ export const MAC_TITLEBAR_CSS = `
 [class*="railIn"] [class*="search"] {
   margin-left: auto !important;
   margin-right: auto !important;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0 0 auto;
-  height: ${MAC_TITLEBAR_HEIGHT}px;
-  -webkit-app-region: drag;
-  app-region: drag;
 }
 
 a,

@@ -28,7 +28,9 @@ const expression = `(() => {
   const sidebar = document.querySelector('[class*="sidebarCol"]')
   if (!sidebar) return { error: 'sidebarCol not found' }
   const cs = getComputedStyle(sidebar)
-  const dragRegion = getComputedStyle(document.body, '::before')
+  const dragRegionEl = document.getElementById('dsh-drag-region')
+  const dragRegion = dragRegionEl ? getComputedStyle(dragRegionEl) : null
+  const dragRect = dragRegionEl?.getBoundingClientRect()
   const rect = sidebar.getBoundingClientRect()
   const logoRow = sidebar.querySelector('[class*="logoRow"]')
   const logoRect = logoRow?.getBoundingClientRect()
@@ -37,9 +39,11 @@ const expression = `(() => {
   return {
     paddingTop: cs.paddingTop,
     sidebarWidth: Math.round(rect.width),
-    dragRegion: dragRegion.getPropertyValue('-webkit-app-region') || dragRegion.getPropertyValue('app-region'),
-    dragRegionHeight: dragRegion.height,
-    dragRegionWidth: Math.round(Number.parseFloat(dragRegion.width)),
+    dragRegion: dragRegion
+      ? dragRegion.getPropertyValue('-webkit-app-region') || dragRegion.getPropertyValue('app-region')
+      : null,
+    dragRegionHeight: dragRect?.height ?? null,
+    dragRegionWidth: dragRect ? Math.round(dragRect.width) : null,
     interactiveControlRegion: interactiveControlStyle?.getPropertyValue('-webkit-app-region') || interactiveControlStyle?.getPropertyValue('app-region'),
     logoRowTop: logoRect === undefined ? undefined : Math.round(logoRect.top),
     windowInnerWidth: window.innerWidth,
@@ -102,7 +106,7 @@ const failures = []
 if (result?.error) failures.push(result.error)
 if (result.paddingTop !== '40px') failures.push(`padding-top is ${result.paddingTop}, expected 40px`)
 if (result.dragRegion !== 'drag') failures.push(`drag region is ${result.dragRegion}, expected drag`)
-if (result.dragRegionHeight !== '40px') failures.push(`drag height is ${result.dragRegionHeight}, expected 40px`)
+if (result.dragRegionHeight !== 40) failures.push(`drag height is ${result.dragRegionHeight}, expected 40`)
 if (result.dragRegionWidth !== result.windowInnerWidth) failures.push(`drag width ${result.dragRegionWidth} != window ${result.windowInnerWidth}`)
 if (result.interactiveControlRegion !== undefined && result.interactiveControlRegion !== 'no-drag') {
   failures.push(`interactive control region is ${result.interactiveControlRegion}, expected no-drag`)
