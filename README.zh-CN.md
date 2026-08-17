@@ -154,9 +154,14 @@ DeepSeek Harness Desktop
 3. `npm run dist:mac:all && npm run smoke:packaged` — 验证打包后的应用能启动
    并返回 HTTP 200（同时构建 Apple Silicon 与 Intel）。
 4. `npm run clean:dist` — 删除本地构建产物，避免 Spotlight/Finder 索引到第二份应用。
-5. 修改 `package.json` 的 `version`，推送 `vX.Y.Z` tag。Release 工作流会构建、
-   冒烟测试并把 DMG、ZIP、`latest-mac.yml` 发布到 GitHub Releases；已安装的
-   应用会提示用户重启完成更新。
+5. 修改 `package.json` 的 `version`，然后创建**带注释的** tag，tag message
+   就是发布说明——Release 工作流会原样用它作为 GitHub Release 正文，说明
+   在打 tag 那一刻定稿，而不是等 CI 跑完再手动改：
+   `node scripts/tag-release.mjs vX.Y.Z RELEASE_NOTES.md`（或
+   `git tag -a vX.Y.Z -F RELEASE_NOTES.md`）。推送 tag 后，Release 工作流会
+   构建、冒烟测试并把 DMG、ZIP、`latest-mac.yml` 发布到 GitHub Releases；
+   已安装的应用会提示用户重启完成更新。轻量 tag（无 message）会回退到
+   基于提交自动生成的说明。
 
 `check-upstream.yml` 工作流每天检查一次：上游在 npm 发布新的 `0.1.0-rc.*`
 版本时，会自动开一个升级 PR。

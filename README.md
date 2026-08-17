@@ -162,9 +162,15 @@ Version Manager…) can also install and switch to newer official
    boots and serves HTTP 200 (builds Apple Silicon and Intel together).
 4. `npm run clean:dist` — remove local build output so Spotlight/Finder never
    indexes a second copy of the app.
-5. Bump `version` in `package.json`, push a `vX.Y.Z` tag. The Release workflow
-   builds, smoke-tests, and publishes the DMG, ZIP and `latest-mac.yml` to
-   GitHub Releases; installed apps then prompt the user to restart and update.
+5. Bump `version` in `package.json`, then create an **annotated** tag whose
+   message is the release notes — the Release workflow uses it verbatim as the
+   GitHub release body, so the notes are fixed at tag time, not after CI:
+   `node scripts/tag-release.mjs vX.Y.Z RELEASE_NOTES.md` (or
+   `git tag -a vX.Y.Z -F RELEASE_NOTES.md`). Push the tag; the Release
+   workflow builds, smoke-tests, and publishes the DMG, ZIP and
+   `latest-mac.yml` to GitHub Releases; installed apps then prompt the user to
+   restart and update. A lightweight tag (empty message) falls back to
+   commit-derived notes.
 
 The daily `check-upstream.yml` workflow opens a bump pull request whenever
 upstream publishes a new `0.1.0-rc.*` version on npm.
