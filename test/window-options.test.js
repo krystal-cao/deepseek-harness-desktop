@@ -15,3 +15,11 @@ test('non-macOS window background follows the system appearance before content l
   assert.equal(createWindowOptions('linux', false).backgroundColor, '#ffffff')
   assert.equal(createWindowOptions('linux', true).backgroundColor, '#151517')
 })
+
+test('main window hardens the renderer and mounts the bridge preload', () => {
+  const options = createWindowOptions('darwin')
+  assert.equal(options.webPreferences.contextIsolation, true)
+  assert.equal(options.webPreferences.nodeIntegration, false)
+  assert.equal(options.webPreferences.sandbox, true)
+  assert.match(options.webPreferences.preload, /dsh-bridge-preload\.cjs$/)
+})

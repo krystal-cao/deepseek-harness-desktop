@@ -1,3 +1,7 @@
+import { fileURLToPath } from 'node:url'
+
+const BRIDGE_PRELOAD = fileURLToPath(new URL('./dsh-bridge-preload.cjs', import.meta.url))
+
 export function createWindowOptions(platform = process.platform, useDarkColors = false) {
   const isMac = platform === 'darwin'
 
@@ -15,6 +19,7 @@ export function createWindowOptions(platform = process.platform, useDarkColors =
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: BRIDGE_PRELOAD,
     },
   }
 }

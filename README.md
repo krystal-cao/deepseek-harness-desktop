@@ -68,6 +68,10 @@ DeepSeek Harness already provides the complete agent runtime and Web UI. This pr
   the dsh manager window)
 - Manages out-of-tree plugins in the web profile (list / add / remove, backed
   by `dsh plugin --profile web`), restarting the dsh service automatically
+- Ships a small desktop-host client plugin into the web profile: it reports
+  plugin activation (readiness) and theme changes to the shell over a preload
+  bridge, so the shell no longer depends on UI text/class sniffing — the old
+  DOM/CSS heuristics remain only as a fallback
 
 ## Installation
 
@@ -91,6 +95,9 @@ This confirmation is normally required only once.
 - New windows and cross-origin navigation open in the system browser
 - Harness runs in a separate Electron Node child process
 - The `--expose-internals` permission required by Cordis HMR is granted only to the Harness child process
+- The desktop-host bridge plugin is auto-installed into the web profile from a
+  bundled local path (no network), reports only readiness and theme events,
+  and is marked as managed in the plugin list
 
 ## Runtime architecture
 

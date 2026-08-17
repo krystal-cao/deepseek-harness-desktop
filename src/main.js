@@ -45,6 +45,8 @@ import {
 } from './updater-config.js'
 
 const APP_NAME = 'DeepSeek Harness'
+const DESKTOP_HOST_PLUGIN = 'dsh-desktop-host'
+const DESKTOP_HOST_BUNDLE_PATH = fileURLToPath(new URL('../assets/dsh-desktop-host', import.meta.url))
 const execFileAsync = promisify(execFile)
 
 let mainWindow
@@ -116,11 +118,31 @@ function createWindow(serviceUrl) {
 
   return (async () => {
     await mainWindow.loadURL(serviceUrl)
-    await waitForWebUiReady(mainWindow.webContents)
+    await waitForBridgeOrUi(mainWindow.webContents)
     if (mainWindow.isDestroyed()) return
     mainWindow.show()
     mainWindow.focus()
   })()
+}
+
+/**
+ * Wait for the desktop-host client plugin to signal activation through the
+ * preload bridge, falling back to the old DOM/text readiness heuristics (and
+ * their timeout) so the window still opens when the bridge is missing.
+ */
+function waitForBridgeOrUi(webContents) {
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      ipcMain.removeListener('dsh-bridge:ready', onReady)
+      resolve()
+    }
+    const onReady = () => finish()
+    ipcMain.on('dsh-bridge:ready', onReady)
+    void waitForWebUiReady(webContents).then(finish)
+  })
 }
 
 function createUpdater() {
@@ -343,7 +365,42 @@ function readPluginList() {
     entry: currentDshEntry(),
     env: pluginCommandEnv(),
     registry: currentNpmRegistry(),
-  })
+  }).then((result) => ({
+    ...result,
+    plugins: result.plugins.map((plugin) => ({
+      ...plugin,
+      managed: plugin.name === DESKTOP_HOST_PLUGIN,
+    })),
+  }))
+}
+
+/**
+ * Make sure the desktop host bridge plugin is installed in the web profile.
+ * It is bundled with the app and installed from a local path, so this is a
+ * file: install with no network dependency. Returns true when a restart was
+ * triggered because the plugin was newly added.
+ */
+async function ensureDesktopHostPlugin() {
+  try {
+    const listed = await readPluginList()
+    if (listed.plugins.some((plugin) => plugin.name === DESKTOP_HOST_PLUGIN)) return false
+    const result = await addPlugin({
+      electronExecutable: process.execPath,
+      entry: currentDshEntry(),
+      spec: `file:${DESKTOP_HOST_BUNDLE_PATH}`,
+      env: pluginCommandEnv(),
+      registry: currentNpmRegistry(),
+    })
+    if (result.code !== 0) {
+      throw new Error(`pnpm add exited ${result.code}: ${(result.stderr || result.stdout).trim().slice(-400)}`)
+    }
+    await restartDshService()
+    console.log('[dsh-bridge] desktop host plugin installed; service restarted')
+    return true
+  } catch (error) {
+    console.warn('[dsh-bridge] could not install desktop host plugin:', error instanceof Error ? error.message : error)
+    return false
+  }
 }
 
 function registerPluginManagerIpc() {
@@ -527,6 +584,16 @@ function watchServiceExit() {
 }
 
 async function launch() {
+  ipcMain.on('dsh-bridge:ready', () => {
+    console.log('[dsh-bridge] web plugins activated')
+  })
+  ipcMain.on('dsh-bridge:theme', (_event, snapshot) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    const colorScheme = snapshot?.colorScheme
+    if (colorScheme === 'dark' || colorScheme === 'light') {
+      mainWindow.setBackgroundColor(colorScheme === 'dark' ? '#151517' : '#ffffff')
+    }
+  })
   try {
     createUpdater()
     createAppMenu()
@@ -558,6 +625,7 @@ async function launch() {
     app.quit()
   }
 
+  void ensureDesktopHostPlugin()
   void refreshCatalog()
     .then(() => followLatestIfEnabled())
     .then(() => maybeNotifyDshUpdate())

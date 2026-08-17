@@ -1,0 +1,8 @@
+# Desktop host bridge: the row below is a web client plugin. The node half
+# scans Loader entries whose package declares dsh.client (platform web),
+# composes it into window.__DSH_BOOT__, and serves /plugins/dsh-desktop-host/client.js.
+# Its browser half reports plugin activation and theme/change events to the
+# Electron shell through the window.dshDesktop preload bridge.
+- insert:
+    - id: desktop-host
+      name: dsh-desktop-host

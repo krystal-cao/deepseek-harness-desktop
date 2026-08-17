@@ -65,6 +65,9 @@ DeepSeek Harness 已经提供完整的 Agent Runtime 和 Web UI。本项目不�
   `0.1.0-rc.*` 版本（可在 dsh 管理窗口中关闭）
 - 支持插件管理：可在 dsh 管理窗口中列出、安装、卸载 web profile 的第三方
   插件（等价于 `dsh plugin --profile web ...`），操作完成后自动重启 dsh 服务
+- 内置桌面宿主桥接插件：自动安装到 web profile，通过 preload 桥接向壳层
+  上报插件激活（就绪）和主题变化，不再依赖 UI 文本/类名嗅探——原有的
+  DOM/CSS 探测只作为兜底保留
 
 ## 安装说明
 
@@ -88,6 +91,8 @@ macOS 构建已进行完整性签名，但尚未经过 Apple 公证。首次启�
 - 新窗口和跨域导航交由系统浏览器处理
 - Harness 在独立的 Electron Node 子进程中运行
 - Cordis HMR 所需的 `--expose-internals` 只授予 Harness 子进程，不暴露给 Renderer
+- 桌面宿主桥接插件从应用内置路径自动安装（无网络依赖），只上报就绪和主题
+  事件，并在插件列表中标记为“内置”
 
 ## 运行架构
 

@@ -194,20 +194,26 @@ function renderPlugins() {
     meta.className = 'meta'
     meta.textContent = item.version ? `v${item.version}` : ''
 
-    const remove = document.createElement('button')
-    remove.type = 'button'
-    remove.className = 'danger'
-    remove.textContent = confirmingPlugin === item.name ? '确认卸载' : '卸载'
-    remove.disabled = busy
-    remove.addEventListener('click', () => {
-      if (confirmingPlugin === item.name) void removePluginByName(item.name)
-      else {
-        confirmingPlugin = item.name
-        renderPlugins()
-      }
-    })
-
-    li.append(name, meta, remove)
+    if (item.managed) {
+      const tag = document.createElement('span')
+      tag.className = 'tag'
+      tag.textContent = '内置'
+      li.append(name, meta, tag)
+    } else {
+      const remove = document.createElement('button')
+      remove.type = 'button'
+      remove.className = 'danger'
+      remove.textContent = confirmingPlugin === item.name ? '确认卸载' : '卸载'
+      remove.disabled = busy
+      remove.addEventListener('click', () => {
+        if (confirmingPlugin === item.name) void removePluginByName(item.name)
+        else {
+          confirmingPlugin = item.name
+          renderPlugins()
+        }
+      })
+      li.append(name, meta, remove)
+    }
     pluginsEl.append(li)
   }
 }
