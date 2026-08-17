@@ -10,63 +10,137 @@
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
-    <header>
-      <h1>dsh 管理</h1>
-      <button id="refresh" type="button">刷新</button>
-    </header>
-    <nav class="tabs">
-      <button id="tab-versions" type="button" class="tab active">版本</button>
-      <button id="tab-plugins" type="button" class="tab">插件</button>
-    </nav>
-    <p id="status" class="status" hidden></p>
-    <section id="panel-versions">
-      <label class="option">
-        <input id="auto-follow" type="checkbox">
-        <span>启动后自动安装并切换到官方最新 RC（后台安装，完成后自动重启 dsh 服务）</span>
-      </label>
-      <div class="option option-column">
-        <span class="option-title">npm 镜像地址</span>
-        <p class="hint">版本目录、插件安装和插件管理都使用这个地址。内置镜像失效时可切换备用镜像。</p>
-        <div class="registry-row">
-          <input
-            id="registry-input"
-            type="text"
-            list="registry-presets"
-            placeholder="https://registry.npmmirror.com/"
-            autocomplete="off"
-            spellcheck="false"
-          >
-          <datalist id="registry-presets">
-            <option value="https://registry.npmmirror.com/">npmmirror（国内）</option>
-            <option value="https://registry.npmjs.org/">npm 官方</option>
-            <option value="https://mirrors.cloud.tencent.com/npm/">腾讯云</option>
-            <option value="https://mirrors.huaweicloud.com/repository/npm/">华为云</option>
-          </datalist>
-          <button id="registry-save" type="button">保存</button>
-          <button id="registry-reset" type="button">恢复默认</button>
+    <div class="titlebar">
+      <span class="titlebar-title">dsh 版本管理</span>
+    </div>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 8L12 3 3 8v8l9 5 9-5V8z"></path>
+              <path d="M3 8l9 5 9-5"></path>
+              <path d="M12 13v8"></path>
+            </svg>
+          </span>
+          <span class="brand-name">dsh</span>
         </div>
-      </div>
-      <h2>已安装</h2>
-      <ul id="installed" class="versions"></ul>
-      <h2>官方版本</h2>
-      <p class="hint">从 npm 安装官方 @deepseek-ai/dsh，并自动对齐桌面内置的插件族版本。</p>
-      <ul id="available" class="versions"></ul>
-    </section>
-    <section id="panel-plugins" hidden>
-      <form id="plugin-form" class="plugin-form">
-        <input
-          id="plugin-spec"
-          type="text"
-          placeholder="例如 dshmarket、@scope/name 或 github:owner/repo"
-          autocomplete="off"
-          spellcheck="false"
-        >
-        <button type="submit">安装</button>
-      </form>
-      <p class="hint">通过 dsh 的插件机制安装到 web profile；安装或卸载成功后会自动重启 dsh 服务使其生效。</p>
-      <h2>已安装插件</h2>
-      <ul id="plugins" class="versions"></ul>
-    </section>
+        <nav class="nav">
+          <button type="button" class="nav-item active" id="nav-versions" data-panel="versions">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <path d="M3.27 6.96L12 12.01l8.73-5.05"></path>
+              <path d="M12 22.08V12"></path>
+            </svg>
+            <span>版本</span>
+          </button>
+          <button type="button" class="nav-item" id="nav-plugins" data-panel="plugins">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M19 7h-4a3 3 0 0 0-3 3v3a3 3 0 0 0 3 3h4"></path>
+              <path d="M19 7a2 2 0 1 0-2-2"></path>
+              <path d="M19 7v.01"></path>
+              <path d="M15.5 17.5 18 20a2 2 0 1 0 3-3l-2.5-2.5"></path>
+              <path d="M6 13h4a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H6"></path>
+              <path d="M6 13a2 2 0 1 1-2 2"></path>
+            </svg>
+            <span>插件</span>
+          </button>
+        </nav>
+        <div class="sidebar-footer">
+          <span class="sidebar-version" id="sidebar-version">—</span>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="content-header">
+          <div>
+            <h1 id="page-title">版本管理</h1>
+            <p id="page-subtitle" class="subtitle">管理 dsh 的版本与镜像源</p>
+          </div>
+          <button type="button" id="refresh" class="button">刷新</button>
+        </header>
+        <div id="status" class="status" hidden></div>
+
+        <section id="panel-versions">
+          <div class="card accent">
+            <span class="status-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6L9 17l-5-5"></path>
+              </svg>
+            </span>
+            <div class="card-body">
+              <div class="card-title" id="auto-follow-title">已开启自动更新</div>
+              <div class="card-desc">启动后自动安装并切换到官方最新 RC（完成后自动重启 dsh 服务）</div>
+            </div>
+            <label class="switch" title="自动跟随官方最新 RC">
+              <input id="auto-follow" type="checkbox">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="card">
+            <div class="card-title">npm 镜像地址</div>
+            <div class="card-desc">用于版本目录、插件安装和插件管理，内置镜像失效时可切换备用镜像</div>
+            <div class="row">
+              <input
+                id="registry-input"
+                class="input"
+                type="text"
+                list="registry-presets"
+                placeholder="https://registry.npmmirror.com/"
+                autocomplete="off"
+                spellcheck="false"
+              >
+              <datalist id="registry-presets">
+                <option value="https://registry.npmmirror.com/">npmmirror（国内）</option>
+                <option value="https://registry.npmjs.org/">npm 官方</option>
+                <option value="https://mirrors.cloud.tencent.com/npm/">腾讯云</option>
+                <option value="https://mirrors.huaweicloud.com/repository/npm/">华为云</option>
+              </datalist>
+              <button type="button" id="registry-save" class="button primary">保存</button>
+              <button type="button" id="registry-reset" class="button ghost">恢复默认</button>
+            </div>
+          </div>
+
+          <h2 class="section-title">已安装</h2>
+          <div id="installed" class="stack"></div>
+
+          <div class="section-head">
+            <h2 class="section-title">官方版本</h2>
+            <a id="npm-link" class="link" href="https://www.npmjs.com/package/@deepseek-ai/dsh" target="_blank">
+              前往 npm 查看全部 →
+            </a>
+          </div>
+          <div id="available" class="stack"></div>
+        </section>
+
+        <section id="panel-plugins" hidden>
+          <form id="plugin-form" class="install-row">
+            <span class="search-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="M21 21l-4.3-4.3"></path>
+              </svg>
+            </span>
+            <input
+              id="plugin-spec"
+              class="input"
+              type="text"
+              placeholder="例如 dshmarket、@scope/name 或 github:owner/repo"
+              autocomplete="off"
+              spellcheck="false"
+            >
+            <button type="submit" class="button primary" id="plugin-install-button">安装</button>
+          </form>
+          <p class="hint">通过 dsh 的插件机制安装到 web profile，安装或卸载成功后会自动重启 dsh 服务。</p>
+
+          <div class="segmented">
+            <span class="segment active">已安装 <b id="plugin-count">0</b></span>
+          </div>
+          <div id="plugins" class="stack"></div>
+        </section>
+      </main>
+    </div>
     <script src="./app.js"></script>
   </body>
 </html>

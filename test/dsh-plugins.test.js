@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import {
   buildDshPluginArgs,
+  enrichPluginMetadata,
   ensureProfileNpmrc,
   ensurePnpmShimDir,
   parsePnpmListJson,
@@ -79,6 +80,30 @@ test('resolveLocalPluginVersions resolves file: specs to real versions', () => {
       { name: 'dsh-desktop-host', version: '0.1.0', local: true },
       { name: 'dshmarket', version: '1.8.0' },
       { name: 'broken-local', version: null, local: true },
+    ])
+  } finally {
+    rmSync(profileDir, { recursive: true, force: true })
+  }
+})
+
+test('enrichPluginMetadata reads descriptions from the profile tree', () => {
+  const profileDir = mkdtempSync(path.join(os.tmpdir(), 'dsh-profile-'))
+  try {
+    mkdirSync(path.join(profileDir, 'node_modules', 'dshmarket'), { recursive: true })
+    writeFileSync(
+      path.join(profileDir, 'node_modules', 'dshmarket', 'package.json'),
+      `${JSON.stringify({ name: 'dshmarket', version: '1.8.0', description: '插件市场' })}\n`,
+    )
+    const enriched = enrichPluginMetadata({
+      path: profileDir,
+      plugins: [
+        { name: 'dshmarket', version: '1.8.0' },
+        { name: 'no-description', version: '1.0.0' },
+      ],
+    })
+    assert.deepEqual(enriched.plugins, [
+      { name: 'dshmarket', version: '1.8.0', description: '插件市场' },
+      { name: 'no-description', version: '1.0.0', description: null },
     ])
   } finally {
     rmSync(profileDir, { recursive: true, force: true })
