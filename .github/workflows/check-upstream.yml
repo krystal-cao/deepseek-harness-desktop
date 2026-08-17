@@ -28,7 +28,7 @@ jobs:
         run: node scripts/check-upstream.mjs --write
       - name: Open bump pull request
         if: steps.upstream.outputs.update == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: chore/dsh-${{ steps.upstream.outputs.target }}
           title: 'chore: bump dsh to ${{ steps.upstream.outputs.target }}'
