@@ -59,7 +59,15 @@ DeepSeek Harness 已经提供完整的 Agent Runtime 和 Web UI。本项目不�
 - Web 服务仅监听随机本地回环端口，不暴露到局域网
 - macOS 支持 Apple Silicon 和 Intel
 - macOS 标题栏会与 DSH 当前浅色或深色主题自然融合，侧边栏收起时红绿灯也始终落在栏上
-- 内置 dsh 版本管理：可从 npm 安装、切换、卸载官方 `@deepseek-ai/dsh` 版本，无需重新打包应用
+- 内置 dsh 版本管理：可从 npm 安装、切换、卸载官方 `@deepseek-ai/dsh` 版本，
+  安装时自动把桌面内置的插件族对齐到同一版本，无需重新打包应用
+- 可自动跟随官方最新 RC：启动后后台安装并切换到 npm 上最新的
+  `0.1.0-rc.*` 版本（可在 dsh 管理窗口中关闭）
+- 支持插件管理：可在 dsh 管理窗口中列出、安装、卸载 web profile 的第三方
+  插件（等价于 `dsh plugin --profile web ...`），操作完成后自动重启 dsh 服务
+- 内置桌面宿主桥接插件：自动安装到 web profile，通过 preload 桥接向壳层
+  上报插件激活（就绪）和主题变化，不再依赖 UI 文本/类名嗅探——原有的
+  DOM/CSS 探测只作为兜底保留
 
 ## 安装说明
 
@@ -83,6 +91,8 @@ macOS 构建已进行完整性签名，但尚未经过 Apple 公证。首次启�
 - 新窗口和跨域导航交由系统浏览器处理
 - Harness 在独立的 Electron Node 子进程中运行
 - Cordis HMR 所需的 `--expose-internals` 只授予 Harness 子进程，不暴露给 Renderer
+- 桌面宿主桥接插件从应用内置路径自动安装（无网络依赖），只上报就绪和主题
+  事件，并在插件列表中标记为“内置”
 
 ## 运行架构
 
@@ -121,15 +131,20 @@ DeepSeek Harness Desktop
 
 本 fork 通过 `electron-updater` 提供整包自动更新。一次更新会替换整个应用，
 包括内置的 `@deepseek-ai/dsh` 运行时。想更快跟上上游，也可以使用内置的
-**dsh 版本管理**（帮助 → dsh 版本管理…）直接从 npm 安装并切换到新版官方
-`@deepseek-ai/dsh`，不必等待新版桌面包。
+**dsh 管理窗口**（帮助 → dsh 版本管理…）直接从 npm 安装并切换到新版官方
+`@deepseek-ai/dsh`，不必等待新版桌面包。窗口中还提供“自动跟随最新 RC”
+开关和 web profile 的插件管理（列表、安装、卸载）。
 
 - 打包后的应用会在启动 5 秒后检查更新，之后每 4 小时检查一次；**帮助**菜单也
   提供**检查更新…**入口。
 - 更新源在构建时写入 `app-update.yml`。CI 会自动指向本仓库的 GitHub Releases；
   本地构建则修改 `package.json` 中 `build.publish.owner` / `build.publish.repo`。
 - 运行时覆盖：设置 `DSH_UPDATE_URL` 可切换到 generic 更新源（适合测试或非
-  GitHub 镜像）；设置 `DSH_DISABLE_AUTO_UPDATE=1` 可关闭更新。
+  GitHub 镜像）；设置 `DSH_DISABLE_AUTO_UPDATE=1` 可关闭更新。npm registry
+  默认使用国内镜像 `registry.npmmirror.com`（用于版本目录和运行时安装），
+  可通过 `DSH_NPM_REGISTRY` 覆盖，例如改回 `https://registry.npmjs.org/`。
+  也可以在“帮助 → dsh 版本管理… → npm 镜像地址”里直接修改并保存（提供
+  npmmirror、npm 官方、腾讯云、华为云等常用镜像建议）。
 
 ### 发版流程
 

@@ -20,12 +20,33 @@ import { initAutoUpdater } from './updater.js'
 import { hidePluginLoadingScreen } from './hide-plugin-loading.js'
 import { waitForWebUiReady } from './webui-ready.js'
 import { createWindowOptions } from './window-options.js'
-import { bundledDshVersion, installDshVersion, listInstalledVersions, versionsDirFor } from './dsh-versions.js'
+import {
+  bundledDshVersion,
+  installDshVersion,
+  listInstalledVersions,
+  readInstalledFamily,
+  versionsDirFor,
+} from './dsh-versions.js'
 import { fetchDshCatalog } from './dsh-registry.js'
 import { readDshState, writeDshState } from './dsh-state.js'
-import { DSH_ANY_VERSION_PATTERN, isNewerVersion, sortDshVersions } from './updater-config.js'
+import {
+  addPlugin,
+  listInstalledPlugins,
+  removePlugin,
+  resolvePluginPnpmEnv,
+} from './dsh-plugins.js'
+import { createPluginManagerApi } from './plugin-manager-ipc.js'
+import {
+  DSH_ANY_VERSION_PATTERN,
+  isNewerVersion,
+  normalizeNpmRegistry,
+  resolveNpmRegistry,
+  sortDshVersions,
+} from './updater-config.js'
 
 const APP_NAME = 'DeepSeek Harness'
+const DESKTOP_HOST_PLUGIN = 'dsh-desktop-host'
+const DESKTOP_HOST_BUNDLE_PATH = fileURLToPath(new URL('../assets/dsh-desktop-host', import.meta.url))
 const execFileAsync = promisify(execFile)
 
 let mainWindow
@@ -97,11 +118,31 @@ function createWindow(serviceUrl) {
 
   return (async () => {
     await mainWindow.loadURL(serviceUrl)
-    await waitForWebUiReady(mainWindow.webContents)
+    await waitForBridgeOrUi(mainWindow.webContents)
     if (mainWindow.isDestroyed()) return
     mainWindow.show()
     mainWindow.focus()
   })()
+}
+
+/**
+ * Wait for the desktop-host client plugin to signal activation through the
+ * preload bridge, falling back to the old DOM/text readiness heuristics (and
+ * their timeout) so the window still opens when the bridge is missing.
+ */
+function waitForBridgeOrUi(webContents) {
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      ipcMain.removeListener('dsh-bridge:ready', onReady)
+      resolve()
+    }
+    const onReady = () => finish()
+    ipcMain.on('dsh-bridge:ready', onReady)
+    void waitForWebUiReady(webContents).then(finish)
+  })
 }
 
 function createUpdater() {
@@ -133,7 +174,12 @@ function installedVersionList() {
     ...listInstalledVersions(versionsDir),
   ]
   const seen = new Set()
-  return entries.filter((item) => (seen.has(item.version) ? false : (seen.add(item.version), true)))
+  return entries
+    .filter((item) => (seen.has(item.version) ? false : (seen.add(item.version), true)))
+    .map((item) => {
+      if (item.source !== 'installed') return item
+      return { ...item, family: readInstalledFamily(path.join(versionsDir, item.version), item.version) }
+    })
 }
 
 function ensureSelection() {
@@ -149,6 +195,8 @@ function versionManagerSnapshot() {
     selectedVersion: versionState.selectedVersion,
     latestVersion: catalog.latest,
     dismissedLatest: versionState.dismissedLatest,
+    autoFollowLatest: versionState.autoFollowLatest,
+    npmRegistry: versionState.npmRegistry,
     installedVersions: installedVersionList(),
     availableVersions: sortDshVersions(catalog.versions.map((item) => item.version)).map((version) => ({
       version,
@@ -160,11 +208,15 @@ function versionManagerSnapshot() {
 
 async function refreshCatalog() {
   try {
-    catalog = await fetchDshCatalog()
+    catalog = await fetchDshCatalog({ registry: currentNpmRegistry() })
     catalogError = null
   } catch (error) {
     catalogError = error instanceof Error ? error.message : '检查版本失败'
   }
+}
+
+function currentNpmRegistry() {
+  return resolveNpmRegistry(process.env, versionState.npmRegistry || undefined)
 }
 
 function maybeNotifyDshUpdate() {
@@ -221,9 +273,6 @@ function openVersionManagerWindow() {
 }
 
 function registerVersionManagerIpc() {
-  const assertManagerSender = (event) => {
-    if (!managerWindow || event.sender !== managerWindow.webContents) throw new Error('拒绝未知窗口调用')
-  }
   ipcMain.handle('dsh-versions:snapshot', (event) => {
     assertManagerSender(event)
     return versionManagerSnapshot()
@@ -244,6 +293,7 @@ function registerVersionManagerIpc() {
         versionsDir,
         version,
         availableVersions: catalog.versions.map((item) => item.version),
+        registry: currentNpmRegistry(),
         env: {
           ...process.env,
           ...(resolvedUserPath !== undefined ? { PATH: resolvedUserPath } : {}),
@@ -280,6 +330,149 @@ function registerVersionManagerIpc() {
     rmSync(target, { recursive: true, force: true })
     return versionManagerSnapshot()
   })
+  ipcMain.handle('dsh-versions:set-auto-follow', (event, value) => {
+    assertManagerSender(event)
+    if (typeof value !== 'boolean') throw new Error('无效的自动跟随设置')
+    versionState.autoFollowLatest = value
+    writeDshState(app.getPath('userData'), versionState)
+    return versionManagerSnapshot()
+  })
+  ipcMain.handle('dsh-versions:set-npm-registry', (event, value) => {
+    assertManagerSender(event)
+    versionState.npmRegistry = normalizeNpmRegistry(value)
+    writeDshState(app.getPath('userData'), versionState)
+    return versionManagerSnapshot()
+  })
+}
+
+function assertManagerSender(event) {
+  if (!managerWindow || event.sender !== managerWindow.webContents) throw new Error('拒绝未知窗口调用')
+}
+
+function pluginCommandEnv() {
+  return resolvePluginPnpmEnv({
+    env: {
+      ...process.env,
+      ...(resolvedUserPath !== undefined ? { PATH: resolvedUserPath } : {}),
+      NODE_OPTIONS: '',
+    },
+  })
+}
+
+function readPluginList() {
+  return listInstalledPlugins({
+    electronExecutable: process.execPath,
+    entry: currentDshEntry(),
+    env: pluginCommandEnv(),
+    registry: currentNpmRegistry(),
+  }).then((result) => ({
+    ...result,
+    plugins: result.plugins.map((plugin) => ({
+      ...plugin,
+      managed: plugin.name === DESKTOP_HOST_PLUGIN,
+    })),
+  }))
+}
+
+/**
+ * Make sure the desktop host bridge plugin is installed in the web profile.
+ * It is bundled with the app and installed from a local path, so this is a
+ * file: install with no network dependency. Returns true when a restart was
+ * triggered because the plugin was newly added.
+ */
+async function ensureDesktopHostPlugin() {
+  try {
+    const listed = await readPluginList()
+    if (listed.plugins.some((plugin) => plugin.name === DESKTOP_HOST_PLUGIN)) return false
+    const result = await addPlugin({
+      electronExecutable: process.execPath,
+      entry: currentDshEntry(),
+      spec: `file:${DESKTOP_HOST_BUNDLE_PATH}`,
+      env: pluginCommandEnv(),
+      registry: currentNpmRegistry(),
+    })
+    if (result.code !== 0) {
+      throw new Error(`pnpm add exited ${result.code}: ${(result.stderr || result.stdout).trim().slice(-400)}`)
+    }
+    await restartDshService()
+    console.log('[dsh-bridge] desktop host plugin installed; service restarted')
+    return true
+  } catch (error) {
+    console.warn('[dsh-bridge] could not install desktop host plugin:', error instanceof Error ? error.message : error)
+    return false
+  }
+}
+
+function registerPluginManagerIpc() {
+  const api = createPluginManagerApi({
+    listPlugins: () => readPluginList(),
+    mutatePlugin: {
+      add: (spec) =>
+        addPlugin({
+          electronExecutable: process.execPath,
+          entry: currentDshEntry(),
+          spec,
+          env: pluginCommandEnv(),
+          registry: currentNpmRegistry(),
+        }),
+      remove: (spec) =>
+        removePlugin({
+          electronExecutable: process.execPath,
+          entry: currentDshEntry(),
+          spec,
+          env: pluginCommandEnv(),
+          registry: currentNpmRegistry(),
+        }),
+    },
+    restartService: () => restartDshService(),
+  })
+  ipcMain.handle('dsh-plugins:list', (event) => {
+    assertManagerSender(event)
+    return api.list()
+  })
+  ipcMain.handle('dsh-plugins:add', (event, spec) => {
+    assertManagerSender(event)
+    return api.add(spec)
+  })
+  ipcMain.handle('dsh-plugins:remove', (event, spec) => {
+    assertManagerSender(event)
+    return api.remove(spec)
+  })
+}
+
+/**
+ * With auto-follow enabled, install and select the newest official RC in the
+ * background once the catalog is loaded, then restart the service so the new
+ * runtime (and its aligned plugin family) takes effect.
+ */
+async function followLatestIfEnabled() {
+  if (!versionState.autoFollowLatest) return
+  const latest = catalog.latest
+  const selected = versionState.selectedVersion
+  if (!latest || !selected || !isNewerVersion(latest, selected)) return
+  if (installing || isRestartingService) return
+  installing = true
+  try {
+    await installDshVersion({
+      versionsDir,
+      version: latest,
+      availableVersions: catalog.versions.map((item) => item.version),
+      registry: currentNpmRegistry(),
+      env: {
+        ...process.env,
+        ...(resolvedUserPath !== undefined ? { PATH: resolvedUserPath } : {}),
+        NODE_OPTIONS: '',
+      },
+    })
+    versionState.selectedVersion = latest
+    writeDshState(app.getPath('userData'), versionState)
+    console.log(`[auto-follow] DSH ${latest} installed and selected`)
+    await restartDshService()
+  } catch (error) {
+    console.warn(`[auto-follow] install of DSH ${latest} failed:`, error instanceof Error ? error.message : error)
+  } finally {
+    installing = false
+  }
 }
 
 function currentDshEntry() {
@@ -346,6 +539,7 @@ async function restartDshService() {
   try {
     await stopHarnessService()
     const next = startHarnessService()
+    watchServiceExit()
     const url = await next.ready
     serviceUrl = url
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -371,7 +565,8 @@ async function restartDshService() {
  * reload the window so plugin changes take effect.
  */
 function watchServiceExit() {
-  service.child.on('exit', () => {
+  const current = service
+  current.child.on('exit', () => {
     if (isQuitting || isRestartingService) return
     setTimeout(() => {
       if (isQuitting || isRestartingService) return
@@ -389,6 +584,16 @@ function watchServiceExit() {
 }
 
 async function launch() {
+  ipcMain.on('dsh-bridge:ready', () => {
+    console.log('[dsh-bridge] web plugins activated')
+  })
+  ipcMain.on('dsh-bridge:theme', (_event, snapshot) => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    const colorScheme = snapshot?.colorScheme
+    if (colorScheme === 'dark' || colorScheme === 'light') {
+      mainWindow.setBackgroundColor(colorScheme === 'dark' ? '#151517' : '#ffffff')
+    }
+  })
   try {
     createUpdater()
     createAppMenu()
@@ -402,6 +607,7 @@ async function launch() {
   ensureSelection()
   writeDshState(app.getPath('userData'), versionState)
   registerVersionManagerIpc()
+  registerPluginManagerIpc()
   startHarnessService()
   watchServiceExit()
 
@@ -419,9 +625,10 @@ async function launch() {
     app.quit()
   }
 
-  void refreshCatalog().then(() => {
-    maybeNotifyDshUpdate()
-  })
+  void ensureDesktopHostPlugin()
+  void refreshCatalog()
+    .then(() => followLatestIfEnabled())
+    .then(() => maybeNotifyDshUpdate())
 }
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock()

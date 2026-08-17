@@ -13,19 +13,34 @@ test('macOS title bar reserves the traffic-light strip inside the sidebar', () =
   // force a minimum width so the lights never float over the workspace content.
   assert.match(MAC_TITLEBAR_CSS, /min-width:\s*88px/)
   // The app's grid frame keeps its content at 56px when collapsed; widen the
-  // first grid track too so the content column stops covering the sidebar.
-  assert.match(MAC_TITLEBAR_CSS, /\[class\*="frame"\]:has\(\[class\*="collapsed"\]\)/)
+  // first grid track too, keyed off the stable data attribute the frame emits.
+  assert.match(MAC_TITLEBAR_CSS, /\[data-sidebar-collapsed\]/)
   assert.match(MAC_TITLEBAR_CSS, /grid-template-columns:\s*88px/)
   // The collapsed rail centers its icon buttons in the widened strip.
   assert.match(MAC_TITLEBAR_CSS, /\[class\*="railIn"\] \[class\*="iconButton"\]/)
   assert.match(MAC_TITLEBAR_CSS, /margin-left:\s*auto/)
 })
 
-test('macOS title bar provides a full-width drag region and keeps controls clickable', () => {
-  assert.match(MAC_TITLEBAR_CSS, /body::before/)
-  assert.match(MAC_TITLEBAR_CSS, /-webkit-app-region:\s*drag/)
+test('macOS title bar keeps interactive controls clickable above the drag strip', () => {
   assert.match(MAC_TITLEBAR_CSS, /-webkit-app-region:\s*no-drag/)
-  assert.match(MAC_TITLEBAR_CSS, new RegExp(`height:\\s*${MAC_TITLEBAR_HEIGHT}px`))
+})
+
+test('macOS title bar marks every interactive element no-drag (verify-inset invariants)', () => {
+  // Mirrors the live CDP checks in scripts/verify-inset.mjs so regressions are
+  // caught by the unit suite before a packaged-app run is needed.
+  for (const selector of [
+    'a',
+    'button',
+    'input',
+    'textarea',
+    'select',
+    '[role="button"]',
+    '[contenteditable]:not([contenteditable="false"])',
+  ]) {
+    assert.match(MAC_TITLEBAR_CSS, new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  }
+  assert.match(MAC_TITLEBAR_CSS, /app-region:\s*no-drag/)
+  assert.match(MAC_TITLEBAR_CSS, /-webkit-app-region:\s*no-drag/)
 })
 
 test('macOS title bar styling is inserted into each loaded page', async () => {

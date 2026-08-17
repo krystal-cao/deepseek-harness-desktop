@@ -11,18 +11,61 @@
   </head>
   <body>
     <header>
-      <h1>dsh 版本管理</h1>
+      <h1>dsh 管理</h1>
       <button id="refresh" type="button">刷新</button>
     </header>
+    <nav class="tabs">
+      <button id="tab-versions" type="button" class="tab active">版本</button>
+      <button id="tab-plugins" type="button" class="tab">插件</button>
+    </nav>
     <p id="status" class="status" hidden></p>
-    <section>
+    <section id="panel-versions">
+      <label class="option">
+        <input id="auto-follow" type="checkbox">
+        <span>启动后自动安装并切换到官方最新 RC（后台安装，完成后自动重启 dsh 服务）</span>
+      </label>
+      <div class="option option-column">
+        <span class="option-title">npm 镜像地址</span>
+        <p class="hint">版本目录、插件安装和插件管理都使用这个地址。内置镜像失效时可切换备用镜像。</p>
+        <div class="registry-row">
+          <input
+            id="registry-input"
+            type="text"
+            list="registry-presets"
+            placeholder="https://registry.npmmirror.com/"
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <datalist id="registry-presets">
+            <option value="https://registry.npmmirror.com/">npmmirror（国内）</option>
+            <option value="https://registry.npmjs.org/">npm 官方</option>
+            <option value="https://mirrors.cloud.tencent.com/npm/">腾讯云</option>
+            <option value="https://mirrors.huaweicloud.com/repository/npm/">华为云</option>
+          </datalist>
+          <button id="registry-save" type="button">保存</button>
+          <button id="registry-reset" type="button">恢复默认</button>
+        </div>
+      </div>
       <h2>已安装</h2>
       <ul id="installed" class="versions"></ul>
-    </section>
-    <section>
       <h2>官方版本</h2>
-      <p class="hint">从 npm 安装官方 @deepseek-ai/dsh，可随时切换版本。</p>
+      <p class="hint">从 npm 安装官方 @deepseek-ai/dsh，并自动对齐桌面内置的插件族版本。</p>
       <ul id="available" class="versions"></ul>
+    </section>
+    <section id="panel-plugins" hidden>
+      <form id="plugin-form" class="plugin-form">
+        <input
+          id="plugin-spec"
+          type="text"
+          placeholder="例如 dshmarket、@scope/name 或 github:owner/repo"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button type="submit">安装</button>
+      </form>
+      <p class="hint">通过 dsh 的插件机制安装到 web profile；安装或卸载成功后会自动重启 dsh 服务使其生效。</p>
+      <h2>已安装插件</h2>
+      <ul id="plugins" class="versions"></ul>
     </section>
     <script src="./app.js"></script>
   </body>

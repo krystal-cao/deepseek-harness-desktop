@@ -8,7 +8,7 @@ export const DSH_VERSION_PATTERN = /^0\.1\.0-rc\.\d+$/
 export const DSH_ANY_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-rc\.\d+)?$/
 
 /** Bundle identifier baked into the macOS app by electron-builder (build.appId). */
-export const DESKTOP_BUNDLE_ID = 'io.github.steven-kid.deepseek-harness-desktop'
+export const DESKTOP_BUNDLE_ID = 'io.github.krystal-cao.deepseek-harness-desktop'
 
 /**
  * electron-builder derives the updater cache directory from the package name:
@@ -57,6 +57,38 @@ export function isNewerVersion(candidate, current) {
  */
 export function resolveUpdateFeed(env = process.env) {
   return env.DSH_UPDATE_URL ? { provider: 'generic', url: env.DSH_UPDATE_URL } : undefined
+}
+
+/**
+ * npm registry used for the dsh version catalog and runtime installs. Defaults
+ * to the domestic npmmirror mirror; set DSH_NPM_REGISTRY to switch (for
+ * example back to the official https://registry.npmjs.org/). An explicit
+ * configured value (from the in-app registry setting) wins over the env var.
+ */
+export function resolveNpmRegistry(env = process.env, configured) {
+  return configured || env.DSH_NPM_REGISTRY || 'https://registry.npmmirror.com/'
+}
+
+/**
+ * Normalize a user-supplied registry URL (http/https, single trailing slash),
+ * or return null to clear the in-app override.
+ */
+export function normalizeNpmRegistry(value) {
+  if (value === null || value === undefined) return null
+  if (typeof value !== 'string') throw new Error('无效的镜像地址')
+  const trimmed = value.trim()
+  if (trimmed === '') return null
+  if (trimmed.length > 200) throw new Error('镜像地址过长')
+  let url
+  try {
+    url = new URL(trimmed)
+  } catch {
+    throw new Error('镜像地址不是有效的 URL')
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error('镜像地址必须以 http:// 或 https:// 开头')
+  }
+  return `${trimmed.replace(/\/+$/, '')}/`
 }
 
 /** Auto-check interval in milliseconds; overridable for tests. */

@@ -63,7 +63,7 @@
   },
   "build": {
     "afterSign": "scripts/after-pack.cjs",
-    "appId": "io.github.steven-kid.deepseek-harness-desktop",
+    "appId": "io.github.krystal-cao.deepseek-harness-desktop",
     "productName": "DeepSeek Harness",
     "artifactName": "DeepSeek-Harness-Desktop-${version}-${arch}.${ext}",
     "publish": {
