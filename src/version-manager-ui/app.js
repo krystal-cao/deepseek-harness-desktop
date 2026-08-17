@@ -163,7 +163,10 @@ function renderAvailableVersion(item) {
   if (isLatest(item.version)) {
     badgesWrap.append(badge('最新', 'green'), badge('推荐', 'blue'))
   }
-  if (item.tags?.includes('next')) {
+  // A version promoted to `latest` keeps its `next` tag on npm; only mark
+  // versions that are next-only (still canary) so rc.7 doesn't show both
+  // "最新/推荐" and "next".
+  if (item.tags?.includes('next') && !isLatest(item.version)) {
     const nextBadge = badge('next', 'next')
     nextBadge.title = '上游 next 标签：预发布候选，可手动安装切换'
     badgesWrap.append(nextBadge)
