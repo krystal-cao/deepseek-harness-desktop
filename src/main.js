@@ -208,6 +208,12 @@ function versionManagerSnapshot() {
   }
 }
 
+function pushManagerSnapshot() {
+  if (managerWindow && !managerWindow.isDestroyed()) {
+    managerWindow.webContents.send('dsh-versions:snapshot', versionManagerSnapshot())
+  }
+}
+
 async function refreshCatalog() {
   try {
     catalog = await fetchDshCatalog({ registry: currentNpmRegistry() })
@@ -292,6 +298,7 @@ function registerVersionManagerIpc() {
     if (typeof version !== 'string') throw new Error('无效的版本号')
     installing = true
     installingVersion = version
+    pushManagerSnapshot()
     try {
       if (catalog.versions.length === 0) await refreshCatalog()
       await installDshVersion({
@@ -310,11 +317,12 @@ function registerVersionManagerIpc() {
         versionState.selectedVersion = version
         writeDshState(app.getPath('userData'), versionState)
       }
-      return versionManagerSnapshot()
     } finally {
       installing = false
       installingVersion = null
     }
+    pushManagerSnapshot()
+    return versionManagerSnapshot()
   })
   ipcMain.handle('dsh-versions:select', async (event, version) => {
     assertManagerSender(event)
@@ -459,6 +467,7 @@ async function followLatestIfEnabled() {
   if (installing || isRestartingService) return
   installing = true
   installingVersion = latest
+  pushManagerSnapshot()
   try {
     await installDshVersion({
       versionsDir,
@@ -480,6 +489,7 @@ async function followLatestIfEnabled() {
   } finally {
     installing = false
     installingVersion = null
+    pushManagerSnapshot()
   }
 }
 
