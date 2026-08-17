@@ -43,6 +43,8 @@ let activePanel = 'versions'
 let localInstallingVersion = null
 let localUninstallingVersion = null
 let localUninstallingPlugin = null
+const VISIBLE_VERSION_LIMIT = 5
+let showAllVersions = false
 
 function activeInstall() {
   return snapshot?.installingVersion ?? localInstallingVersion
@@ -221,7 +223,19 @@ function render() {
       ),
     )
   } else {
-    for (const item of available) availableEl.append(renderAvailableVersion(item))
+    const visible = showAllVersions ? available : available.slice(0, VISIBLE_VERSION_LIMIT)
+    for (const item of visible) availableEl.append(renderAvailableVersion(item))
+    if (available.length > VISIBLE_VERSION_LIMIT) {
+      const toggle = button(showAllVersions ? '收起旧版本' : `显示全部 ${available.length} 个版本`, {
+        cls: 'ghost',
+        onClick: () => {
+          showAllVersions = !showAllVersions
+          render()
+        },
+      })
+      toggle.style.alignSelf = 'flex-start'
+      availableEl.append(toggle)
+    }
   }
 }
 
