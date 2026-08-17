@@ -62,6 +62,7 @@ let catalog = { latest: null, versions: [] }
 let catalogError = null
 let managerWindow
 let installing = false
+let installingVersion = null
 
 app.setName(APP_NAME)
 app.setAboutPanelOptions({
@@ -197,6 +198,7 @@ function versionManagerSnapshot() {
     dismissedLatest: versionState.dismissedLatest,
     autoFollowLatest: versionState.autoFollowLatest,
     npmRegistry: versionState.npmRegistry,
+    installingVersion,
     installedVersions: installedVersionList(),
     availableVersions: sortDshVersions(catalog.versions.map((item) => item.version)).map((version) => ({
       version,
@@ -247,13 +249,15 @@ function openVersionManagerWindow() {
     return
   }
   managerWindow = new BrowserWindow({
-    width: 720,
-    height: 640,
-    minWidth: 560,
-    minHeight: 460,
+    width: 920,
+    height: 680,
+    minWidth: 780,
+    minHeight: 560,
     title: 'dsh 版本管理',
     show: false,
     backgroundColor: '#f6f7f9',
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 12, y: 11 },
     webPreferences: {
       preload: fileURLToPath(new URL('./version-manager-preload.cjs', import.meta.url)),
       contextIsolation: true,
@@ -287,6 +291,7 @@ function registerVersionManagerIpc() {
     if (installing) throw new Error('已有 DSH 版本正在安装')
     if (typeof version !== 'string') throw new Error('无效的版本号')
     installing = true
+    installingVersion = version
     try {
       if (catalog.versions.length === 0) await refreshCatalog()
       await installDshVersion({
@@ -308,6 +313,7 @@ function registerVersionManagerIpc() {
       return versionManagerSnapshot()
     } finally {
       installing = false
+      installingVersion = null
     }
   })
   ipcMain.handle('dsh-versions:select', async (event, version) => {
@@ -452,6 +458,7 @@ async function followLatestIfEnabled() {
   if (!latest || !selected || !isNewerVersion(latest, selected)) return
   if (installing || isRestartingService) return
   installing = true
+  installingVersion = latest
   try {
     await installDshVersion({
       versionsDir,
@@ -472,6 +479,7 @@ async function followLatestIfEnabled() {
     console.warn(`[auto-follow] install of DSH ${latest} failed:`, error instanceof Error ? error.message : error)
   } finally {
     installing = false
+    installingVersion = null
   }
 }
 
@@ -625,6 +633,11 @@ async function launch() {
     app.quit()
   }
 
+  // Dev affordance: DSH_OPEN_MANAGER=1 opens the dsh manager window on launch
+  // so the UI can be inspected without clicking through the Help menu.
+  if (process.env.DSH_OPEN_MANAGER === '1') {
+    setTimeout(() => openVersionManagerWindow(), 500)
+  }
   void ensureDesktopHostPlugin()
   void refreshCatalog()
     .then(() => followLatestIfEnabled())

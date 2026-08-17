@@ -77,6 +77,29 @@ export function resolveLocalPluginVersions(parsed) {
   return { ...parsed, plugins }
 }
 
+/**
+ * Attach each plugin's package description, read from the installed tree in
+ * the profile (`<profile>/node_modules/<name>/package.json`). Best-effort
+ * metadata only: missing or unreadable manifests yield a null description.
+ */
+export function enrichPluginMetadata(parsed) {
+  if (!parsed?.path) return parsed
+  const plugins = (parsed.plugins ?? []).map((plugin) => {
+    let description = null
+    try {
+      const manifest = JSON.parse(
+        readFileSync(path.join(parsed.path, 'node_modules', plugin.name, 'package.json'), 'utf8'),
+      )
+      description =
+        typeof manifest.description === 'string' && manifest.description !== '' ? manifest.description : null
+    } catch {
+      // Descriptions are optional display metadata.
+    }
+    return { ...plugin, description }
+  })
+  return { ...parsed, plugins }
+}
+
 /** Run a dsh plugin subcommand (pnpm passthrough) and capture its output. */
 export function runDshPluginCommand({
   electronExecutable,
@@ -187,7 +210,7 @@ export async function listInstalledPlugins({
   }
   const parsed = parsePnpmListJson(result.stdout)
   ensureProfileNpmrc(parsed.path, registry)
-  return resolveLocalPluginVersions(parsed)
+  return enrichPluginMetadata(resolveLocalPluginVersions(parsed))
 }
 
 /** Add an out-of-tree plugin to the profile (`dsh plugin ... add <spec>`). */

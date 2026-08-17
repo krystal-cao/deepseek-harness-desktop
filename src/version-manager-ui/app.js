@@ -1,28 +1,44 @@
 const api = window.dshVersions
 const pluginsApi = window.dshPlugins
 
-const installedEl = document.getElementById('installed')
-const availableEl = document.getElementById('available')
-const pluginsEl = document.getElementById('plugins')
-const statusEl = document.getElementById('status')
+const titleEl = document.getElementById('page-title')
+const subtitleEl = document.getElementById('page-subtitle')
 const refreshButton = document.getElementById('refresh')
+const statusEl = document.getElementById('status')
+const sidebarVersionEl = document.getElementById('sidebar-version')
 const autoFollowEl = document.getElementById('auto-follow')
+const autoFollowTitleEl = document.getElementById('auto-follow-title')
 const registryInputEl = document.getElementById('registry-input')
 const registrySaveEl = document.getElementById('registry-save')
 const registryResetEl = document.getElementById('registry-reset')
+const installedEl = document.getElementById('installed')
+const availableEl = document.getElementById('available')
 const pluginForm = document.getElementById('plugin-form')
 const pluginSpecEl = document.getElementById('plugin-spec')
-const tabVersionsEl = document.getElementById('tab-versions')
-const tabPluginsEl = document.getElementById('tab-plugins')
-const panelVersionsEl = document.getElementById('panel-versions')
-const panelPluginsEl = document.getElementById('panel-plugins')
+const pluginCountEl = document.getElementById('plugin-count')
+const pluginsEl = document.getElementById('plugins')
+const navButtons = [...document.querySelectorAll('.nav-item')]
+const panels = {
+  versions: document.getElementById('panel-versions'),
+  plugins: document.getElementById('panel-plugins'),
+}
+
+const PAGE_META = {
+  versions: { title: '版本管理', subtitle: '管理 dsh 的版本与镜像源' },
+  plugins: { title: '插件管理', subtitle: '发现并管理 dsh 插件' },
+}
 
 let snapshot = null
 let busy = false
 let confirmingVersion = null
 let confirmingPlugin = null
 let pluginsState = { plugins: [], error: null }
-let activeTab = 'versions'
+let activePanel = 'versions'
+let localInstallingVersion = null
+
+function activeInstall() {
+  return snapshot?.installingVersion ?? localInstallingVersion
+}
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message
@@ -30,37 +46,24 @@ function setStatus(message, isError = false) {
   statusEl.classList.toggle('error', isError)
 }
 
-function versionRow(version, { meta, actions = [] }) {
-  const li = document.createElement('li')
-  li.className = 'version'
+function el(tag, className, text) {
+  const node = document.createElement(tag)
+  if (className) node.className = className
+  if (text !== undefined) node.textContent = text
+  return node
+}
 
-  const name = document.createElement('span')
-  name.className = 'name'
-  name.textContent = version
+function badge(text, cls) {
+  return el('span', `badge ${cls}`, text)
+}
 
-  const metaEl = document.createElement('span')
-  metaEl.className = 'meta'
-  metaEl.textContent = meta
-
-  li.append(name, metaEl)
-  for (const action of actions) {
-    if (action.tag) {
-      const tag = document.createElement('span')
-      tag.className = `tag ${action.tagClass ?? ''}`
-      tag.textContent = action.tag
-      li.append(tag)
-      continue
-    }
-    const button = document.createElement('button')
-    button.type = 'button'
-    button.className = action.primary ? 'primary' : ''
-    if (action.danger) button.classList.add('danger')
-    button.textContent = action.label
-    button.disabled = action.disabled ?? false
-    button.addEventListener('click', action.onClick)
-    li.append(button)
-  }
-  return li
+function button(label, { cls = '', primary = false, danger = false, disabled = false, onClick } = {}) {
+  const node = el('button', `button ${cls}${primary ? ' primary' : ''}${danger ? ' danger' : ''}`)
+  node.type = 'button'
+  node.textContent = label
+  node.disabled = disabled
+  node.addEventListener('click', onClick)
+  return node
 }
 
 function familyMeta(family = []) {
@@ -76,156 +79,216 @@ function familyMeta(family = []) {
   return `插件族 ${aligned}/${total} 对齐（缺 ${missing.join(', ')}${suffix}）`
 }
 
+function formatDate(publishedAt) {
+  if (!publishedAt) return ''
+  return new Date(publishedAt).toLocaleDateString('zh-CN')
+}
+
+function isLatest(version) {
+  return snapshot?.latestVersion === version
+}
+
+function isCurrent(version) {
+  return snapshot?.selectedVersion === version
+}
+
+/* ── versions ──────────────────────────────────────────────── */
+function renderInstalledVersion(item) {
+  const row = el('div', 'version-row')
+  const name = el('span', 'version-name', item.version)
+  row.append(name)
+
+  if (isCurrent(item.version)) {
+    row.classList.add('current')
+    const badgesWrap = el('span')
+    badgesWrap.append(badge('当前版本', 'green'))
+    row.append(badgesWrap)
+    const meta = el('span', 'version-meta')
+    const source = item.source === 'bundled' ? '应用内置版本' : '已安装到本地'
+    const family = item.family ? familyMeta(item.family) : ''
+    meta.textContent = [source, family].filter(Boolean).join(' · ')
+    row.append(meta)
+    return row
+  }
+
+  const meta = el('span', 'version-meta')
+  const source = item.source === 'bundled' ? '应用内置版本' : '已安装到本地'
+  const family = item.family ? familyMeta(item.family) : ''
+  meta.textContent = [source, family].filter(Boolean).join(' · ')
+  row.append(meta)
+  row.append(
+    button('切换', {
+      primary: true,
+      disabled: busy || activeInstall() !== null,
+      onClick: () => selectVersion(item.version),
+    }),
+  )
+  if (item.source === 'installed') {
+    row.append(
+      button(confirmingVersion === item.version ? '确认卸载' : '卸载', {
+        danger: true,
+        disabled: busy || activeInstall() !== null,
+        onClick: () => {
+          if (confirmingVersion === item.version) void uninstallVersion(item.version)
+          else {
+            confirmingVersion = item.version
+            render()
+          }
+        },
+      }),
+    )
+  }
+  return row
+}
+
+function renderAvailableVersion(item) {
+  const row = el('div', 'version-row')
+  const name = el('span', 'version-name', item.version)
+  row.append(name)
+
+  if (isLatest(item.version)) {
+    const badgesWrap = el('span')
+    badgesWrap.append(badge('最新', 'green'), badge('推荐', 'blue'))
+    row.append(badgesWrap)
+  }
+
+  const meta = el('span', 'version-meta', formatDate(item.publishedAt))
+  row.append(meta)
+
+  const installed = (snapshot?.installedVersions ?? []).some((entry) => entry.version === item.version)
+  const installing = activeInstall()
+  if (isCurrent(item.version)) {
+    row.append(button('使用中', { primary: true, disabled: true }))
+  } else if (installing === item.version) {
+    row.append(button('安装中…', { primary: true, disabled: true }))
+  } else if (installed) {
+    row.append(
+      button('切换', {
+        primary: true,
+        disabled: busy || installing !== null,
+        onClick: () => selectVersion(item.version),
+      }),
+    )
+  } else {
+    row.append(button('安装', { disabled: busy || installing !== null, onClick: () => installVersion(item.version) }))
+  }
+  return row
+}
+
 function render() {
   if (!snapshot) return
   autoFollowEl.checked = snapshot.autoFollowLatest ?? true
+  autoFollowTitleEl.textContent = (snapshot.autoFollowLatest ?? true) ? '已开启自动更新' : '已关闭自动更新'
   registryInputEl.value = snapshot.npmRegistry ?? ''
-  installedEl.replaceChildren()
-  availableEl.replaceChildren()
+  sidebarVersionEl.textContent = snapshot.selectedVersion ? `v${snapshot.selectedVersion}` : '—'
 
+  installedEl.replaceChildren()
   const installed = snapshot.installedVersions ?? []
   if (installed.length === 0) {
-    const empty = document.createElement('li')
-    empty.className = 'empty'
-    empty.textContent = '暂无已安装版本（应用内置版本可用）。'
-    installedEl.append(empty)
+    installedEl.append(el('div', 'empty', '暂无已安装版本（应用内置版本可用）。'))
   } else {
-    for (const item of installed) {
-      const isCurrent = snapshot.selectedVersion === item.version
-      const metaParts = [item.source === 'bundled' ? '应用内置版本' : '已安装到本地']
-      if (item.family) metaParts.push(familyMeta(item.family))
-      const actions = []
-      if (isCurrent) {
-        actions.push({ tag: '当前使用', tagClass: 'current' })
-      } else {
-        actions.push(
-          {
-            label: '切换',
-            primary: true,
-            disabled: busy,
-            onClick: () => selectVersion(item.version),
-          },
-          ...(item.source === 'installed'
-            ? [{
-                label: confirmingVersion === item.version ? '确认卸载' : '卸载',
-                danger: true,
-                disabled: busy,
-                onClick: () => {
-                  if (confirmingVersion === item.version) void uninstallVersion(item.version)
-                  else {
-                    confirmingVersion = item.version
-                    render()
-                  }
-                },
-              }]
-            : []),
-        )
-      }
-      installedEl.append(versionRow(item.version, {
-        meta: metaParts.join(' · '),
-        actions,
-      }))
-    }
+    for (const item of installed) installedEl.append(renderInstalledVersion(item))
   }
 
+  availableEl.replaceChildren()
   const available = snapshot.availableVersions ?? []
   if (available.length === 0) {
-    const empty = document.createElement('li')
-    empty.className = 'empty'
-    empty.textContent = snapshot.error
-      ? `无法获取官方版本列表：${snapshot.error}`
-      : '官方版本列表为空。'
-    availableEl.append(empty)
+    availableEl.append(
+      el(
+        'div',
+        'empty',
+        snapshot.error ? `无法获取官方版本列表：${snapshot.error}` : '官方版本列表为空。',
+      ),
+    )
   } else {
-    for (const item of available) {
-      const isInstalled = installed.some((entry) => entry.version === item.version)
-      const isCurrent = snapshot.selectedVersion === item.version
-      const date = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('zh-CN') : ''
-      const actions = []
-      if (isCurrent) {
-        actions.push({ tag: '当前使用', tagClass: 'current' })
-      } else if (isInstalled) {
-        actions.push({
-          label: '切换',
-          primary: true,
-          disabled: busy,
-          onClick: () => selectVersion(item.version),
-        })
-      } else {
-        actions.push({
-          label: '安装',
-          disabled: busy,
-          onClick: () => installVersion(item.version),
-        })
-      }
-      availableEl.append(versionRow(item.version, {
-        meta: date ? `发布于 ${date}` : '',
-        actions,
-      }))
-    }
+    for (const item of available) availableEl.append(renderAvailableVersion(item))
   }
+}
+
+/* ── plugins ───────────────────────────────────────────────── */
+const TONES = ['tone-0', 'tone-1', 'tone-2', 'tone-3', 'tone-4', 'tone-5']
+
+const KNOWN_ICONS = {
+  'dsh-desktop-host':
+    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg>',
+  dshmarket:
+    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16M4 11l1.5-6h13L20 11M4 11v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9"></path><path d="M9 11v3a3 3 0 0 0 6 0v-3"></path></svg>',
+}
+
+function pluginTone(name) {
+  let hash = 0
+  for (let i = 0; i < name.length; i += 1) hash = (hash * 31 + name.charCodeAt(i)) >>> 0
+  return TONES[hash % TONES.length]
+}
+
+function pluginInitial(name) {
+  const base = name.startsWith('@') ? name.slice(name.indexOf('/') + 1) : name
+  const segment = base.split('-').pop()
+  return segment.charAt(0).toUpperCase()
+}
+
+function renderPluginIcon(name) {
+  const box = el('span', `plugin-icon ${pluginTone(name)}`)
+  const svg = KNOWN_ICONS[name]
+  if (svg) box.innerHTML = svg
+  else box.textContent = pluginInitial(name)
+  return box
+}
+
+function renderPluginRow(item) {
+  const row = el('div', 'plugin-row')
+  row.append(renderPluginIcon(item.name))
+
+  const body = el('div', 'plugin-body')
+  const nameLine = el('div', 'plugin-name', item.name)
+  const version = el('span', 'version', item.version ? `v${item.version}${item.local ? ' · 本地' : ''}` : '')
+  nameLine.append(version)
+  body.append(nameLine)
+  if (item.description) body.append(el('div', 'plugin-desc', item.description))
+  row.append(body)
+
+  if (item.managed) {
+    row.append(button('内置', { cls: 'gray', disabled: true }))
+  } else {
+    row.append(
+      button(confirmingPlugin === item.name ? '确认卸载' : '卸载', {
+        danger: true,
+        disabled: busy,
+        onClick: () => {
+          if (confirmingPlugin === item.name) void removePluginByName(item.name)
+          else {
+            confirmingPlugin = item.name
+            renderPlugins()
+          }
+        },
+      }),
+    )
+  }
+  return row
 }
 
 function renderPlugins() {
+  pluginCountEl.textContent = pluginsState.plugins.length
   pluginsEl.replaceChildren()
   if (pluginsState.error) {
-    const li = document.createElement('li')
-    li.className = 'empty'
-    li.textContent = pluginsState.error
-    pluginsEl.append(li)
+    pluginsEl.append(el('div', 'empty', pluginsState.error))
     return
   }
   if (pluginsState.plugins.length === 0) {
-    const li = document.createElement('li')
-    li.className = 'empty'
-    li.textContent = 'web profile 尚未安装第三方插件（内置 base / web-app 不在此列表）。'
-    pluginsEl.append(li)
+    pluginsEl.append(el('div', 'empty', 'web profile 尚未安装第三方插件（内置 base / web-app 不在此列表）。'))
     return
   }
-  for (const item of pluginsState.plugins) {
-    const li = document.createElement('li')
-    li.className = 'version'
-
-    const name = document.createElement('span')
-    name.className = 'name'
-    name.textContent = item.name
-
-    const meta = document.createElement('span')
-    meta.className = 'meta'
-    meta.textContent = item.version ? `v${item.version}` : ''
-    if (item.local) meta.textContent += meta.textContent ? ' · 本地' : '本地'
-
-    if (item.managed) {
-      const tag = document.createElement('span')
-      tag.className = 'tag'
-      tag.textContent = '内置'
-      li.append(name, meta, tag)
-    } else {
-      const remove = document.createElement('button')
-      remove.type = 'button'
-      remove.className = 'danger'
-      remove.textContent = confirmingPlugin === item.name ? '确认卸载' : '卸载'
-      remove.disabled = busy
-      remove.addEventListener('click', () => {
-        if (confirmingPlugin === item.name) void removePluginByName(item.name)
-        else {
-          confirmingPlugin = item.name
-          renderPlugins()
-        }
-      })
-      li.append(name, meta, remove)
-    }
-    pluginsEl.append(li)
-  }
+  for (const item of pluginsState.plugins) pluginsEl.append(renderPluginRow(item))
 }
 
+/* ── actions ───────────────────────────────────────────────── */
 async function refresh() {
   busy = true
   confirmingVersion = null
   confirmingPlugin = null
   refreshButton.disabled = true
   try {
-    if (activeTab === 'plugins') {
+    if (activePanel === 'plugins') {
       setStatus('正在读取插件列表…')
       pluginsState = await pluginsApi.list()
       setStatus('')
@@ -239,28 +302,17 @@ async function refresh() {
   } finally {
     busy = false
     refreshButton.disabled = false
-    // Render only after busy is reset, otherwise action buttons stay disabled
-    // until the next interaction triggers a re-render.
-    if (activeTab === 'plugins') renderPlugins()
+    if (activePanel === 'plugins') renderPlugins()
     else render()
-  }
-}
-
-async function saveRegistry(value) {
-  try {
-    snapshot = await api.setNpmRegistry(value)
-    setStatus('镜像地址已保存，正在用新镜像刷新版本目录…')
-    await refresh()
-  } catch (error) {
-    setStatus(error?.message ?? '保存镜像地址失败', true)
-    registryInputEl.value = snapshot?.npmRegistry ?? ''
   }
 }
 
 async function installVersion(version) {
   busy = true
   confirmingVersion = null
+  localInstallingVersion = version
   setStatus(`正在安装 DSH ${version}…`)
+  render()
   try {
     snapshot = await api.install(version)
     setStatus('')
@@ -268,6 +320,7 @@ async function installVersion(version) {
     setStatus(error?.message ?? `安装 ${version} 失败`, true)
   } finally {
     busy = false
+    localInstallingVersion = null
     render()
   }
 }
@@ -337,21 +390,34 @@ async function removePluginByName(spec) {
   }
 }
 
-function setActiveTab(tab) {
-  activeTab = tab
-  tabVersionsEl.classList.toggle('active', tab === 'versions')
-  tabPluginsEl.classList.toggle('active', tab === 'plugins')
-  panelVersionsEl.hidden = tab !== 'versions'
-  panelPluginsEl.hidden = tab !== 'plugins'
+async function saveRegistry(value) {
+  try {
+    snapshot = await api.setNpmRegistry(value)
+    setStatus('镜像地址已保存，正在用新镜像刷新版本目录…')
+    await refresh()
+  } catch (error) {
+    setStatus(error?.message ?? '保存镜像地址失败', true)
+    registryInputEl.value = snapshot?.npmRegistry ?? ''
+  }
+}
+
+function setPanel(panel) {
+  activePanel = panel
+  for (const nav of navButtons) nav.classList.toggle('active', nav.dataset.panel === panel)
+  for (const [name, node] of Object.entries(panels)) node.hidden = name !== panel
+  titleEl.textContent = PAGE_META[panel].title
+  subtitleEl.textContent = PAGE_META[panel].subtitle
   setStatus('')
 }
 
+/* ── events ────────────────────────────────────────────────── */
 refreshButton.addEventListener('click', () => void refresh())
-tabVersionsEl.addEventListener('click', () => setActiveTab('versions'))
-tabPluginsEl.addEventListener('click', () => {
-  setActiveTab('plugins')
-  void refresh()
-})
+for (const nav of navButtons) {
+  nav.addEventListener('click', () => {
+    setPanel(nav.dataset.panel)
+    void refresh()
+  })
+}
 pluginForm.addEventListener('submit', (event) => {
   event.preventDefault()
   const spec = pluginSpecEl.value.trim()
@@ -361,10 +427,11 @@ pluginForm.addEventListener('submit', (event) => {
 autoFollowEl.addEventListener('change', async () => {
   try {
     snapshot = await api.setAutoFollow(autoFollowEl.checked)
-    setStatus(autoFollowEl.checked ? '已开启自动跟随最新 RC。' : '已关闭自动跟随最新 RC。')
+    setStatus(autoFollowEl.checked ? '已开启自动更新。' : '已关闭自动更新。')
+    render()
   } catch (error) {
-    setStatus(error?.message ?? '保存自动跟随设置失败', true)
-    autoFollowEl.checked = snapshot?.autoFollowLatest ?? true
+    setStatus(error?.message ?? '保存自动更新设置失败', true)
+    render()
   }
 })
 registrySaveEl.addEventListener('click', () => {
@@ -387,9 +454,7 @@ api.getSnapshot()
   .then((next) => {
     snapshot = next
     render()
-    if (!next.latestVersion && !next.availableVersions?.length) {
-      return refresh()
-    }
+    if (!next.latestVersion && !next.availableVersions?.length) return refresh()
     return undefined
   })
   .catch((error) => setStatus(error?.message ?? '无法读取版本信息', true))
