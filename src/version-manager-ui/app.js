@@ -218,18 +218,20 @@ async function refresh() {
       setStatus('正在读取插件列表…')
       pluginsState = await pluginsApi.list()
       setStatus('')
-      renderPlugins()
-      return
+    } else {
+      setStatus('正在刷新…')
+      snapshot = await api.refresh()
+      setStatus('')
     }
-    setStatus('正在刷新…')
-    snapshot = await api.refresh()
-    setStatus('')
-    render()
   } catch (error) {
     setStatus(error?.message ?? '刷新失败', true)
   } finally {
     busy = false
     refreshButton.disabled = false
+    // Render only after busy is reset, otherwise action buttons stay disabled
+    // until the next interaction triggers a re-render.
+    if (activeTab === 'plugins') renderPlugins()
+    else render()
   }
 }
 
