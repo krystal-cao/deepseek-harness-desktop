@@ -9,7 +9,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DSH_VERSION_PATTERN } from '../src/updater-config.js'
-import { rewriteDshPins } from './dsh-version.mjs'
+import { rewriteDshPins, syncAllowScriptsVersions } from './dsh-version.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const packagePath = path.join(root, 'package.json')
@@ -38,6 +38,13 @@ const npmMajor = Number(execFileSync('npm', ['-v'], { encoding: 'utf8' }).trim()
 const installArgs = ['install']
 if (npmMajor >= 12) installArgs.push('--allow-git=all')
 execFileSync('npm', installArgs, { cwd: root, stdio: 'inherit' })
+const synced = syncAllowScriptsVersions(pkg, root)
+writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`)
+if (synced > 0) {
+  console.log(`synced ${synced} allowScripts entries to installed versions`)
+  // Re-install so the newly allowed native build scripts actually run.
+  execFileSync('npm', installArgs, { cwd: root, stdio: 'inherit' })
+}
 execFileSync('npm', ['test'], { cwd: root, stdio: 'inherit' })
 
 console.log(`\nbumped ${changed.length} packages to ${requested}`)

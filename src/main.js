@@ -34,8 +34,8 @@ import {
   listInstalledPlugins,
   removePlugin,
   resolvePluginPnpmEnv,
-  validatePluginSpec,
 } from './dsh-plugins.js'
+import { createPluginManagerApi } from './plugin-manager-ipc.js'
 import {
   DSH_ANY_VERSION_PATTERN,
   isNewerVersion,
@@ -60,7 +60,6 @@ let catalog = { latest: null, versions: [] }
 let catalogError = null
 let managerWindow
 let installing = false
-let pluginBusy = false
 
 app.setName(APP_NAME)
 app.setAboutPanelOptions({
@@ -348,53 +347,40 @@ function readPluginList() {
 }
 
 function registerPluginManagerIpc() {
-  ipcMain.handle('dsh-plugins:list', async (event) => {
-    assertManagerSender(event)
-    if (pluginBusy) return { plugins: [], raw: '', error: '插件操作进行中，请稍候' }
-    try {
-      return await readPluginList()
-    } catch (error) {
-      return { plugins: [], raw: '', error: error instanceof Error ? error.message : '读取插件列表失败' }
-    }
+  const api = createPluginManagerApi({
+    listPlugins: () => readPluginList(),
+    mutatePlugin: {
+      add: (spec) =>
+        addPlugin({
+          electronExecutable: process.execPath,
+          entry: currentDshEntry(),
+          spec,
+          env: pluginCommandEnv(),
+          registry: currentNpmRegistry(),
+        }),
+      remove: (spec) =>
+        removePlugin({
+          electronExecutable: process.execPath,
+          entry: currentDshEntry(),
+          spec,
+          env: pluginCommandEnv(),
+          registry: currentNpmRegistry(),
+        }),
+    },
+    restartService: () => restartDshService(),
   })
-  const runPluginMutation = async (event, spec, mutate) => {
+  ipcMain.handle('dsh-plugins:list', (event) => {
     assertManagerSender(event)
-    if (pluginBusy) throw new Error('已有插件操作进行中')
-    if (!validatePluginSpec(spec)) throw new Error('无效的插件名')
-    pluginBusy = true
-    try {
-      const result = await mutate(spec)
-      if (result.code !== 0) {
-        throw new Error(`${result.stderr || result.stdout}`.trim().slice(-800))
-      }
-      await restartDshService()
-      return readPluginList()
-    } finally {
-      pluginBusy = false
-    }
-  }
-  ipcMain.handle('dsh-plugins:add', (event, spec) =>
-    runPluginMutation(event, spec, (value) =>
-      addPlugin({
-        electronExecutable: process.execPath,
-        entry: currentDshEntry(),
-        spec: value,
-        env: pluginCommandEnv(),
-        registry: currentNpmRegistry(),
-      }),
-    ),
-  )
-  ipcMain.handle('dsh-plugins:remove', (event, spec) =>
-    runPluginMutation(event, spec, (value) =>
-      removePlugin({
-        electronExecutable: process.execPath,
-        entry: currentDshEntry(),
-        spec: value,
-        env: pluginCommandEnv(),
-        registry: currentNpmRegistry(),
-      }),
-    ),
-  )
+    return api.list()
+  })
+  ipcMain.handle('dsh-plugins:add', (event, spec) => {
+    assertManagerSender(event)
+    return api.add(spec)
+  })
+  ipcMain.handle('dsh-plugins:remove', (event, spec) => {
+    assertManagerSender(event)
+    return api.remove(spec)
+  })
 }
 
 /**

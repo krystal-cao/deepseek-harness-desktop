@@ -8,7 +8,7 @@ export const DSH_VERSION_PATTERN = /^0\.1\.0-rc\.\d+$/
 export const DSH_ANY_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-rc\.\d+)?$/
 
 /** Bundle identifier baked into the macOS app by electron-builder (build.appId). */
-export const DESKTOP_BUNDLE_ID = 'io.github.steven-kid.deepseek-harness-desktop'
+export const DESKTOP_BUNDLE_ID = 'io.github.krystal-cao.deepseek-harness-desktop'
 
 /**
  * electron-builder derives the updater cache directory from the package name:

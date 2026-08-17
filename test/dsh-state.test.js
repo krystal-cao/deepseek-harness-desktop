@@ -3,7 +3,21 @@ import test from 'node:test'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { readDshState, writeDshState } from '../src/dsh-state.js'
+import {
+  DSH_STATE_SCHEMA_VERSION,
+  migrateDshState,
+  readDshState,
+  writeDshState,
+} from '../src/dsh-state.js'
+
+test('migrateDshState upgrades legacy files and keeps future files intact', () => {
+  assert.deepEqual(migrateDshState({ selectedVersion: '0.1.0-rc.6' }), {
+    selectedVersion: '0.1.0-rc.6',
+    schemaVersion: DSH_STATE_SCHEMA_VERSION,
+  })
+  const future = { schemaVersion: 99, selectedVersion: '0.1.0-rc.9' }
+  assert.equal(migrateDshState(future), future)
+})
 
 test('dsh state round-trips through userData', () => {
   const userData = mkdtempSync(path.join(os.tmpdir(), 'dsh-state-'))

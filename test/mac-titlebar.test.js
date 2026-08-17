@@ -28,6 +28,26 @@ test('macOS title bar provides a full-width drag region and keeps controls click
   assert.match(MAC_TITLEBAR_CSS, new RegExp(`height:\\s*${MAC_TITLEBAR_HEIGHT}px`))
 })
 
+test('macOS title bar marks every interactive element no-drag (verify-inset invariants)', () => {
+  // Mirrors the live CDP checks in scripts/verify-inset.mjs so regressions are
+  // caught by the unit suite before a packaged-app run is needed.
+  for (const selector of [
+    'a',
+    'button',
+    'input',
+    'textarea',
+    'select',
+    '[role="button"]',
+    '[contenteditable]:not([contenteditable="false"])',
+  ]) {
+    assert.match(MAC_TITLEBAR_CSS, new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  }
+  assert.match(MAC_TITLEBAR_CSS, /app-region:\s*no-drag/)
+  assert.match(MAC_TITLEBAR_CSS, /app-region:\s*drag/)
+  // The drag region must span the full window width.
+  assert.match(MAC_TITLEBAR_CSS, /inset:\s*0 0 auto/)
+})
+
 test('macOS title bar styling is inserted into each loaded page', async () => {
   let insertedCSS
 

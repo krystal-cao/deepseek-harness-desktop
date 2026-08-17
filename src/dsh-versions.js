@@ -151,11 +151,11 @@ export function readInstalledFamily(root, version) {
   })
 }
 
-function runPnpmInstall(staging, version, env) {
+function runPnpmCommand(staging, args, env) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [resolvePnpmCli(), 'add', `${OFFICIAL_PACKAGE}@${version}`], {
+    const child = spawn(process.execPath, [resolvePnpmCli(), ...args], {
       cwd: staging,
-      env: { ...env, ELECTRON_RUN_AS_NODE: '1', npm_config_registry: resolveNpmRegistry() },
+      env: { ...env, ELECTRON_RUN_AS_NODE: '1' },
       stdio: ['ignore', 'ignore', 'pipe'],
     })
     let stderr = ''
@@ -165,9 +165,81 @@ function runPnpmInstall(staging, version, env) {
     child.once('error', reject)
     child.once('exit', (code) => {
       if (code === 0) resolve()
-      else reject(new Error(`pnpm 安装失败（退出码 ${code ?? 'unknown'}）：${stderr.slice(-500)}`))
+      else reject(new Error(`pnpm 命令失败（退出码 ${code ?? 'unknown'}）：${stderr.slice(-500)}`))
     })
   })
+}
+
+function readManifestScripts(dir) {
+  try {
+    const manifest = JSON.parse(readFileSync(path.join(dir, 'package.json'), 'utf8'))
+    const scripts = manifest.scripts ?? {}
+    if (['preinstall', 'install', 'postinstall'].some((key) => scripts[key])) return manifest
+    return null
+  } catch {
+    return null
+  }
+}
+
+function collectFromDir(names, dir) {
+  let entries
+  try {
+    entries = readdirSync(dir, { withFileTypes: true })
+  } catch {
+    return
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
+    const full = path.join(dir, entry.name)
+    const manifest = readManifestScripts(full)
+    if (manifest) names.add(manifest.name ?? entry.name)
+    if (entry.name.startsWith('@')) {
+      let subs
+      try {
+        subs = readdirSync(full, { withFileTypes: true })
+      } catch {
+        continue
+      }
+      for (const sub of subs) {
+        if (!sub.isDirectory()) continue
+        const subFull = path.join(full, sub.name)
+        const subManifest = readManifestScripts(subFull)
+        if (subManifest) names.add(subManifest.name ?? sub.name)
+      }
+    }
+  }
+}
+
+/**
+ * Scan an installed tree for packages with build scripts (preinstall/install/
+ * postinstall). pnpm 11 blocks those scripts by default, so the staging
+ * install runs twice: once to fetch, then again with an allowlist derived from
+ * this scan. Deriving it from the tree keeps the allowlist correct when
+ * upstream changes native dependencies between RCs.
+ */
+export function collectBuildScripts(root) {
+  const names = new Set()
+  const top = path.join(root, 'node_modules')
+  collectFromDir(names, top)
+  const store = path.join(top, '.pnpm')
+  let storeEntries
+  try {
+    storeEntries = readdirSync(store, { withFileTypes: true })
+  } catch {
+    return []
+  }
+  for (const pkgDir of storeEntries) {
+    if (!pkgDir.isDirectory()) continue
+    collectFromDir(names, path.join(store, pkgDir.name, 'node_modules'))
+  }
+  return [...names].sort()
+}
+
+/** Write the pnpm 11 build-script allowlist for a staging project. */
+export function writePnpmWorkspace(staging, buildScriptNames) {
+  const lines = ['allowBuilds:']
+  for (const name of buildScriptNames) lines.push(`  "${name}": true`)
+  writeFileSync(path.join(staging, 'pnpm-workspace.yaml'), `${lines.join('\n')}\n`)
 }
 
 /**
@@ -192,18 +264,6 @@ export function writeStagingProject(staging, version, extraDeps = {}, registry =
   writeFileSync(
     path.join(staging, '.npmrc'),
     `registry=${registry}\nprefer-offline=true\naudit=false\n`,
-  )
-  // pnpm 11 no longer reads the "pnpm" field in package.json; build-script
-  // approvals live in pnpm-workspace.yaml under allowBuilds. dsh needs these
-  // native/optional deps built (node-pty, koffi) to run.
-  writeFileSync(
-    path.join(staging, 'pnpm-workspace.yaml'),
-    `allowBuilds:\n` +
-      `  "@deepseek-ai/dsh-subprocess-local": true\n` +
-      `  "@google/genai": true\n` +
-      `  koffi: true\n` +
-      `  node-pty: true\n` +
-      `  protobufjs: true\n`,
   )
 }
 
@@ -241,7 +301,18 @@ export async function installDshVersion({
       phase: 'downloading',
       message: `正在安装官方 DSH ${version}（插件族 ${aligned.available.length}/${familyTotal} 对齐）`,
     })
-    await runPnpmInstall(staging, version, env)
+    // pnpm 11 exits nonzero when build scripts are blocked, so fetch with
+    // --ignore-scripts first, approve exactly what the tree needs, then run
+    // the builds so native deps (node-pty, koffi, ...) are ready regardless of
+    // upstream version changes.
+    await runPnpmCommand(staging, ['add', `${OFFICIAL_PACKAGE}@${version}`, '--ignore-scripts'], env)
+    // pnpm 11 blocks build scripts unless approved; approve exactly what the
+    // installed tree needs and run the builds.
+    const buildScripts = collectBuildScripts(staging)
+    if (buildScripts.length > 0) {
+      writePnpmWorkspace(staging, buildScripts)
+      await runPnpmCommand(staging, ['rebuild'], env)
+    }
     onProgress({ version, phase: 'validating', message: '正在校验官方包版本和入口' })
     if (!readResolvedEntry(staging, version)) throw new Error('官方 DSH 包身份或入口校验失败')
     renameSync(staging, destination)
