@@ -138,6 +138,8 @@ DeepSeek Harness Desktop
   GitHub 镜像）；设置 `DSH_DISABLE_AUTO_UPDATE=1` 可关闭更新。npm registry
   默认使用国内镜像 `registry.npmmirror.com`（用于版本目录和运行时安装），
   可通过 `DSH_NPM_REGISTRY` 覆盖，例如改回 `https://registry.npmjs.org/`。
+  也可以在“帮助 → dsh 版本管理… → npm 镜像地址”里直接修改并保存（提供
+  npmmirror、npm 官方、腾讯云、华为云等常用镜像建议）。
 
 ### 发版流程
 

@@ -151,6 +151,7 @@ export async function listInstalledPlugins({
   entry,
   env = process.env,
   timeoutMs = 60_000,
+  registry,
 } = {}) {
   const result = await runDshPluginCommand({
     electronExecutable,
@@ -163,7 +164,7 @@ export async function listInstalledPlugins({
     throw new Error(`读取插件列表失败（退出码 ${result.code}）：${(result.stderr || result.stdout).trim().slice(-500)}`)
   }
   const parsed = parsePnpmListJson(result.stdout)
-  ensureProfileNpmrc(parsed.path)
+  ensureProfileNpmrc(parsed.path, registry)
   return parsed
 }
 
@@ -174,9 +175,10 @@ export async function addPlugin({
   spec,
   env = process.env,
   timeoutMs = 120_000,
+  registry,
 } = {}) {
-  const listed = await listInstalledPlugins({ electronExecutable, entry, env, timeoutMs })
-  ensureProfileNpmrc(listed.path)
+  const listed = await listInstalledPlugins({ electronExecutable, entry, env, timeoutMs, registry })
+  ensureProfileNpmrc(listed.path, registry)
   return runDshPluginCommand({ electronExecutable, entry, args: ['add', spec], env, timeoutMs })
 }
 
@@ -187,8 +189,9 @@ export async function removePlugin({
   spec,
   env = process.env,
   timeoutMs = 120_000,
+  registry,
 } = {}) {
-  const listed = await listInstalledPlugins({ electronExecutable, entry, env, timeoutMs })
-  ensureProfileNpmrc(listed.path)
+  const listed = await listInstalledPlugins({ electronExecutable, entry, env, timeoutMs, registry })
+  ensureProfileNpmrc(listed.path, registry)
   return runDshPluginCommand({ electronExecutable, entry, args: ['remove', spec], env, timeoutMs })
 }

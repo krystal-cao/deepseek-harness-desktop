@@ -7,6 +7,9 @@ const pluginsEl = document.getElementById('plugins')
 const statusEl = document.getElementById('status')
 const refreshButton = document.getElementById('refresh')
 const autoFollowEl = document.getElementById('auto-follow')
+const registryInputEl = document.getElementById('registry-input')
+const registrySaveEl = document.getElementById('registry-save')
+const registryResetEl = document.getElementById('registry-reset')
 const pluginForm = document.getElementById('plugin-form')
 const pluginSpecEl = document.getElementById('plugin-spec')
 const tabVersionsEl = document.getElementById('tab-versions')
@@ -76,6 +79,7 @@ function familyMeta(family = []) {
 function render() {
   if (!snapshot) return
   autoFollowEl.checked = snapshot.autoFollowLatest ?? true
+  registryInputEl.value = snapshot.npmRegistry ?? ''
   installedEl.replaceChildren()
   availableEl.replaceChildren()
 
@@ -235,6 +239,17 @@ async function refresh() {
   }
 }
 
+async function saveRegistry(value) {
+  try {
+    snapshot = await api.setNpmRegistry(value)
+    setStatus('镜像地址已保存，正在用新镜像刷新版本目录…')
+    await refresh()
+  } catch (error) {
+    setStatus(error?.message ?? '保存镜像地址失败', true)
+    registryInputEl.value = snapshot?.npmRegistry ?? ''
+  }
+}
+
 async function installVersion(version) {
   busy = true
   confirmingVersion = null
@@ -344,6 +359,14 @@ autoFollowEl.addEventListener('change', async () => {
     setStatus(error?.message ?? '保存自动跟随设置失败', true)
     autoFollowEl.checked = snapshot?.autoFollowLatest ?? true
   }
+})
+registrySaveEl.addEventListener('click', () => {
+  const value = registryInputEl.value.trim()
+  void saveRegistry(value === '' ? null : value)
+})
+registryResetEl.addEventListener('click', () => {
+  registryInputEl.value = ''
+  void saveRegistry(null)
 })
 api.onProgress((progress) => {
   if (progress?.message) setStatus(progress.message, progress.phase === 'failed')

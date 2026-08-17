@@ -24,6 +24,28 @@
         <input id="auto-follow" type="checkbox">
         <span>启动后自动安装并切换到官方最新 RC（后台安装，完成后自动重启 dsh 服务）</span>
       </label>
+      <div class="option option-column">
+        <span class="option-title">npm 镜像地址</span>
+        <p class="hint">版本目录、插件安装和插件管理都使用这个地址。内置镜像失效时可切换备用镜像。</p>
+        <div class="registry-row">
+          <input
+            id="registry-input"
+            type="text"
+            list="registry-presets"
+            placeholder="https://registry.npmmirror.com/"
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <datalist id="registry-presets">
+            <option value="https://registry.npmmirror.com/">npmmirror（国内）</option>
+            <option value="https://registry.npmjs.org/">npm 官方</option>
+            <option value="https://mirrors.cloud.tencent.com/npm/">腾讯云</option>
+            <option value="https://mirrors.huaweicloud.com/repository/npm/">华为云</option>
+          </datalist>
+          <button id="registry-save" type="button">保存</button>
+          <button id="registry-reset" type="button">恢复默认</button>
+        </div>
+      </div>
       <h2>已安装</h2>
       <ul id="installed" class="versions"></ul>
       <h2>官方版本</h2>

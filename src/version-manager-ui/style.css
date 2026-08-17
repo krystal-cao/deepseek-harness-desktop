@@ -81,6 +81,42 @@ header {
   accent-color: var(--accent);
 }
 
+.option-column {
+  flex-direction: column;
+  gap: 6px;
+  cursor: default;
+}
+
+.option-column .hint {
+  margin: 0;
+}
+
+.option-title {
+  font-weight: 600;
+}
+
+.registry-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.registry-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.registry-row input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .plugin-form {
   display: flex;
   gap: 8px;

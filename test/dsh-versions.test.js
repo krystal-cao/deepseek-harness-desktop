@@ -99,6 +99,17 @@ test('writeStagingProject merges the version-aligned plugin family', () => {
   }
 })
 
+test('writeStagingProject honours a configured registry', () => {
+  const staging = mkdtempSync(path.join(os.tmpdir(), 'dsh-staging-'))
+  try {
+    writeStagingProject(staging, '0.1.0-rc.6', {}, 'https://registry.example.com/')
+    const npmrc = readFileSync(path.join(staging, '.npmrc'), 'utf8')
+    assert.match(npmrc, /registry=https:\/\/registry\.example\.com\//)
+  } finally {
+    rmSync(staging, { recursive: true, force: true })
+  }
+})
+
 test('dshFamilyPins covers every pinned @deepseek-ai/dsh-* package', () => {
   const pins = dshFamilyPins()
   assert.ok(pins.length > 0)

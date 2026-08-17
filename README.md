@@ -143,7 +143,8 @@ Version Manager…) can also install and switch to newer official
   to turn updates off. The npm registry defaults to the domestic mirror
   `registry.npmmirror.com` (used by the version catalog and runtime installs);
   set `DSH_NPM_REGISTRY` to switch, for example back to
-  `https://registry.npmjs.org/`.
+  `https://registry.npmjs.org/`. You can also change it in the app:
+  **Help → dsh Version Manager… → npm 镜像地址** (with common mirror presets).
 
 ### Release flow
 

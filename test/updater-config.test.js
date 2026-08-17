@@ -6,6 +6,7 @@ import {
   DESKTOP_BUNDLE_ID,
   DSH_VERSION_PATTERN,
   isNewerVersion,
+  normalizeNpmRegistry,
   resolveAutoCheckIntervalMs,
   resolveNpmRegistry,
   resolveUpdaterCacheDirName,
@@ -75,6 +76,20 @@ test('resolveNpmRegistry defaults to the domestic mirror with an env override', 
     resolveNpmRegistry({ DSH_NPM_REGISTRY: 'https://registry.npmjs.org/' }),
     'https://registry.npmjs.org/',
   )
+  assert.equal(
+    resolveNpmRegistry({ DSH_NPM_REGISTRY: 'https://registry.npmjs.org/' }, 'https://registry.example.com/'),
+    'https://registry.example.com/',
+  )
+})
+
+test('normalizeNpmRegistry normalizes URLs and rejects bad input', () => {
+  assert.equal(normalizeNpmRegistry(' https://registry.example.com/ '), 'https://registry.example.com/')
+  assert.equal(normalizeNpmRegistry('https://registry.example.com'), 'https://registry.example.com/')
+  assert.equal(normalizeNpmRegistry(null), null)
+  assert.equal(normalizeNpmRegistry(''), null)
+  assert.throws(() => normalizeNpmRegistry('ftp://registry.example.com/'), /http/)
+  assert.throws(() => normalizeNpmRegistry('not a url'), /URL/)
+  assert.throws(() => normalizeNpmRegistry(42), /无效/)
 })
 
 test('resolveAutoCheckIntervalMs honours a valid override', () => {

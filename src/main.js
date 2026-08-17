@@ -36,7 +36,13 @@ import {
   resolvePluginPnpmEnv,
   validatePluginSpec,
 } from './dsh-plugins.js'
-import { DSH_ANY_VERSION_PATTERN, isNewerVersion, sortDshVersions } from './updater-config.js'
+import {
+  DSH_ANY_VERSION_PATTERN,
+  isNewerVersion,
+  normalizeNpmRegistry,
+  resolveNpmRegistry,
+  sortDshVersions,
+} from './updater-config.js'
 
 const APP_NAME = 'DeepSeek Harness'
 const execFileAsync = promisify(execFile)
@@ -169,6 +175,7 @@ function versionManagerSnapshot() {
     latestVersion: catalog.latest,
     dismissedLatest: versionState.dismissedLatest,
     autoFollowLatest: versionState.autoFollowLatest,
+    npmRegistry: versionState.npmRegistry,
     installedVersions: installedVersionList(),
     availableVersions: sortDshVersions(catalog.versions.map((item) => item.version)).map((version) => ({
       version,
@@ -180,11 +187,15 @@ function versionManagerSnapshot() {
 
 async function refreshCatalog() {
   try {
-    catalog = await fetchDshCatalog()
+    catalog = await fetchDshCatalog({ registry: currentNpmRegistry() })
     catalogError = null
   } catch (error) {
     catalogError = error instanceof Error ? error.message : '检查版本失败'
   }
+}
+
+function currentNpmRegistry() {
+  return resolveNpmRegistry(process.env, versionState.npmRegistry || undefined)
 }
 
 function maybeNotifyDshUpdate() {
@@ -261,6 +272,7 @@ function registerVersionManagerIpc() {
         versionsDir,
         version,
         availableVersions: catalog.versions.map((item) => item.version),
+        registry: currentNpmRegistry(),
         env: {
           ...process.env,
           ...(resolvedUserPath !== undefined ? { PATH: resolvedUserPath } : {}),
@@ -304,6 +316,12 @@ function registerVersionManagerIpc() {
     writeDshState(app.getPath('userData'), versionState)
     return versionManagerSnapshot()
   })
+  ipcMain.handle('dsh-versions:set-npm-registry', (event, value) => {
+    assertManagerSender(event)
+    versionState.npmRegistry = normalizeNpmRegistry(value)
+    writeDshState(app.getPath('userData'), versionState)
+    return versionManagerSnapshot()
+  })
 }
 
 function assertManagerSender(event) {
@@ -325,6 +343,7 @@ function readPluginList() {
     electronExecutable: process.execPath,
     entry: currentDshEntry(),
     env: pluginCommandEnv(),
+    registry: currentNpmRegistry(),
   })
 }
 
@@ -361,6 +380,7 @@ function registerPluginManagerIpc() {
         entry: currentDshEntry(),
         spec: value,
         env: pluginCommandEnv(),
+        registry: currentNpmRegistry(),
       }),
     ),
   )
@@ -371,6 +391,7 @@ function registerPluginManagerIpc() {
         entry: currentDshEntry(),
         spec: value,
         env: pluginCommandEnv(),
+        registry: currentNpmRegistry(),
       }),
     ),
   )
@@ -393,6 +414,7 @@ async function followLatestIfEnabled() {
       versionsDir,
       version: latest,
       availableVersions: catalog.versions.map((item) => item.version),
+      registry: currentNpmRegistry(),
       env: {
         ...process.env,
         ...(resolvedUserPath !== undefined ? { PATH: resolvedUserPath } : {}),

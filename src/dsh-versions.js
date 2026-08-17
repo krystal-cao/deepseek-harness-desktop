@@ -175,7 +175,7 @@ function runPnpmInstall(staging, version, env) {
  * `extraDeps` carries the version-aligned plugin family so the installed tree
  * is a complete installation, not just the core package.
  */
-export function writeStagingProject(staging, version, extraDeps = {}) {
+export function writeStagingProject(staging, version, extraDeps = {}, registry = resolveNpmRegistry()) {
   writeFileSync(
     path.join(staging, 'package.json'),
     `${JSON.stringify(
@@ -191,7 +191,7 @@ export function writeStagingProject(staging, version, extraDeps = {}) {
   )
   writeFileSync(
     path.join(staging, '.npmrc'),
-    `registry=${resolveNpmRegistry()}\nprefer-offline=true\naudit=false\n`,
+    `registry=${registry}\nprefer-offline=true\naudit=false\n`,
   )
   // pnpm 11 no longer reads the "pnpm" field in package.json; build-script
   // approvals live in pnpm-workspace.yaml under allowBuilds. dsh needs these
@@ -219,6 +219,7 @@ export async function installDshVersion({
   onProgress = () => {},
   env = process.env,
   family,
+  registry,
 }) {
   if (!DSH_ANY_VERSION_PATTERN.test(version)) throw new Error(`无效的 DSH 版本号：${version}`)
   if (!availableVersions.includes(version)) throw new Error('该版本不在官方 npm 版本目录中')
@@ -231,10 +232,10 @@ export async function installDshVersion({
   const staging = path.join(versionsDir, `.install-${version}-${Date.now()}`)
   mkdirSync(staging, { recursive: true })
   try {
-    const aligned = family ?? (await resolveAlignedFamily({ version }))
+    const aligned = family ?? (await resolveAlignedFamily({ version, registry }))
     const extraDeps = Object.fromEntries(aligned.available.map((name) => [name, version]))
     const familyTotal = aligned.available.length + aligned.missing.length
-    writeStagingProject(staging, version, extraDeps)
+    writeStagingProject(staging, version, extraDeps, registry)
     onProgress({
       version,
       phase: 'downloading',

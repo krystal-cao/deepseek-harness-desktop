@@ -16,9 +16,16 @@ export function readDshState(userData) {
       selectedVersion: typeof parsed.selectedVersion === 'string' ? parsed.selectedVersion : null,
       dismissedLatest: typeof parsed.dismissedLatest === 'string' ? parsed.dismissedLatest : null,
       autoFollowLatest: parsed.autoFollowLatest !== false,
+      npmRegistry: typeof parsed.npmRegistry === 'string' ? parsed.npmRegistry : null,
     }
   } catch {
-    return { schemaVersion: 1, selectedVersion: null, dismissedLatest: null, autoFollowLatest: true }
+    return {
+      schemaVersion: 1,
+      selectedVersion: null,
+      dismissedLatest: null,
+      autoFollowLatest: true,
+      npmRegistry: null,
+    }
   }
 }
 

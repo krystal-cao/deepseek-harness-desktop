@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('dshVersions', {
   select: (version) => ipcRenderer.invoke('dsh-versions:select', version),
   uninstall: (version) => ipcRenderer.invoke('dsh-versions:uninstall', version),
   setAutoFollow: (value) => ipcRenderer.invoke('dsh-versions:set-auto-follow', value),
+  setNpmRegistry: (value) => ipcRenderer.invoke('dsh-versions:set-npm-registry', value),
   onSnapshot: (listener) => {
     const handler = (_event, snapshot) => listener(snapshot)
     ipcRenderer.on('dsh-versions:snapshot', handler)
