@@ -193,6 +193,7 @@ function renderPlugins() {
     const meta = document.createElement('span')
     meta.className = 'meta'
     meta.textContent = item.version ? `v${item.version}` : ''
+    if (item.local) meta.textContent += meta.textContent ? ' · 本地' : '本地'
 
     if (item.managed) {
       const tag = document.createElement('span')

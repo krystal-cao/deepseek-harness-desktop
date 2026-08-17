@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import {
@@ -8,6 +8,7 @@ import {
   ensureProfileNpmrc,
   ensurePnpmShimDir,
   parsePnpmListJson,
+  resolveLocalPluginVersions,
   resolvePluginPnpmEnv,
   validatePluginSpec,
 } from '../src/dsh-plugins.js'
@@ -55,6 +56,33 @@ test('parsePnpmListJson tolerates non-JSON output', () => {
   assert.deepEqual(plugins, [])
   assert.equal(raw, 'not json at all')
   assert.equal(profilePath, null)
+})
+
+test('resolveLocalPluginVersions resolves file: specs to real versions', () => {
+  const profileDir = mkdtempSync(path.join(os.tmpdir(), 'dsh-profile-'))
+  const localPkg = path.join(profileDir, 'node_modules', 'dsh-desktop-host')
+  try {
+    mkdirSync(localPkg, { recursive: true })
+    writeFileSync(
+      path.join(localPkg, 'package.json'),
+      `${JSON.stringify({ name: 'dsh-desktop-host', version: '0.1.0' })}\n`,
+    )
+    const resolved = resolveLocalPluginVersions({
+      path: profileDir,
+      plugins: [
+        { name: 'dsh-desktop-host', version: `file:${localPkg}` },
+        { name: 'dshmarket', version: '1.8.0' },
+        { name: 'broken-local', version: 'file:./missing' },
+      ],
+    })
+    assert.deepEqual(resolved.plugins, [
+      { name: 'dsh-desktop-host', version: '0.1.0', local: true },
+      { name: 'dshmarket', version: '1.8.0' },
+      { name: 'broken-local', version: null, local: true },
+    ])
+  } finally {
+    rmSync(profileDir, { recursive: true, force: true })
+  }
 })
 
 test('ensurePnpmShimDir writes an executable pnpm shim', () => {

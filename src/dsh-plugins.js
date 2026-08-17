@@ -3,7 +3,7 @@
 // CLI can always find pnpm (Finder/Dock launches have no shell PATH, and the
 // bundled assets/bin shim only exists in packaged builds).
 import { spawn } from 'node:child_process'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { bundledBinDir, withBundledBinPath } from './dsh-service.js'
@@ -53,6 +53,28 @@ export function parsePnpmListJson(stdout) {
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
   return { plugins, raw: stdout, path: typeof root.path === 'string' ? root.path : null }
+}
+
+const LOCAL_SPEC_PATTERN = /^(file:|link:|workspace:|\.\.?\/)/
+
+/**
+ * pnpm reports file:/link: dependencies with the spec path as their
+ * "version". Resolve those against the profile directory and read the linked
+ * package's real version, so the UI shows "v0.1.0" instead of a long path.
+ */
+export function resolveLocalPluginVersions(parsed) {
+  if (!parsed?.path) return parsed
+  const plugins = (parsed.plugins ?? []).map((plugin) => {
+    if (typeof plugin.version !== 'string' || !LOCAL_SPEC_PATTERN.test(plugin.version)) return plugin
+    const spec = plugin.version.replace(/^(file:|link:|workspace:)/, '')
+    try {
+      const manifest = JSON.parse(readFileSync(path.join(path.resolve(parsed.path, spec), 'package.json'), 'utf8'))
+      return { ...plugin, version: typeof manifest.version === 'string' ? manifest.version : null, local: true }
+    } catch {
+      return { ...plugin, version: null, local: true }
+    }
+  })
+  return { ...parsed, plugins }
 }
 
 /** Run a dsh plugin subcommand (pnpm passthrough) and capture its output. */
@@ -165,7 +187,7 @@ export async function listInstalledPlugins({
   }
   const parsed = parsePnpmListJson(result.stdout)
   ensureProfileNpmrc(parsed.path, registry)
-  return parsed
+  return resolveLocalPluginVersions(parsed)
 }
 
 /** Add an out-of-tree plugin to the profile (`dsh plugin ... add <spec>`). */
