@@ -15,6 +15,7 @@ const installedEl = document.getElementById('installed')
 const availableEl = document.getElementById('available')
 const pluginForm = document.getElementById('plugin-form')
 const pluginSpecEl = document.getElementById('plugin-spec')
+const pluginInstallButton = document.getElementById('plugin-install-button')
 const pluginCountEl = document.getElementById('plugin-count')
 const pluginsEl = document.getElementById('plugins')
 const navButtons = [...document.querySelectorAll('.nav-item')]
@@ -35,6 +36,8 @@ let confirmingPlugin = null
 let pluginsState = { plugins: [], error: null }
 let activePanel = 'versions'
 let localInstallingVersion = null
+let localUninstallingVersion = null
+let localUninstallingPlugin = null
 
 function activeInstall() {
   return snapshot?.installingVersion ?? localInstallingVersion
@@ -123,7 +126,9 @@ function renderInstalledVersion(item) {
       onClick: () => selectVersion(item.version),
     }),
   )
-  if (item.source === 'installed') {
+  if (localUninstallingVersion === item.version) {
+    row.append(button('卸载中…', { danger: true, disabled: true }))
+  } else if (item.source === 'installed') {
     row.append(
       button(confirmingVersion === item.version ? '确认卸载' : '卸载', {
         danger: true,
@@ -247,7 +252,9 @@ function renderPluginRow(item) {
   if (item.description) body.append(el('div', 'plugin-desc', item.description))
   row.append(body)
 
-  if (item.managed) {
+  if (localUninstallingPlugin === item.name) {
+    row.append(button('卸载中…', { danger: true, disabled: true }))
+  } else if (item.managed) {
     row.append(button('内置', { cls: 'gray', disabled: true }))
   } else {
     row.append(
@@ -343,7 +350,9 @@ async function selectVersion(version) {
 async function uninstallVersion(version) {
   busy = true
   confirmingVersion = null
+  localUninstallingVersion = version
   setStatus(`正在卸载 DSH ${version}…`)
+  render()
   try {
     snapshot = await api.uninstall(version)
     setStatus('')
@@ -351,6 +360,7 @@ async function uninstallVersion(version) {
     setStatus(error?.message ?? `卸载 ${version} 失败`, true)
   } finally {
     busy = false
+    localUninstallingVersion = null
     render()
   }
 }
@@ -358,7 +368,10 @@ async function uninstallVersion(version) {
 async function installPluginSpec(spec) {
   busy = true
   confirmingPlugin = null
+  pluginInstallButton.textContent = '安装中…'
+  pluginInstallButton.disabled = true
   setStatus(`正在安装插件 ${spec}…`)
+  renderPlugins()
   try {
     const result = await pluginsApi.add(spec)
     if (result?.error) throw new Error(result.error)
@@ -369,6 +382,8 @@ async function installPluginSpec(spec) {
     setStatus(error?.message ?? `安装 ${spec} 失败`, true)
   } finally {
     busy = false
+    pluginInstallButton.textContent = '安装'
+    pluginInstallButton.disabled = false
     renderPlugins()
   }
 }
@@ -376,7 +391,9 @@ async function installPluginSpec(spec) {
 async function removePluginByName(spec) {
   busy = true
   confirmingPlugin = null
+  localUninstallingPlugin = spec
   setStatus(`正在卸载插件 ${spec}…`)
+  renderPlugins()
   try {
     const result = await pluginsApi.remove(spec)
     if (result?.error) throw new Error(result.error)
@@ -386,6 +403,7 @@ async function removePluginByName(spec) {
     setStatus(error?.message ?? `卸载 ${spec} 失败`, true)
   } finally {
     busy = false
+    localUninstallingPlugin = null
     renderPlugins()
   }
 }
