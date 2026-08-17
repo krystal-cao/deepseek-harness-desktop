@@ -73,10 +73,10 @@ jobs:
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" dist/*.dmg dist/*.zip dist/*.yml --clobber
             if [ -s "$NOTES_FILE" ]; then
-              gh release edit "$GITHUB_REF_NAME" --notes-file "$NOTES_FILE"
+              gh release edit "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file "$NOTES_FILE"
             fi
           elif [ -s "$NOTES_FILE" ]; then
-            gh release create "$GITHUB_REF_NAME" dist/*.dmg dist/*.zip dist/*.yml --notes-file "$NOTES_FILE"
+            gh release create "$GITHUB_REF_NAME" dist/*.dmg dist/*.zip dist/*.yml --title "$GITHUB_REF_NAME" --notes-file "$NOTES_FILE"
           else
             gh release create "$GITHUB_REF_NAME" dist/*.dmg dist/*.zip dist/*.yml --generate-notes
           fi
