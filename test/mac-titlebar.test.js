@@ -25,6 +25,19 @@ test('macOS title bar keeps interactive controls clickable above the drag strip'
   assert.match(MAC_TITLEBAR_CSS, /-webkit-app-region:\s*no-drag/)
 })
 
+test('macOS title bar makes the sidebar stack translucent for the vibrancy material', () => {
+  // Every layer above the native 'sidebar' material must lose its opaque fill,
+  // otherwise the glass only shows in the top padding strip (0.0.8 regression).
+  assert.match(MAC_TITLEBAR_CSS, /html,\s*body/)
+  assert.match(MAC_TITLEBAR_CSS, /background:\s*transparent\s*!important/)
+  assert.match(MAC_TITLEBAR_CSS, /\[class\*="frame"\]:has\(> \[class\*="sidebarCol"\]\)/)
+  assert.match(MAC_TITLEBAR_CSS, /color-mix\(in srgb, var\(--dsw-specific-sidebar-fill\) 70%, transparent\)/)
+  assert.match(MAC_TITLEBAR_CSS, /\[class\*="centerCol"\]/)
+  assert.match(MAC_TITLEBAR_CSS, /\[class\*="sidebarCol"\] \[class\*="_root"\]/)
+  assert.match(MAC_TITLEBAR_CSS, /\[class\*="sidebarCol"\] \[class\*="settingsArea"\]/)
+  assert.match(MAC_TITLEBAR_CSS, /\[class\*="sidebarCol"\] \[class\*="fade"\]/)
+})
+
 test('macOS title bar marks every interactive element no-drag (verify-inset invariants)', () => {
   // Mirrors the live CDP checks in scripts/verify-inset.mjs so regressions are
   // caught by the unit suite before a packaged-app run is needed.

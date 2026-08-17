@@ -55,6 +55,9 @@ if (message === '') {
   process.exit(1)
 }
 
-execFileSync('git', ['tag', '-a', tag, '-m', message], { cwd: root, stdio: 'inherit' })
+// Keep the release notes verbatim: git's default tag-message cleanup strips
+// lines starting with `#`, which would silently drop Markdown headings from
+// the GitHub release body read back from the tag.
+execFileSync('git', ['tag', '-a', tag, '-m', message, '--cleanup=verbatim'], { cwd: root, stdio: 'inherit' })
 console.log(`created annotated tag ${tag} from ${notesFile}`)
 console.log(`push with: git push origin main && git push origin ${tag}`)

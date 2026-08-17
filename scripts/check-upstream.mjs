@@ -37,6 +37,9 @@ try {
 // npm view --json wraps single-package output in an array.
 const distTags = Array.isArray(rawDistTags) ? (rawDistTags[0] ?? {}) : rawDistTags
 const latest = distTags?.latest ?? ''
+// Follow the `latest` dist-tag only: that is the npm "recommended" version,
+// while `next` carries canary RCs the desktop app deliberately does not
+// bundle until upstream promotes them.
 const target = DSH_VERSION_PATTERN.test(latest) ? latest : ''
 const update = Boolean(target) && target !== current && isNewerVersion(target, current)
 

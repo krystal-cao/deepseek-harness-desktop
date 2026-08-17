@@ -151,14 +151,21 @@ function renderAvailableVersion(item) {
   const name = el('span', 'version-name', item.version)
   row.append(name)
 
-  if (isLatest(item.version)) {
-    const badgesWrap = el('span')
-    badgesWrap.append(badge('最新', 'green'), badge('推荐', 'blue'))
-    row.append(badgesWrap)
-  }
-
   const meta = el('span', 'version-meta', formatDate(item.publishedAt))
   row.append(meta)
+
+  const badgesWrap = el('span')
+  if (isLatest(item.version)) {
+    badgesWrap.append(badge('最新', 'green'), badge('推荐', 'blue'))
+  }
+  if (item.tags?.includes('next')) {
+    const nextBadge = badge('next', 'next')
+    nextBadge.title = '上游 next 标签：预发布候选，可手动安装切换'
+    badgesWrap.append(nextBadge)
+  }
+  if (badgesWrap.childNodes.length > 0) {
+    row.append(badgesWrap)
+  }
 
   const installed = (snapshot?.installedVersions ?? []).some((entry) => entry.version === item.version)
   const installing = activeInstall()
@@ -467,6 +474,16 @@ api.onSnapshot((next) => {
   snapshot = next
   render()
 })
+
+function applyTheme(theme) {
+  const scheme = theme?.colorScheme
+  document.documentElement.dataset.theme = scheme === 'dark' ? 'dark' : 'light'
+}
+
+api.getTheme()
+  .then((theme) => applyTheme(theme))
+  .catch(() => {})
+api.onTheme((theme) => applyTheme(theme))
 
 api.getSnapshot()
   .then((next) => {

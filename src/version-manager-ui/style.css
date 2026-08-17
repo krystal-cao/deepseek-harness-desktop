@@ -11,10 +11,58 @@
   --green: #16a34a;
   --green-soft: #f0fdf4;
   --green-border: #bbf7d0;
+  --next: #dc2626;
+  --next-soft: #fef2f2;
+  --next-border: #fecaca;
   --red: #dc2626;
   --radius: 14px;
   --radius-sm: 10px;
+  --sidebar-width: 165px;
   --shadow: 0 1px 2px rgba(17, 24, 39, 0.05);
+  --hover-bg: rgba(0, 0, 0, 0.045);
+  --soft-bg: #f3f4f6;
+  --accent-border: #bfdbfe;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --focus-ring: rgba(37, 99, 235, 0.12);
+  --switch-track: #d1d5db;
+  --primary-hover: #1d4ed8;
+  --shadow-soft: rgba(17, 24, 39, 0.08);
+}
+
+html[data-theme="dark"] {
+  --bg: #1b1b1f;
+  --sidebar-bg: #232327;
+  --titlebar-bg: #232327;
+  --border: #2e2e34;
+  --border-strong: #3c3c44;
+  --text: #e8e8ed;
+  --muted: #b6b6c0;
+  --accent: #4c8dff;
+  --accent-soft: rgba(76, 141, 255, 0.16);
+  --green: #34d399;
+  --green-soft: rgba(52, 211, 153, 0.12);
+  --green-border: rgba(52, 211, 153, 0.32);
+  --next: #f87171;
+  --next-soft: rgba(248, 113, 113, 0.14);
+  --next-border: rgba(248, 113, 113, 0.4);
+  --red: #f87171;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --hover-bg: rgba(255, 255, 255, 0.06);
+  --soft-bg: rgba(255, 255, 255, 0.07);
+  --accent-border: rgba(76, 141, 255, 0.45);
+  --danger-bg: rgba(248, 113, 113, 0.12);
+  --danger-border: rgba(248, 113, 113, 0.4);
+  --focus-ring: rgba(76, 141, 255, 0.28);
+  --switch-track: #4b4b52;
+  --primary-hover: #3b76e8;
+  --shadow-soft: rgba(0, 0, 0, 0.35);
+}
+
+/* Dark mode: sidebar nav items (版本 / 插件) are secondary text but must stay
+   readable against the glass; brighten them above the generic muted tone. */
+html[data-theme="dark"] .nav-item {
+  color: #c9c9d3;
 }
 
 * {
@@ -25,12 +73,12 @@ html,
 body {
   margin: 0;
   height: 100%;
+  background: transparent;
 }
 
 body {
   font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Helvetica Neue", sans-serif;
   color: var(--text);
-  background: var(--bg);
   overflow: hidden;
 }
 
@@ -39,40 +87,44 @@ button {
   color: inherit;
 }
 
-/* ── title bar ─────────────────────────────────────────────── */
-.titlebar {
-  position: relative;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--titlebar-bg);
-  border-bottom: 1px solid var(--border);
+/* ── immersive drag region (macOS traffic lights sit over the sidebar) ── */
+.drag-region {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--sidebar-width);
+  height: 40px;
+  z-index: 100;
   -webkit-app-region: drag;
   app-region: drag;
-  user-select: none;
-}
-
-.titlebar-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
 }
 
 /* ── app shell ─────────────────────────────────────────────── */
 .app {
   display: flex;
-  height: calc(100% - 38px);
+  height: 100%;
 }
 
 .sidebar {
-  width: 165px;
+  width: var(--sidebar-width);
   flex: none;
   display: flex;
   flex-direction: column;
-  background: var(--sidebar-bg);
+  /* Sidebar vibrancy: 70% tint over the native 'sidebar' material. */
+  background: color-mix(in srgb, var(--sidebar-bg) 70%, transparent);
   border-right: 1px solid var(--border);
-  padding: 14px 10px 12px;
+  /* Top padding reserves the 40px drag strip + macOS traffic lights. */
+  padding: 40px 10px 12px;
+}
+
+button,
+a,
+input,
+select,
+label,
+[role="button"] {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
 .brand {
@@ -120,7 +172,7 @@ button {
 }
 
 .nav-item:hover {
-  background: rgba(0, 0, 0, 0.045);
+  background: var(--hover-bg);
 }
 
 .nav-item.active {
@@ -142,32 +194,52 @@ button {
 }
 
 /* ── content ───────────────────────────────────────────────── */
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fixed draggable top bar: the page scrolls in its own box below it, and
+   fixed actions (refresh) live here with no-drag so they stay clickable. */
+.topbar {
+  flex: none;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 22px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.topbar-titles {
+  min-width: 0;
+}
+
+.topbar-titles h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.topbar-titles .subtitle {
+  margin: 1px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
 .content {
   flex: 1;
   min-width: 0;
   overflow-y: auto;
   padding: 18px 28px 28px;
-}
-
-.content-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 14px;
-}
-
-.content-header h1 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.subtitle {
-  margin: 2px 0 0;
-  font-size: 12.5px;
-  color: var(--muted);
+  background: var(--bg);
 }
 
 .status {
@@ -178,15 +250,15 @@ button {
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   background: var(--accent-soft);
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--accent-border);
   color: var(--text);
   font-size: 12.5px;
-  box-shadow: 0 2px 6px rgba(17, 24, 39, 0.08);
+  box-shadow: 0 2px 6px var(--shadow-soft);
 }
 
 .status.error {
-  background: #fef2f2;
-  border-color: #fecaca;
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
   color: var(--red);
 }
 
@@ -205,7 +277,7 @@ button {
   align-items: center;
   gap: 12px;
   background: var(--accent-soft);
-  border-color: #bfdbfe;
+  border-color: var(--accent-border);
 }
 
 .status-icon {
@@ -259,7 +331,7 @@ button {
 .input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .button {
@@ -277,7 +349,7 @@ button {
 }
 
 .button:hover:not(:disabled) {
-  background: #f3f4f6;
+  background: var(--soft-bg);
 }
 
 .button.primary {
@@ -287,7 +359,7 @@ button {
 }
 
 .button.primary:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: var(--primary-hover);
 }
 
 .button.ghost {
@@ -297,11 +369,11 @@ button {
 }
 
 .button.ghost:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.045);
+  background: var(--hover-bg);
 }
 
 .button.danger {
-  border-color: #fca5a5;
+  border-color: var(--danger-border);
   color: var(--red);
   background: transparent;
 }
@@ -351,7 +423,7 @@ button {
   position: absolute;
   inset: 0;
   border-radius: 999px;
-  background: #d1d5db;
+  background: var(--switch-track);
   transition: background 0.15s ease;
 }
 
@@ -467,13 +539,19 @@ button {
 .badge.blue {
   background: var(--accent-soft);
   color: var(--accent);
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--accent-border);
 }
 
 .badge.gray {
-  background: #f3f4f6;
+  background: var(--soft-bg);
   color: var(--muted);
   border: 1px solid var(--border);
+}
+
+.badge.next {
+  background: var(--next-soft);
+  color: var(--next);
+  border: 1px solid var(--next-border);
 }
 
 .version-row.current {
@@ -512,7 +590,7 @@ button {
   gap: 4px;
   margin-bottom: 10px;
   padding: 3px;
-  background: #f3f4f6;
+  background: var(--soft-bg);
   border-radius: var(--radius-sm);
 }
 

@@ -190,6 +190,36 @@ export function ensureProfileNpmrc(profileDir, registry = resolveNpmRegistry()) 
   )
 }
 
+const MINIMUM_RELEASE_AGE_LINE = 'minimumReleaseAge: 0'
+
+/**
+ * The web profile is a pnpm workspace whose supply-chain policy uses a
+ * built-in minimumReleaseAge default. That gate rejects freshly published
+ * packages, so any pnpm add/remove in the profile fails when the lockfile
+ * contains a young plugin (this is why the bundled desktop-host bridge could
+ * never be installed). Relax only the release-age gate for the profile;
+ * everything else in pnpm-workspace.yaml (excludes, allowBuilds, nodeLinker,
+ * ...) is preserved verbatim.
+ */
+export function ensureProfilePnpmWorkspaceConfig(profileDir) {
+  if (!profileDir) return
+  mkdirSync(profileDir, { recursive: true })
+  const file = path.join(profileDir, 'pnpm-workspace.yaml')
+  let content
+  try {
+    content = readFileSync(file, 'utf8')
+  } catch {
+    // Profile not initialized yet; `dsh plugin` creates it on first use.
+    return
+  }
+  if (/^minimumReleaseAge:/m.test(content)) {
+    const updated = content.replace(/^minimumReleaseAge:.*$/m, MINIMUM_RELEASE_AGE_LINE)
+    if (updated !== content) writeFileSync(file, updated)
+    return
+  }
+  writeFileSync(file, `${content.trimEnd()}\n\n${MINIMUM_RELEASE_AGE_LINE}\n`)
+}
+
 /** List the out-of-tree plugins installed in the profile. */
 export async function listInstalledPlugins({
   electronExecutable,
@@ -224,6 +254,7 @@ export async function addPlugin({
 } = {}) {
   const listed = await listInstalledPlugins({ electronExecutable, entry, env, timeoutMs, registry })
   ensureProfileNpmrc(listed.path, registry)
+  ensureProfilePnpmWorkspaceConfig(listed.path)
   return runDshPluginCommand({ electronExecutable, entry, args: ['add', spec], env, timeoutMs })
 }
 
@@ -238,5 +269,6 @@ export async function removePlugin({
 } = {}) {
   const listed = await listInstalledPlugins({ electronExecutable, entry, env, timeoutMs, registry })
   ensureProfileNpmrc(listed.path, registry)
+  ensureProfilePnpmWorkspaceConfig(listed.path)
   return runDshPluginCommand({ electronExecutable, entry, args: ['remove', spec], env, timeoutMs })
 }

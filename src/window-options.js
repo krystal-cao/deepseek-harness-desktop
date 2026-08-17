@@ -12,9 +12,19 @@ export function createWindowOptions(platform = process.platform, useDarkColors =
     minHeight: 640,
     show: false,
     title: 'DeepSeek Harness',
-    backgroundColor: useDarkColors ? '#151517' : '#ffffff',
+    backgroundColor: isMac ? '#00000000' : useDarkColors ? '#151517' : '#ffffff',
     titleBarStyle: isMac ? 'hiddenInset' : 'default',
-    ...(isMac ? { trafficLightPosition: { x: 16, y: 18 } } : {}),
+    ...(isMac
+      ? {
+          trafficLightPosition: { x: 16, y: 18 },
+          // Native sidebar material: MAC_TITLEBAR_CSS makes the sidebar stack
+          // translucent so the vibrancy shows through there only; the content
+          // columns keep their own opaque backgrounds.
+          vibrancy: 'sidebar',
+          visualEffectState: 'followWindow',
+          transparent: true,
+        }
+      : {}),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

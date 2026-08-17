@@ -2,13 +2,16 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createWindowOptions } from '../src/window-options.js'
 
-test('macOS uses an immersive window with a positioned traffic-light strip', () => {
+test('macOS uses an immersive vibrancy window with a positioned traffic-light strip', () => {
   const options = createWindowOptions('darwin')
 
   assert.equal(options.titleBarStyle, 'hiddenInset')
   assert.equal(options.titleBarOverlay, undefined)
   assert.deepEqual(options.trafficLightPosition, { x: 16, y: 18 })
-  assert.equal(options.backgroundColor, '#ffffff')
+  assert.equal(options.backgroundColor, '#00000000')
+  assert.equal(options.transparent, true)
+  assert.equal(options.vibrancy, 'sidebar')
+  assert.equal(options.visualEffectState, 'followWindow')
 })
 
 test('non-macOS window background follows the system appearance before content loads', () => {

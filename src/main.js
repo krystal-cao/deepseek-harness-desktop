@@ -63,6 +63,7 @@ let catalogError = null
 let managerWindow
 let installing = false
 let installingVersion = null
+let currentColorScheme = null
 
 app.setName(APP_NAME)
 app.setAboutPanelOptions({
@@ -203,6 +204,7 @@ function versionManagerSnapshot() {
     availableVersions: sortDshVersions(catalog.versions.map((item) => item.version)).map((version) => ({
       version,
       publishedAt: byVersion.get(version)?.publishedAt ?? null,
+      tags: byVersion.get(version)?.tags ?? [],
     })),
     error: catalogError,
   }
@@ -254,6 +256,7 @@ function openVersionManagerWindow() {
     managerWindow.focus()
     return
   }
+  const isMac = process.platform === 'darwin'
   managerWindow = new BrowserWindow({
     width: 920,
     height: 680,
@@ -261,9 +264,18 @@ function openVersionManagerWindow() {
     minHeight: 560,
     title: 'dsh 版本管理',
     show: false,
-    backgroundColor: '#f6f7f9',
+    backgroundColor: isMac ? '#00000000' : '#f6f7f9',
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 12, y: 11 },
+    ...(isMac
+      ? {
+          trafficLightPosition: { x: 12, y: 11 },
+          // Immersive manager window: native sidebar material behind a
+          // translucent sidebar, like the main window.
+          vibrancy: 'sidebar',
+          visualEffectState: 'followWindow',
+          transparent: true,
+        }
+      : {}),
     webPreferences: {
       preload: fileURLToPath(new URL('./version-manager-preload.cjs', import.meta.url)),
       contextIsolation: true,
@@ -272,7 +284,12 @@ function openVersionManagerWindow() {
     },
   })
   managerWindow.once('ready-to-show', () => managerWindow.show())
+  managerWindow.webContents.once('did-finish-load', () => {
+    startManagerThemeSync()
+    if (currentColorScheme) managerWindow?.webContents.send('dsh-versions:theme', { colorScheme: currentColorScheme })
+  })
   managerWindow.on('closed', () => {
+    stopManagerThemeSync()
     managerWindow = undefined
   })
   managerWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -282,10 +299,57 @@ function openVersionManagerWindow() {
   void managerWindow.loadFile(fileURLToPath(new URL('./version-manager-ui/index.html', import.meta.url)))
 }
 
+let managerThemeTimer = null
+
+/** Send the resolved color scheme to the manager window when it is open. */
+function syncManagerTheme(colorScheme) {
+  if (colorScheme !== 'dark' && colorScheme !== 'light') return
+  currentColorScheme = colorScheme
+  if (managerWindow && !managerWindow.isDestroyed()) {
+    managerWindow.webContents.send('dsh-versions:theme', { colorScheme })
+  }
+}
+
+/**
+ * DOM fallback for the theme signal: dsh marks dark mode with the stable
+ * `data-ds-dark-theme` attribute on <body>. The bridge plugin is preferred,
+ * but this keeps the manager window in sync even when the bridge is missing
+ * or slow to activate (e.g. right after a fresh plugin install).
+ */
+function readMainWindowColorScheme() {
+  if (!mainWindow || mainWindow.isDestroyed()) return Promise.resolve(null)
+  return mainWindow.webContents
+    .executeJavaScript(
+      "document.body ? (document.body.hasAttribute('data-ds-dark-theme') ? 'dark' : 'light') : null",
+      true,
+    )
+    .catch(() => null)
+}
+
+/** Poll the main window theme only while the manager window is open. */
+function startManagerThemeSync() {
+  stopManagerThemeSync()
+  void readMainWindowColorScheme().then((colorScheme) => syncManagerTheme(colorScheme))
+  managerThemeTimer = setInterval(() => {
+    void readMainWindowColorScheme().then((colorScheme) => syncManagerTheme(colorScheme))
+  }, 2000)
+}
+
+function stopManagerThemeSync() {
+  if (managerThemeTimer) {
+    clearInterval(managerThemeTimer)
+    managerThemeTimer = null
+  }
+}
+
 function registerVersionManagerIpc() {
   ipcMain.handle('dsh-versions:snapshot', (event) => {
     assertManagerSender(event)
     return versionManagerSnapshot()
+  })
+  ipcMain.handle('dsh-versions:theme-query', (event) => {
+    assertManagerSender(event)
+    return { colorScheme: currentColorScheme ?? 'light' }
   })
   ipcMain.handle('dsh-versions:refresh', async (event) => {
     assertManagerSender(event)
@@ -381,10 +445,17 @@ function readPluginList() {
     registry: currentNpmRegistry(),
   }).then((result) => ({
     ...result,
-    plugins: result.plugins.map((plugin) => ({
-      ...plugin,
-      managed: plugin.name === DESKTOP_HOST_PLUGIN,
-    })),
+    plugins: result.plugins
+      .map((plugin) => ({
+        ...plugin,
+        managed: plugin.name === DESKTOP_HOST_PLUGIN,
+      }))
+      // The built-in bridge plugin is always pinned to the bottom of the list
+      // so user plugins stay the focus of the manager.
+      .sort((a, b) => {
+        if (a.managed !== b.managed) return a.managed ? 1 : -1
+        return a.name.localeCompare(b.name)
+      }),
   }))
 }
 
@@ -606,8 +677,15 @@ async function launch() {
     console.log('[dsh-bridge] web plugins activated')
   })
   ipcMain.on('dsh-bridge:theme', (_event, snapshot) => {
-    if (!mainWindow || mainWindow.isDestroyed()) return
     const colorScheme = snapshot?.colorScheme
+    if (colorScheme === 'dark' || colorScheme === 'light') {
+      console.log('[dsh-bridge] theme', colorScheme)
+      syncManagerTheme(colorScheme)
+    }
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    // On macOS the sidebar material handles the window background (the page is
+    // translucent there); painting an opaque color would hide the vibrancy.
+    if (process.platform === 'darwin') return
     if (colorScheme === 'dark' || colorScheme === 'light') {
       mainWindow.setBackgroundColor(colorScheme === 'dark' ? '#151517' : '#ffffff')
     }

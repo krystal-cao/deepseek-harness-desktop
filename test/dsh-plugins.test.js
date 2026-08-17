@@ -7,6 +7,7 @@ import {
   buildDshPluginArgs,
   enrichPluginMetadata,
   ensureProfileNpmrc,
+  ensureProfilePnpmWorkspaceConfig,
   ensurePnpmShimDir,
   parsePnpmListJson,
   resolveLocalPluginVersions,
@@ -147,6 +148,47 @@ test('ensureProfileNpmrc writes the configured registry into the profile dir', (
     const npmrc = readFileSync(path.join(dir, '.npmrc'), 'utf8')
     assert.match(npmrc, /registry=https:\/\/registry\.npmmirror\.com\//)
     assert.match(npmrc, /prefer-offline=true/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('ensureProfilePnpmWorkspaceConfig relaxes the release-age gate without touching the rest of the file', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dsh-workspace-'))
+  try {
+    writeFileSync(
+      path.join(dir, 'pnpm-workspace.yaml'),
+      [
+        'packages:',
+        '  - .',
+        'nodeLinker: hoisted',
+        'minimumReleaseAgeExclude:',
+        '  - dshmarket@1.4.0',
+        'allowBuilds:',
+        '  node-pty: true',
+        '',
+      ].join('\n'),
+    )
+    ensureProfilePnpmWorkspaceConfig(dir)
+    const content = readFileSync(path.join(dir, 'pnpm-workspace.yaml'), 'utf8')
+    assert.match(content, /^minimumReleaseAge: 0$/m)
+    assert.match(content, /nodeLinker: hoisted/)
+    assert.match(content, /dshmarket@1\.4\.0/)
+    assert.match(content, /node-pty: true/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('ensureProfilePnpmWorkspaceConfig replaces an existing release-age value instead of duplicating it', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dsh-workspace-'))
+  try {
+    writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), 'minimumReleaseAge: 720\nnodeLinker: hoisted\n')
+    ensureProfilePnpmWorkspaceConfig(dir)
+    const content = readFileSync(path.join(dir, 'pnpm-workspace.yaml'), 'utf8')
+    assert.equal((content.match(/^minimumReleaseAge:/gm) ?? []).length, 1)
+    assert.match(content, /^minimumReleaseAge: 0$/m)
+    assert.match(content, /nodeLinker: hoisted/)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

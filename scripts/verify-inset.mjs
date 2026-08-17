@@ -27,6 +27,16 @@ await new Promise((resolve, reject) => {
 const expression = `(() => {
   const sidebar = document.querySelector('[class*="sidebarCol"]')
   if (!sidebar) return { error: 'sidebarCol not found' }
+  const alphaOf = (el) => {
+    if (!el) return null
+    const value = getComputedStyle(el).backgroundColor
+    if (value === 'transparent' || value === 'rgba(0, 0, 0, 0)') return 0
+    const nums = (value.match(/[\\d.]+/g) ?? []).map(Number)
+    if (nums.length === 0) return 1
+    if (value.includes('/')) return nums[nums.length - 1]
+    if (/rgba?\\(/.test(value)) return nums.length >= 4 ? nums[3] : 1
+    return 1
+  }
   const cs = getComputedStyle(sidebar)
   const dragRegionEl = document.getElementById('dsh-drag-region')
   const dragRegion = dragRegionEl ? getComputedStyle(dragRegionEl) : null
@@ -34,11 +44,20 @@ const expression = `(() => {
   const rect = sidebar.getBoundingClientRect()
   const logoRow = sidebar.querySelector('[class*="logoRow"]')
   const logoRect = logoRow?.getBoundingClientRect()
+  const frame = document.querySelector('[class*="frame"]:has(> [class*="sidebarCol"])')
+  const sidebarRoot = sidebar.querySelector('[class*="_root"]')
+  const sidebarFooter = sidebar.querySelector('[class*="footArea"], [class*="settingsArea"]')
   const interactiveControl = document.querySelector('button, a, input, textarea, select, [role="button"], [contenteditable]')
   const interactiveControlStyle = interactiveControl === null ? undefined : getComputedStyle(interactiveControl)
   return {
     paddingTop: cs.paddingTop,
     sidebarWidth: Math.round(rect.width),
+    htmlBgAlpha: alphaOf(document.documentElement),
+    bodyBgAlpha: alphaOf(document.body),
+    frameBgAlpha: alphaOf(frame),
+    sidebarBgAlpha: alphaOf(sidebar),
+    sidebarRootBgAlpha: alphaOf(sidebarRoot),
+    sidebarFooterBgAlpha: alphaOf(sidebarFooter),
     dragRegion: dragRegion
       ? dragRegion.getPropertyValue('-webkit-app-region') || dragRegion.getPropertyValue('app-region')
       : null,
@@ -114,6 +133,21 @@ if (result.interactiveControlRegion !== undefined && result.interactiveControlRe
 if (result.logoRowTop === undefined) failures.push('logoRow not found inside sidebar')
 if (result.logoRowTop !== undefined && result.logoRowTop < trafficLightBottom) {
   failures.push(`logo row top ${result.logoRowTop} overlaps traffic lights (bottom ${trafficLightBottom})`)
+}
+// Sidebar vibrancy invariants: every layer above the native material must be
+// translucent, otherwise the glass only shows where a layer happens to be
+// transparent (the "top strip only" regression from 0.0.8).
+if (result.htmlBgAlpha > 0.01) failures.push(`html background alpha is ${result.htmlBgAlpha}, expected transparent`)
+if (result.bodyBgAlpha > 0.01) failures.push(`body background alpha is ${result.bodyBgAlpha}, expected transparent`)
+if (result.frameBgAlpha > 0.01) failures.push(`frame background alpha is ${result.frameBgAlpha}, expected transparent`)
+if (result.sidebarBgAlpha === null || result.sidebarBgAlpha > 0.99 || result.sidebarBgAlpha <= 0) {
+  failures.push(`sidebar background alpha is ${result.sidebarBgAlpha}, expected translucent (0 < alpha < 1)`)
+}
+if (result.sidebarRootBgAlpha === null || result.sidebarRootBgAlpha > 0.99) {
+  failures.push(`sidebar inner root alpha is ${result.sidebarRootBgAlpha}, expected transparent/translucent`)
+}
+if (result.sidebarFooterBgAlpha === null || result.sidebarFooterBgAlpha > 0.01) {
+  failures.push(`sidebar footer alpha is ${result.sidebarFooterBgAlpha}, expected transparent`)
 }
 if (collapsedSidebarWidth !== null && (typeof collapsedSidebarWidth !== 'number' || collapsedSidebarWidth < 88)) {
   failures.push(`collapsed sidebar width ${collapsedSidebarWidth} < 88px (traffic-light strip)`)
