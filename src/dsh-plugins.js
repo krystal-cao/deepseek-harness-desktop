@@ -243,6 +243,59 @@ export async function listInstalledPlugins({
   return enrichPluginMetadata(resolveLocalPluginVersions(parsed))
 }
 
+/**
+ * Parse `pnpm outdated --json` output into a name → update-info map. Entries
+ * of other dependency types (devDependencies, ...) are ignored; malformed
+ * output degrades to an empty map so the UI can still show the plugin list.
+ */
+export function parsePnpmOutdatedJson(stdout) {
+  let data
+  try {
+    data = JSON.parse(stdout)
+  } catch {
+    return { outdated: {}, raw: stdout }
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return { outdated: {}, raw: stdout }
+  }
+  const outdated = {}
+  for (const [name, info] of Object.entries(data)) {
+    if (!info || typeof info !== 'object') continue
+    if (info.dependencyType && info.dependencyType !== 'dependencies') continue
+    outdated[name] = {
+      current: typeof info.current === 'string' ? info.current : null,
+      latest: typeof info.latest === 'string' ? info.latest : null,
+      wanted: typeof info.wanted === 'string' ? info.wanted : null,
+      deprecated: Boolean(info.isDeprecated),
+    }
+  }
+  return { outdated, raw: stdout }
+}
+
+/**
+ * Query which installed plugins have newer registry versions. pnpm exits 0
+ * when everything is current and 1 when outdated entries exist, so both are
+ * valid; anything above 1 (or unparseable stdout) is an error.
+ */
+export async function listPluginUpdates({
+  electronExecutable,
+  entry,
+  env = process.env,
+  timeoutMs = 60_000,
+} = {}) {
+  const result = await runDshPluginCommand({
+    electronExecutable,
+    entry,
+    args: ['outdated', '--json'],
+    env,
+    timeoutMs,
+  })
+  if (result.code > 1) {
+    throw new Error(`检测插件更新失败（退出码 ${result.code}）：${(result.stderr || result.stdout).trim().slice(-500)}`)
+  }
+  return parsePnpmOutdatedJson(result.stdout).outdated
+}
+
 /** Add an out-of-tree plugin to the profile (`dsh plugin ... add <spec>`). */
 export async function addPlugin({
   electronExecutable,

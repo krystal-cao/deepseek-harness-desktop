@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('dshVersions', {
 
 contextBridge.exposeInMainWorld('dshPlugins', {
   list: () => ipcRenderer.invoke('dsh-plugins:list'),
+  outdated: () => ipcRenderer.invoke('dsh-plugins:outdated'),
   add: (spec) => ipcRenderer.invoke('dsh-plugins:add', spec),
+  update: (name) => ipcRenderer.invoke('dsh-plugins:update', name),
   remove: (spec) => ipcRenderer.invoke('dsh-plugins:remove', spec),
 })

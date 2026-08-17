@@ -31,7 +31,9 @@ import { fetchDshCatalog } from './dsh-registry.js'
 import { readDshState, writeDshState } from './dsh-state.js'
 import {
   addPlugin,
+  ensureProfilePnpmWorkspaceConfig,
   listInstalledPlugins,
+  listPluginUpdates,
   removePlugin,
   resolvePluginPnpmEnv,
 } from './dsh-plugins.js'
@@ -522,6 +524,21 @@ function registerPluginManagerIpc() {
   ipcMain.handle('dsh-plugins:remove', (event, spec) => {
     assertManagerSender(event)
     return api.remove(spec)
+  })
+  ipcMain.handle('dsh-plugins:outdated', async (event) => {
+    assertManagerSender(event)
+    if (api.busy) throw new Error('已有插件操作进行中')
+    const listed = await readPluginList()
+    ensureProfilePnpmWorkspaceConfig(listed.path)
+    return listPluginUpdates({
+      electronExecutable: process.execPath,
+      entry: currentDshEntry(),
+      env: pluginCommandEnv(),
+    })
+  })
+  ipcMain.handle('dsh-plugins:update', (event, name) => {
+    assertManagerSender(event)
+    return api.update(name)
   })
 }
 

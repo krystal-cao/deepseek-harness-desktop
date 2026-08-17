@@ -73,6 +73,30 @@ test('add rejects non-zero exits without restarting', async () => {
   assert.equal(calls.restart, 0)
 })
 
+test('update validates the name and runs add with @latest', async () => {
+  let seen = null
+  const api = createPluginManagerApi({
+    listPlugins: async () => ({ plugins: [] }),
+    mutatePlugin: {
+      add: async (spec) => {
+        seen = spec
+        return { code: 0, stdout: '', stderr: '' }
+      },
+      remove: async () => ({ code: 0, stdout: '', stderr: '' }),
+    },
+    restartService: async () => {},
+  })
+  await api.update('dshmarket')
+  assert.equal(seen, 'dshmarket@latest')
+})
+
+test('update rejects invalid names without touching the CLI', async () => {
+  const { api, calls } = makeApi()
+  await assert.rejects(() => api.update('-rf /'), /无效的插件名/)
+  assert.equal(calls.add, 0)
+  assert.equal(calls.restart, 0)
+})
+
 test('concurrent mutations are rejected while one is in flight', async () => {
   let release
   const gate = new Promise((resolve) => {

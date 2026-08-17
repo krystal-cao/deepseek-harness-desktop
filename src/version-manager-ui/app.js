@@ -18,6 +18,8 @@ const pluginSpecEl = document.getElementById('plugin-spec')
 const pluginInstallButton = document.getElementById('plugin-install-button')
 const pluginCountEl = document.getElementById('plugin-count')
 const pluginsEl = document.getElementById('plugins')
+const checkUpdatesButton = document.getElementById('check-updates')
+const updateAllButton = document.getElementById('update-all')
 const navButtons = [...document.querySelectorAll('.nav-item')]
 const panels = {
   versions: document.getElementById('panel-versions'),
@@ -34,6 +36,9 @@ let busy = false
 let confirmingVersion = null
 let confirmingPlugin = null
 let pluginsState = { plugins: [], error: null }
+let checkingUpdates = false
+let updatingPlugin = null
+let updatingAll = false
 let activePanel = 'versions'
 let localInstallingVersion = null
 let localUninstallingVersion = null
@@ -251,10 +256,16 @@ function renderPluginRow(item) {
   const row = el('div', 'plugin-row')
   row.append(renderPluginIcon(item.name))
 
+  const updateInfo = pluginsState.outdated?.[item.name]
   const body = el('div', 'plugin-body')
   const nameLine = el('div', 'plugin-name', item.name)
   const version = el('span', 'version', item.version ? `v${item.version}${item.local ? ' · 本地' : ''}` : '')
   nameLine.append(version)
+  if (updateInfo?.latest) {
+    const badgeEl = el('span', 'badge blue', `${updateInfo.current ?? '?'} → ${updateInfo.latest}`)
+    badgeEl.title = '检测到新版本，可点击“更新”升级'
+    nameLine.append(badgeEl)
+  }
   body.append(nameLine)
   if (item.description) body.append(el('div', 'plugin-desc', item.description))
   row.append(body)
@@ -264,10 +275,19 @@ function renderPluginRow(item) {
   } else if (item.managed) {
     row.append(button('内置', { cls: 'gray', disabled: true }))
   } else {
+    if (updateInfo?.latest) {
+      row.append(
+        button(updatingPlugin === item.name ? '更新中…' : '更新', {
+          primary: true,
+          disabled: busy || checkingUpdates || updatingPlugin !== null,
+          onClick: () => updatePlugin(item.name),
+        }),
+      )
+    }
     row.append(
       button(confirmingPlugin === item.name ? '确认卸载' : '卸载', {
         danger: true,
-        disabled: busy,
+        disabled: busy || updatingPlugin !== null,
         onClick: () => {
           if (confirmingPlugin === item.name) void removePluginByName(item.name)
           else {
@@ -283,6 +303,10 @@ function renderPluginRow(item) {
 
 function renderPlugins() {
   pluginCountEl.textContent = pluginsState.plugins.length
+  checkUpdatesButton.disabled = busy || checkingUpdates
+  const outdatedCount = Object.keys(pluginsState.outdated).length
+  updateAllButton.hidden = outdatedCount <= 1
+  updateAllButton.disabled = busy || checkingUpdates || updatingAll
   pluginsEl.replaceChildren()
   if (pluginsState.error) {
     pluginsEl.append(el('div', 'empty', pluginsState.error))
@@ -305,6 +329,7 @@ async function refresh() {
     if (activePanel === 'plugins') {
       setStatus('正在读取插件列表…')
       pluginsState = await pluginsApi.list()
+      pluginsState.outdated = {}
       setStatus('')
     } else {
       setStatus('正在刷新…')
@@ -415,6 +440,87 @@ async function removePluginByName(spec) {
   }
 }
 
+async function checkUpdates() {
+  if (busy || checkingUpdates) return
+  checkingUpdates = true
+  confirmingPlugin = null
+  setStatus('正在检查插件更新…')
+  try {
+    pluginsState.outdated = await pluginsApi.outdated()
+    const count = Object.keys(pluginsState.outdated).length
+    setStatus(count > 0 ? `发现 ${count} 个插件有可用更新` : '所有插件均已是最新')
+  } catch (error) {
+    setStatus(error?.message ?? '检查插件更新失败', true)
+  } finally {
+    checkingUpdates = false
+    renderPlugins()
+  }
+}
+
+async function updatePlugin(name) {
+  busy = true
+  confirmingPlugin = null
+  updatingPlugin = name
+  setStatus(`正在更新 ${name}…`)
+  renderPlugins()
+  try {
+    const result = await pluginsApi.update(name)
+    if (result?.error) throw new Error(result.error)
+    pluginsState = result
+    try {
+      pluginsState.outdated = await pluginsApi.outdated()
+    } catch {
+      pluginsState.outdated = {}
+    }
+    setStatus(`插件 ${name} 已更新，dsh 服务已重启。`)
+  } catch (error) {
+    setStatus(error?.message ?? `更新 ${name} 失败`, true)
+  } finally {
+    busy = false
+    updatingPlugin = null
+    renderPlugins()
+  }
+}
+
+async function updateAllPlugins() {
+  const names = Object.keys(pluginsState.outdated)
+  if (names.length === 0 || busy) return
+  busy = true
+  confirmingPlugin = null
+  updatingAll = true
+  const errors = []
+  setStatus(`正在更新插件（0/${names.length}）…`)
+  renderPlugins()
+  try {
+    for (let i = 0; i < names.length; i += 1) {
+      const name = names[i]
+      setStatus(`正在更新插件 ${name}（${i + 1}/${names.length}）…`)
+      try {
+        const result = await pluginsApi.update(name)
+        if (result?.error) throw new Error(result.error)
+      } catch (error) {
+        errors.push(`${name}：${error?.message ?? '更新失败'}`)
+      }
+    }
+    try {
+      pluginsState = await pluginsApi.list()
+      pluginsState.outdated = await pluginsApi.outdated()
+    } catch {
+      // Keep the current list; the update results are still reported below.
+    }
+    setStatus(
+      errors.length === 0
+        ? `已更新 ${names.length} 个插件。`
+        : `更新完成，${errors.length} 个失败：${errors.join('；')}`,
+      errors.length > 0,
+    )
+  } finally {
+    busy = false
+    updatingAll = false
+    renderPlugins()
+  }
+}
+
 async function saveRegistry(value) {
   try {
     snapshot = await api.setNpmRegistry(value)
@@ -437,6 +543,8 @@ function setPanel(panel) {
 
 /* ── events ────────────────────────────────────────────────── */
 refreshButton.addEventListener('click', () => void refresh())
+checkUpdatesButton.addEventListener('click', () => void checkUpdates())
+updateAllButton.addEventListener('click', () => void updateAllPlugins())
 for (const nav of navButtons) {
   nav.addEventListener('click', () => {
     setPanel(nav.dataset.panel)

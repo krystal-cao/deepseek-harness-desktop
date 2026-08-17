@@ -134,8 +134,14 @@
           </form>
           <p class="hint">通过 dsh 的插件机制安装到 web profile，安装或卸载成功后会自动重启 dsh 服务。</p>
 
-          <div class="segmented">
-            <span class="segment active">已安装 <b id="plugin-count">0</b></span>
+          <div class="plugins-toolbar">
+            <div class="segmented">
+              <span class="segment active">已安装 <b id="plugin-count">0</b></span>
+            </div>
+            <div class="plugins-toolbar-actions">
+              <button type="button" id="update-all" class="button primary" hidden>全部更新</button>
+              <button type="button" id="check-updates" class="button">检查更新</button>
+            </div>
           </div>
           <div id="plugins" class="stack"></div>
           </section>

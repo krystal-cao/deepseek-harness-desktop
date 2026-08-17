@@ -34,6 +34,10 @@ export function createPluginManagerApi({ listPlugins, mutatePlugin, restartServi
       }
     },
     add: (spec) => runMutation(spec, mutatePlugin.add),
+    update: async (spec) => {
+      if (!validatePluginSpec(spec)) throw new Error('无效的插件名')
+      return runMutation(`${spec}@latest`, mutatePlugin.add)
+    },
     remove: (spec) => runMutation(spec, mutatePlugin.remove),
   }
 }

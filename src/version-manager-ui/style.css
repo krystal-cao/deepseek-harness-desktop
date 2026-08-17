@@ -594,6 +594,32 @@ label,
   border-radius: var(--radius-sm);
 }
 
+.plugins-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.plugins-toolbar .segmented {
+  margin-bottom: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.plugins-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The .button class sets display:inline-flex, which would override the UA
+   stylesheet's [hidden] rule and keep hidden buttons visible. */
+.plugins-toolbar-actions button[hidden] {
+  display: none;
+}
+
 .segment {
   padding: 5px 14px;
   border-radius: 8px;
@@ -663,6 +689,10 @@ label,
   font-size: 11.5px;
   font-weight: 500;
   color: var(--muted);
+}
+
+.plugin-name .badge {
+  margin-left: 8px;
 }
 
 .plugin-desc {

@@ -10,6 +10,7 @@ import {
   ensureProfilePnpmWorkspaceConfig,
   ensurePnpmShimDir,
   parsePnpmListJson,
+  parsePnpmOutdatedJson,
   resolveLocalPluginVersions,
   resolvePluginPnpmEnv,
   validatePluginSpec,
@@ -51,6 +52,42 @@ test('parsePnpmListJson extracts direct dependencies only', () => {
   ]))
   assert.deepEqual(plugins, [{ name: 'dshmarket', version: '1.2.3' }])
   assert.equal(profilePath, '/x')
+})
+
+test('parsePnpmOutdatedJson extracts registry update info and ignores other dependency types', () => {
+  const { outdated } = parsePnpmOutdatedJson(
+    JSON.stringify({
+      '@anionex/dsh-vision-toolkit': {
+        current: '0.1.26',
+        latest: '0.1.28',
+        wanted: '0.1.26',
+        isDeprecated: false,
+        dependencyType: 'dependencies',
+      },
+      'some-dev-dep': {
+        current: '2.0.0',
+        latest: '3.0.0',
+        wanted: '2.0.0',
+        isDeprecated: true,
+        dependencyType: 'devDependencies',
+      },
+      junk: 'not-an-object',
+    }),
+  )
+  assert.deepEqual(outdated, {
+    '@anionex/dsh-vision-toolkit': {
+      current: '0.1.26',
+      latest: '0.1.28',
+      wanted: '0.1.26',
+      deprecated: false,
+    },
+  })
+})
+
+test('parsePnpmOutdatedJson tolerates empty and malformed output', () => {
+  assert.deepEqual(parsePnpmOutdatedJson('{}').outdated, {})
+  assert.deepEqual(parsePnpmOutdatedJson('[]').outdated, {})
+  assert.deepEqual(parsePnpmOutdatedJson('not json at all').outdated, {})
 })
 
 test('parsePnpmListJson tolerates non-JSON output', () => {
