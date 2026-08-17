@@ -7,6 +7,7 @@ import {
   DSH_VERSION_PATTERN,
   isNewerVersion,
   resolveAutoCheckIntervalMs,
+  resolveNpmRegistry,
   resolveUpdaterCacheDirName,
   resolveUpdateFeed,
   sortDshVersions,
@@ -66,6 +67,14 @@ test('resolveUpdateFeed returns a generic feed only when configured', () => {
     provider: 'generic',
     url: 'https://example.com/updates',
   })
+})
+
+test('resolveNpmRegistry defaults to the domestic mirror with an env override', () => {
+  assert.equal(resolveNpmRegistry({}), 'https://registry.npmmirror.com/')
+  assert.equal(
+    resolveNpmRegistry({ DSH_NPM_REGISTRY: 'https://registry.npmjs.org/' }),
+    'https://registry.npmjs.org/',
+  )
 })
 
 test('resolveAutoCheckIntervalMs honours a valid override', () => {

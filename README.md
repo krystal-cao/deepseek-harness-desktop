@@ -61,7 +61,13 @@ DeepSeek Harness already provides the complete agent runtime and Web UI. This pr
 - Blends the macOS title bar with the active DSH light or dark theme and keeps
   the traffic lights on the sidebar even when it is collapsed
 - Manages official `@deepseek-ai/dsh` versions at runtime: install, switch, and
-  uninstall versions from the npm registry without rebuilding the app
+  uninstall versions from the npm registry without rebuilding the app, keeping
+  the pinned plugin family version-aligned with every installed dsh
+- Can auto-follow the latest official RC: after startup it installs and
+  switches to the newest `0.1.0-rc.*` from npm in the background (toggle in
+  the dsh manager window)
+- Manages out-of-tree plugins in the web profile (list / add / remove, backed
+  by `dsh plugin --profile web`), restarting the dsh service automatically
 
 ## Installation
 
@@ -134,7 +140,10 @@ Version Manager…) can also install and switch to newer official
   `build.publish.owner` / `build.publish.repo` in `package.json`.
 - Runtime overrides: set `DSH_UPDATE_URL` to switch to a generic provider
   (useful for testing or a non-GitHub mirror), or `DSH_DISABLE_AUTO_UPDATE=1`
-  to turn updates off.
+  to turn updates off. The npm registry defaults to the domestic mirror
+  `registry.npmmirror.com` (used by the version catalog and runtime installs);
+  set `DSH_NPM_REGISTRY` to switch, for example back to
+  `https://registry.npmjs.org/`.
 
 ### Release flow
 

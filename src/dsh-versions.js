@@ -15,7 +15,7 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { DSH_ANY_VERSION_PATTERN, DSH_VERSION_PATTERN } from './updater-config.js'
+import { DSH_ANY_VERSION_PATTERN, resolveNpmRegistry } from './updater-config.js'
 
 const OFFICIAL_PACKAGE = '@deepseek-ai/dsh'
 
@@ -39,6 +39,18 @@ function readPackageJson() {
 export function bundledDshVersion(pkg = readPackageJson()) {
   const pinned = pkg.dependencies?.[OFFICIAL_PACKAGE]
   return typeof pinned === 'string' && DSH_ANY_VERSION_PATTERN.test(pinned) ? pinned : null
+}
+
+/**
+ * The @deepseek-ai/dsh* plugin family the desktop build pins alongside the
+ * core package. Runtime installs mirror these at the same version so a
+ * switched version carries the whole family the web profile relies on,
+ * instead of depending on upstream caret ranges drifting between RCs.
+ */
+export function dshFamilyPins(pkg = readPackageJson()) {
+  return Object.keys(pkg.dependencies ?? {})
+    .filter((name) => name.startsWith('@deepseek-ai/dsh-'))
+    .sort()
 }
 
 function resolvePackageRoot(root) {
@@ -76,7 +88,8 @@ export function listInstalledVersions(versionsDir) {
   return entries
 }
 
-function resolvePnpmCli() {
+/** Locate the bundled pnpm CLI (packaged assets first, dev node_modules next). */
+export function resolvePnpmCli() {
   const candidates = [
     new URL('../assets/bin/pnpm-pkg/bin/pnpm.cjs', import.meta.url),
     new URL('../node_modules/pnpm/bin/pnpm.cjs', import.meta.url),
@@ -88,11 +101,61 @@ function resolvePnpmCli() {
   throw new Error('找不到内置 pnpm CLI')
 }
 
+/**
+ * Query the registry for which family packages published `version`, so the
+ * staging project only pins packages upstream actually shipped for that
+ * version. Uses the abbreviated metadata format npm install itself uses.
+ */
+export async function resolveAlignedFamily({
+  version,
+  names = dshFamilyPins(),
+  registry = resolveNpmRegistry(),
+  fetcher = fetch,
+  timeoutMs = 10_000,
+} = {}) {
+  const base = registry.replace(/\/+$/, '')
+  const results = await Promise.all(
+    names.map(async (name) => {
+      try {
+        const response = await fetcher(`${base}/${name}`, {
+          headers: { accept: 'application/vnd.npm.install-v1+json' },
+          signal: AbortSignal.timeout(timeoutMs),
+        })
+        if (!response.ok) return { name, available: false }
+        const data = await response.json()
+        return { name, available: Boolean(data.versions?.[version]) }
+      } catch {
+        return { name, available: false }
+      }
+    }),
+  )
+  return {
+    available: results.filter((item) => item.available).map((item) => item.name).sort(),
+    missing: results.filter((item) => !item.available).map((item) => item.name).sort(),
+  }
+}
+
+/**
+ * Report which family packages are present in an installed version tree and
+ * whether each matches the tree's dsh version.
+ */
+export function readInstalledFamily(root, version) {
+  return dshFamilyPins().map((name) => {
+    const manifestPath = path.join(root, 'node_modules', name, 'package.json')
+    try {
+      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+      return { name, version: manifest.version ?? null, aligned: manifest.version === version }
+    } catch {
+      return { name, version: null, aligned: false }
+    }
+  })
+}
+
 function runPnpmInstall(staging, version, env) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [resolvePnpmCli(), 'add', `${OFFICIAL_PACKAGE}@${version}`], {
       cwd: staging,
-      env: { ...env, ELECTRON_RUN_AS_NODE: '1' },
+      env: { ...env, ELECTRON_RUN_AS_NODE: '1', npm_config_registry: resolveNpmRegistry() },
       stdio: ['ignore', 'ignore', 'pipe'],
     })
     let stderr = ''
@@ -107,8 +170,12 @@ function runPnpmInstall(staging, version, env) {
   })
 }
 
-/** Write the staging project files pnpm needs for an official dsh install. */
-export function writeStagingProject(staging, version) {
+/**
+ * Write the staging project files pnpm needs for an official dsh install.
+ * `extraDeps` carries the version-aligned plugin family so the installed tree
+ * is a complete installation, not just the core package.
+ */
+export function writeStagingProject(staging, version, extraDeps = {}) {
   writeFileSync(
     path.join(staging, 'package.json'),
     `${JSON.stringify(
@@ -116,7 +183,7 @@ export function writeStagingProject(staging, version) {
         name: 'deepseek-harness-desktop-managed-dsh',
         version: '0.0.0',
         private: true,
-        dependencies: { [OFFICIAL_PACKAGE]: version },
+        dependencies: { [OFFICIAL_PACKAGE]: version, ...extraDeps },
       },
       null,
       2,
@@ -124,7 +191,7 @@ export function writeStagingProject(staging, version) {
   )
   writeFileSync(
     path.join(staging, '.npmrc'),
-    'registry=https://registry.npmjs.org/\nprefer-offline=true\naudit=false\n',
+    `registry=${resolveNpmRegistry()}\nprefer-offline=true\naudit=false\n`,
   )
   // pnpm 11 no longer reads the "pnpm" field in package.json; build-script
   // approvals live in pnpm-workspace.yaml under allowBuilds. dsh needs these
@@ -151,6 +218,7 @@ export async function installDshVersion({
   availableVersions,
   onProgress = () => {},
   env = process.env,
+  family,
 }) {
   if (!DSH_ANY_VERSION_PATTERN.test(version)) throw new Error(`无效的 DSH 版本号：${version}`)
   if (!availableVersions.includes(version)) throw new Error('该版本不在官方 npm 版本目录中')
@@ -163,13 +231,24 @@ export async function installDshVersion({
   const staging = path.join(versionsDir, `.install-${version}-${Date.now()}`)
   mkdirSync(staging, { recursive: true })
   try {
-    writeStagingProject(staging, version)
-    onProgress({ version, phase: 'downloading', message: `正在安装官方 DSH ${version}` })
+    const aligned = family ?? (await resolveAlignedFamily({ version }))
+    const extraDeps = Object.fromEntries(aligned.available.map((name) => [name, version]))
+    const familyTotal = aligned.available.length + aligned.missing.length
+    writeStagingProject(staging, version, extraDeps)
+    onProgress({
+      version,
+      phase: 'downloading',
+      message: `正在安装官方 DSH ${version}（插件族 ${aligned.available.length}/${familyTotal} 对齐）`,
+    })
     await runPnpmInstall(staging, version, env)
     onProgress({ version, phase: 'validating', message: '正在校验官方包版本和入口' })
     if (!readResolvedEntry(staging, version)) throw new Error('官方 DSH 包身份或入口校验失败')
     renameSync(staging, destination)
-    onProgress({ version, phase: 'complete', message: `DSH ${version} 已安装` })
+    onProgress({
+      version,
+      phase: 'complete',
+      message: `DSH ${version} 已安装（插件族 ${aligned.available.length} 个对齐，${aligned.missing.length} 个暂未发布）`,
+    })
   } catch (error) {
     rmSync(staging, { recursive: true, force: true })
     onProgress({ version, phase: 'failed', message: error instanceof Error ? error.message : '安装失败' })

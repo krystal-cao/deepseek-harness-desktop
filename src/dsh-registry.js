@@ -1,14 +1,19 @@
 // Query the official @deepseek-ai/dsh version catalog from the npm registry.
-import { DSH_ANY_VERSION_PATTERN } from './updater-config.js'
+import { DSH_ANY_VERSION_PATTERN, resolveNpmRegistry } from './updater-config.js'
 
-const REGISTRY_URL = 'https://registry.npmjs.org/@deepseek-ai/dsh'
+const PACKAGE_PATH = '@deepseek-ai/dsh'
 
 /**
  * Fetch the official catalog, filtered to the 0.1.0-rc train the shell tracks.
  * Returns `{ latest, versions: [{ version, publishedAt }] }`.
  */
-export async function fetchDshCatalog({ fetcher = fetch, timeoutMs = 15_000 } = {}) {
-  const response = await fetcher(REGISTRY_URL, {
+export async function fetchDshCatalog({
+  fetcher = fetch,
+  timeoutMs = 15_000,
+  registry = resolveNpmRegistry(),
+} = {}) {
+  const base = registry.replace(/\/+$/, '')
+  const response = await fetcher(`${base}/${PACKAGE_PATH}`, {
     headers: { accept: 'application/json' },
     signal: AbortSignal.timeout(timeoutMs),
   })

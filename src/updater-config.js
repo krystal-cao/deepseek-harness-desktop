@@ -59,6 +59,15 @@ export function resolveUpdateFeed(env = process.env) {
   return env.DSH_UPDATE_URL ? { provider: 'generic', url: env.DSH_UPDATE_URL } : undefined
 }
 
+/**
+ * npm registry used for the dsh version catalog and runtime installs. Defaults
+ * to the domestic npmmirror mirror; set DSH_NPM_REGISTRY to switch (for
+ * example back to the official https://registry.npmjs.org/).
+ */
+export function resolveNpmRegistry(env = process.env) {
+  return env.DSH_NPM_REGISTRY || 'https://registry.npmmirror.com/'
+}
+
 /** Auto-check interval in milliseconds; overridable for tests. */
 export function resolveAutoCheckIntervalMs(env = process.env, defaultMs = 4 * 60 * 60 * 1000) {
   const value = Number(env.DSH_UPDATE_CHECK_INTERVAL_MS)

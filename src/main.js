@@ -20,9 +20,22 @@ import { initAutoUpdater } from './updater.js'
 import { hidePluginLoadingScreen } from './hide-plugin-loading.js'
 import { waitForWebUiReady } from './webui-ready.js'
 import { createWindowOptions } from './window-options.js'
-import { bundledDshVersion, installDshVersion, listInstalledVersions, versionsDirFor } from './dsh-versions.js'
+import {
+  bundledDshVersion,
+  installDshVersion,
+  listInstalledVersions,
+  readInstalledFamily,
+  versionsDirFor,
+} from './dsh-versions.js'
 import { fetchDshCatalog } from './dsh-registry.js'
 import { readDshState, writeDshState } from './dsh-state.js'
+import {
+  addPlugin,
+  listInstalledPlugins,
+  removePlugin,
+  resolvePluginPnpmEnv,
+  validatePluginSpec,
+} from './dsh-plugins.js'
 import { DSH_ANY_VERSION_PATTERN, isNewerVersion, sortDshVersions } from './updater-config.js'
 
 const APP_NAME = 'DeepSeek Harness'
@@ -41,6 +54,7 @@ let catalog = { latest: null, versions: [] }
 let catalogError = null
 let managerWindow
 let installing = false
+let pluginBusy = false
 
 app.setName(APP_NAME)
 app.setAboutPanelOptions({
@@ -133,7 +147,12 @@ function installedVersionList() {
     ...listInstalledVersions(versionsDir),
   ]
   const seen = new Set()
-  return entries.filter((item) => (seen.has(item.version) ? false : (seen.add(item.version), true)))
+  return entries
+    .filter((item) => (seen.has(item.version) ? false : (seen.add(item.version), true)))
+    .map((item) => {
+      if (item.source !== 'installed') return item
+      return { ...item, family: readInstalledFamily(path.join(versionsDir, item.version), item.version) }
+    })
 }
 
 function ensureSelection() {
@@ -149,6 +168,7 @@ function versionManagerSnapshot() {
     selectedVersion: versionState.selectedVersion,
     latestVersion: catalog.latest,
     dismissedLatest: versionState.dismissedLatest,
+    autoFollowLatest: versionState.autoFollowLatest,
     installedVersions: installedVersionList(),
     availableVersions: sortDshVersions(catalog.versions.map((item) => item.version)).map((version) => ({
       version,
@@ -221,9 +241,6 @@ function openVersionManagerWindow() {
 }
 
 function registerVersionManagerIpc() {
-  const assertManagerSender = (event) => {
-    if (!managerWindow || event.sender !== managerWindow.webContents) throw new Error('拒绝未知窗口调用')
-  }
   ipcMain.handle('dsh-versions:snapshot', (event) => {
     assertManagerSender(event)
     return versionManagerSnapshot()
@@ -280,6 +297,117 @@ function registerVersionManagerIpc() {
     rmSync(target, { recursive: true, force: true })
     return versionManagerSnapshot()
   })
+  ipcMain.handle('dsh-versions:set-auto-follow', (event, value) => {
+    assertManagerSender(event)
+    if (typeof value !== 'boolean') throw new Error('无效的自动跟随设置')
+    versionState.autoFollowLatest = value
+    writeDshState(app.getPath('userData'), versionState)
+    return versionManagerSnapshot()
+  })
+}
+
+function assertManagerSender(event) {
+  if (!managerWindow || event.sender !== managerWindow.webContents) throw new Error('拒绝未知窗口调用')
+}
+
+function pluginCommandEnv() {
+  return resolvePluginPnpmEnv({
+    env: {
+      ...process.env,
+      ...(resolvedUserPath !== undefined ? { PATH: resolvedUserPath } : {}),
+      NODE_OPTIONS: '',
+    },
+  })
+}
+
+function readPluginList() {
+  return listInstalledPlugins({
+    electronExecutable: process.execPath,
+    entry: currentDshEntry(),
+    env: pluginCommandEnv(),
+  })
+}
+
+function registerPluginManagerIpc() {
+  ipcMain.handle('dsh-plugins:list', async (event) => {
+    assertManagerSender(event)
+    if (pluginBusy) return { plugins: [], raw: '', error: '插件操作进行中，请稍候' }
+    try {
+      return await readPluginList()
+    } catch (error) {
+      return { plugins: [], raw: '', error: error instanceof Error ? error.message : '读取插件列表失败' }
+    }
+  })
+  const runPluginMutation = async (event, spec, mutate) => {
+    assertManagerSender(event)
+    if (pluginBusy) throw new Error('已有插件操作进行中')
+    if (!validatePluginSpec(spec)) throw new Error('无效的插件名')
+    pluginBusy = true
+    try {
+      const result = await mutate(spec)
+      if (result.code !== 0) {
+        throw new Error(`${result.stderr || result.stdout}`.trim().slice(-800))
+      }
+      await restartDshService()
+      return readPluginList()
+    } finally {
+      pluginBusy = false
+    }
+  }
+  ipcMain.handle('dsh-plugins:add', (event, spec) =>
+    runPluginMutation(event, spec, (value) =>
+      addPlugin({
+        electronExecutable: process.execPath,
+        entry: currentDshEntry(),
+        spec: value,
+        env: pluginCommandEnv(),
+      }),
+    ),
+  )
+  ipcMain.handle('dsh-plugins:remove', (event, spec) =>
+    runPluginMutation(event, spec, (value) =>
+      removePlugin({
+        electronExecutable: process.execPath,
+        entry: currentDshEntry(),
+        spec: value,
+        env: pluginCommandEnv(),
+      }),
+    ),
+  )
+}
+
+/**
+ * With auto-follow enabled, install and select the newest official RC in the
+ * background once the catalog is loaded, then restart the service so the new
+ * runtime (and its aligned plugin family) takes effect.
+ */
+async function followLatestIfEnabled() {
+  if (!versionState.autoFollowLatest) return
+  const latest = catalog.latest
+  const selected = versionState.selectedVersion
+  if (!latest || !selected || !isNewerVersion(latest, selected)) return
+  if (installing || isRestartingService) return
+  installing = true
+  try {
+    await installDshVersion({
+      versionsDir,
+      version: latest,
+      availableVersions: catalog.versions.map((item) => item.version),
+      env: {
+        ...process.env,
+        ...(resolvedUserPath !== undefined ? { PATH: resolvedUserPath } : {}),
+        NODE_OPTIONS: '',
+      },
+    })
+    versionState.selectedVersion = latest
+    writeDshState(app.getPath('userData'), versionState)
+    console.log(`[auto-follow] DSH ${latest} installed and selected`)
+    await restartDshService()
+  } catch (error) {
+    console.warn(`[auto-follow] install of DSH ${latest} failed:`, error instanceof Error ? error.message : error)
+  } finally {
+    installing = false
+  }
 }
 
 function currentDshEntry() {
@@ -346,6 +474,7 @@ async function restartDshService() {
   try {
     await stopHarnessService()
     const next = startHarnessService()
+    watchServiceExit()
     const url = await next.ready
     serviceUrl = url
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -371,7 +500,8 @@ async function restartDshService() {
  * reload the window so plugin changes take effect.
  */
 function watchServiceExit() {
-  service.child.on('exit', () => {
+  const current = service
+  current.child.on('exit', () => {
     if (isQuitting || isRestartingService) return
     setTimeout(() => {
       if (isQuitting || isRestartingService) return
@@ -402,6 +532,7 @@ async function launch() {
   ensureSelection()
   writeDshState(app.getPath('userData'), versionState)
   registerVersionManagerIpc()
+  registerPluginManagerIpc()
   startHarnessService()
   watchServiceExit()
 
@@ -419,9 +550,9 @@ async function launch() {
     app.quit()
   }
 
-  void refreshCatalog().then(() => {
-    maybeNotifyDshUpdate()
-  })
+  void refreshCatalog()
+    .then(() => followLatestIfEnabled())
+    .then(() => maybeNotifyDshUpdate())
 }
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
