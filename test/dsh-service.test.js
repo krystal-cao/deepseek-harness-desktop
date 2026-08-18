@@ -8,6 +8,7 @@ import {
   buildDshArgs,
   extractReadyUrl,
   resolveDshEntry,
+  resolveDshEntrySource,
   unpackedPath,
   withBundledBinPath,
 } from '../src/dsh-service.js'
@@ -63,6 +64,41 @@ test('resolveDshEntry ignores unsafe version paths', () => {
     resolveDshEntry('../../etc', '/tmp').endsWith(path.join('@deepseek-ai', 'dsh', 'lib', 'bin.js')),
     true,
   )
+})
+
+test('resolveDshEntrySource reports a user tree only when its entry exists', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dsh-source-'))
+  try {
+    const entry = path.join(dir, '0.1.0-rc.6', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+    mkdirSync(path.dirname(entry), { recursive: true })
+    writeFileSync(entry, '')
+    assert.equal(resolveDshEntrySource('0.1.0-rc.6', dir), 'user')
+    // Not installed, unsafe version strings, missing arguments → bundled.
+    assert.equal(resolveDshEntrySource('0.1.0-rc.7', dir), 'bundled')
+    assert.equal(resolveDshEntrySource('../../etc', dir), 'bundled')
+    assert.equal(resolveDshEntrySource('0.1.0-rc.6', undefined), 'bundled')
+    assert.equal(resolveDshEntrySource(undefined, dir), 'bundled')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('resolveDshEntrySource and resolveDshEntry agree on the same candidate', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dsh-source-'))
+  try {
+    const entry = path.join(dir, '0.1.0-rc.6', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+    mkdirSync(path.dirname(entry), { recursive: true })
+    writeFileSync(entry, '')
+    assert.equal(resolveDshEntrySource('0.1.0-rc.6', dir), 'user')
+    assert.equal(resolveDshEntry('0.1.0-rc.6', dir), entry)
+    assert.equal(resolveDshEntrySource('0.0.1-rc.5', dir), 'bundled')
+    assert.equal(
+      resolveDshEntry('0.0.1-rc.5', dir).endsWith(path.join('@deepseek-ai', 'dsh', 'lib', 'bin.js')),
+      true,
+    )
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 test('unpackedPath maps packaged dependencies to Electron unpacked resources', () => {

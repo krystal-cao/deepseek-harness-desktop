@@ -192,7 +192,10 @@ function renderAvailableVersion(item) {
   const installed = (snapshot?.installedVersions ?? []).some((entry) => entry.version === item.version)
   const installing = activeInstall()
   if (isCurrent(item.version)) {
-    row.append(button('使用中', { primary: true, disabled: true }))
+    // The selected tree may be gone/corrupted even though the selection
+    // string matches; the shell then runs the bundled dsh, so this row must
+    // not pretend the version is active.
+    row.append(button(snapshot?.selectedVersionFallback ? '不可用' : '使用中', { primary: true, disabled: true }))
   } else if (installing === item.version) {
     row.append(button('安装中…', { primary: true, disabled: true }))
   } else if (installed) {
@@ -217,6 +220,14 @@ function render() {
   sidebarVersionEl.textContent = snapshot.selectedVersion ? `v${snapshot.selectedVersion}` : '—'
 
   installedEl.replaceChildren()
+  if (snapshot.selectedVersionFallback) {
+    const warn = el('div', 'banner warn')
+    warn.append(el('span', 'banner-mark', '⚠'))
+    const text = el('span')
+    text.textContent = `所选版本 ${snapshot.selectedVersion} 已不可用（安装文件缺失或损坏），当前实际运行应用内置版本 ${snapshot.bundledVersion ?? '—'}。可在下方重新切换。`
+    warn.append(text)
+    installedEl.append(warn)
+  }
   const installed = snapshot.installedVersions ?? []
   if (installed.length === 0) {
     installedEl.append(el('div', 'empty', '暂无已安装版本（应用内置版本可用）。'))

@@ -491,6 +491,29 @@ label,
   font-size: 12.5px;
 }
 
+/* ── fallback warning banner ───────────────────────────────── */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.banner.warn {
+  background: var(--next-soft);
+  border: 1px solid var(--next-border);
+  color: var(--text);
+}
+
+.banner-mark {
+  flex: none;
+  font-weight: 700;
+  color: var(--next);
+}
+
 /* ── version rows ──────────────────────────────────────────── */
 .version-row {
   display: flex;

@@ -7,14 +7,28 @@ import { DSH_ANY_VERSION_PATTERN } from './updater-config.js'
 const READY_PATTERN = /^dsh web: (http:\/\/127\.0\.0\.1:\d+)\b/m
 
 /**
+ * Report which dsh tree a selection resolves to: 'user' when the installed
+ * tree under <versionsDir>/<version> is present, 'bundled' otherwise. Mirrors
+ * the candidate check in resolveDshEntry so the shell can surface a silent
+ * fallback (e.g. a selected version that was corrupted after launch) to the
+ * UI instead of pretending the user's version is still running.
+ */
+export function resolveDshEntrySource(version, versionsDir) {
+  if (version && versionsDir && DSH_ANY_VERSION_PATTERN.test(version)) {
+    const candidate = join(versionsDir, version, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+    if (existsSync(candidate)) return 'user'
+  }
+  return 'bundled'
+}
+
+/**
  * Resolve the dsh CLI entry. When a user-installed version is selected, prefer
  * its tree under <versionsDir>/<version>; otherwise fall back to the bundled
  * @deepseek-ai/dsh that ships with the shell.
  */
 export function resolveDshEntry(version, versionsDir) {
-  if (version && versionsDir && DSH_ANY_VERSION_PATTERN.test(version)) {
-    const candidate = join(versionsDir, version, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
-    if (existsSync(candidate)) return candidate
+  if (resolveDshEntrySource(version, versionsDir) === 'user') {
+    return join(versionsDir, version, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
   }
   return unpackedPath(fileURLToPath(import.meta.resolve('@deepseek-ai/dsh/lib/bin.js')))
 }

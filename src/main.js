@@ -13,7 +13,7 @@ import {
   nativeTheme,
   shell,
 } from 'electron'
-import { resolveDshEntry, startDshService } from './dsh-service.js'
+import { resolveDshEntry, resolveDshEntrySource, startDshService } from './dsh-service.js'
 import { buildAppMenuTemplate } from './app-menu.js'
 import { applyMacTitleBarStyle } from './mac-titlebar.js'
 import { initAutoUpdater } from './updater.js'
@@ -194,9 +194,17 @@ function ensureSelection() {
 
 function versionManagerSnapshot() {
   const byVersion = new Map(catalog.versions.map((item) => [item.version, item]))
+  const selected = versionState.selectedVersion
+  const selectedSource = resolveDshEntrySource(selected, versionsDir)
   return {
     appVersion: app.getVersion(),
-    selectedVersion: versionState.selectedVersion,
+    selectedVersion: selected,
+    // True when the selected version's installed tree is gone or corrupted, so
+    // the shell silently runs the bundled dsh. The manager UI shows a warning
+    // instead of pretending the user's version is still active.
+    selectedVersionFallback:
+      selected !== null && selectedSource === 'bundled' && selected !== bundledDshVersion(),
+    bundledVersion: bundledDshVersion(),
     latestVersion: catalog.latest,
     dismissedLatest: versionState.dismissedLatest,
     autoFollowLatest: versionState.autoFollowLatest,
@@ -586,6 +594,10 @@ function currentDshEntry() {
 }
 
 function startHarnessService({ userPath = resolvedUserPath } = {}) {
+  const selected = versionState.selectedVersion
+  if (selected && resolveDshEntrySource(selected, versionsDir) === 'bundled' && selected !== bundledDshVersion()) {
+    console.warn(`[dsh-service] selected DSH ${selected} is unavailable; running bundled ${bundledDshVersion()}`)
+  }
   service = startDshService({
     electronExecutable: process.execPath,
     entry: currentDshEntry(),
