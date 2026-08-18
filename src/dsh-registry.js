@@ -13,8 +13,12 @@ export async function fetchDshCatalog({
   registry = resolveNpmRegistry(),
 } = {}) {
   const base = registry.replace(/\/+$/, '')
+  // The abbreviated install-v1 format carries dist-tags and time alongside
+  // version manifests for a fraction of the payload: the full application/json
+  // document re-sends every version's complete manifest, readme and repository
+  // metadata, most of which the catalog never uses.
   const response = await fetcher(`${base}/${PACKAGE_PATH}`, {
-    headers: { accept: 'application/json' },
+    headers: { accept: 'application/vnd.npm.install-v1+json' },
     signal: AbortSignal.timeout(timeoutMs),
   })
   if (!response.ok) throw new Error(`无法查询官方 DSH 版本（HTTP ${response.status}）`)

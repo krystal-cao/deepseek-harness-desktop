@@ -69,3 +69,21 @@ test('fetchDshCatalog rejects when latest is not a valid dsh version', async () 
     /latest/,
   )
 })
+
+test('fetchDshCatalog requests the abbreviated npm metadata format', async () => {
+  let requestedAccept
+  await fetchDshCatalog({
+    fetcher: async (url, options) => {
+      requestedAccept = options?.headers?.accept
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          'dist-tags': { latest: '0.1.0-rc.6' },
+          versions: { '0.1.0-rc.6': {} },
+        }),
+      }
+    },
+  })
+  assert.equal(requestedAccept, 'application/vnd.npm.install-v1+json')
+})

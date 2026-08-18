@@ -13,7 +13,7 @@ import {
   nativeTheme,
   shell,
 } from 'electron'
-import { resolveDshEntry, resolveDshEntrySource, startDshService } from './dsh-service.js'
+import { resolveDshEntry, resolveDshEntrySource, startDshService, unpackedPath } from './dsh-service.js'
 import { buildAppMenuTemplate } from './app-menu.js'
 import { applyMacTitleBarStyle } from './mac-titlebar.js'
 import { initAutoUpdater } from './updater.js'
@@ -22,6 +22,7 @@ import { waitForWebUiReady } from './webui-ready.js'
 import { createWindowOptions } from './window-options.js'
 import {
   bundledDshVersion,
+  cleanupStaleInstallDirs,
   installDshVersion,
   listInstalledVersions,
   readInstalledFamily,
@@ -29,6 +30,7 @@ import {
 } from './dsh-versions.js'
 import { fetchDshCatalog } from './dsh-registry.js'
 import { readDshState, writeDshState } from './dsh-state.js'
+import { readUserPathCache, writeUserPathCache } from './user-path-cache.js'
 import {
   addPlugin,
   ensureProfilePnpmWorkspaceConfig,
@@ -48,7 +50,11 @@ import {
 
 const APP_NAME = 'DeepSeek Harness'
 const DESKTOP_HOST_PLUGIN = 'dsh-desktop-host'
-const DESKTOP_HOST_BUNDLE_PATH = fileURLToPath(new URL('../assets/dsh-desktop-host', import.meta.url))
+// the file: install target for the bundled bridge plugin. When asar is on the
+// bundle is unpacked under app.asar.unpacked; pnpm needs a real on-disk path.
+const DESKTOP_HOST_BUNDLE_PATH = unpackedPath(
+  fileURLToPath(new URL('../assets/dsh-desktop-host', import.meta.url)),
+)
 const execFileAsync = promisify(execFile)
 
 let mainWindow
@@ -90,8 +96,21 @@ function createWindow(serviceUrl) {
   })
 
   mainWindow.webContents.on('will-navigate', (event, url) => {
+    let target
+    try {
+      target = new URL(url)
+    } catch {
+      // Malformed or non-URL navigation (e.g. javascript:): always refuse the
+      // in-window navigation.
+      event.preventDefault()
+      return
+    }
+    if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+      event.preventDefault()
+      return
+    }
     const currentUrl = mainWindow?.webContents.getURL()
-    if (currentUrl && new URL(url).origin !== new URL(currentUrl).origin) {
+    if (currentUrl && target.origin !== new URL(currentUrl).origin) {
       event.preventDefault()
       void shell.openExternal(url)
     }
@@ -116,7 +135,6 @@ function createWindow(serviceUrl) {
     }
   })
   mainWindow.on('closed', () => {
-    if (!mainWindow?.isDestroyed()) return
     mainWindow = undefined
   })
 
@@ -324,7 +342,10 @@ function syncManagerTheme(colorScheme) {
  * DOM fallback for the theme signal: dsh marks dark mode with the stable
  * `data-ds-dark-theme` attribute on <body>. The bridge plugin is preferred,
  * but this keeps the manager window in sync even when the bridge is missing
- * or slow to activate (e.g. right after a fresh plugin install).
+ * or slow to activate (e.g. right after a fresh plugin install). The poll
+ * only runs while the manager window is open and at a low cadence; the
+ * `dsh-bridge:theme` push is the primary signal and the poll exists purely as
+ * a safety net for a missing bridge.
  */
 function readMainWindowColorScheme() {
   if (!mainWindow || mainWindow.isDestroyed()) return Promise.resolve(null)
@@ -342,7 +363,7 @@ function startManagerThemeSync() {
   void readMainWindowColorScheme().then((colorScheme) => syncManagerTheme(colorScheme))
   managerThemeTimer = setInterval(() => {
     void readMainWindowColorScheme().then((colorScheme) => syncManagerTheme(colorScheme))
-  }, 2000)
+  }, 10_000)
 }
 
 function stopManagerThemeSync() {
@@ -616,8 +637,7 @@ function startHarnessService({ userPath = resolvedUserPath } = {}) {
  * pyenv and other tools that GUI launches do not inherit. Falls back to the
  * well-known user bin directories when the shell cannot be read.
  */
-async function loadUserPath() {
-  if (process.platform !== 'darwin') return undefined
+async function resolveUserPathFromShell() {
   try {
     const { stdout } = await execFileAsync('/bin/zsh', ['-ilc', 'print -r -- "$PATH"'], {
       timeout: 3_000,
@@ -634,6 +654,31 @@ async function loadUserPath() {
   return parts.join(path.delimiter)
 }
 
+/**
+ * The PATH the shell should use, cached across launches. Loading a login
+ * shell profile can take up to three seconds, so a previously resolved value
+ * is returned instantly and refreshed in the background: the running service
+ * keeps the cached PATH (stable and sufficient), while the freshly resolved
+ * one is persisted for the next launch and adopted by later plugin commands.
+ */
+async function loadUserPath() {
+  if (process.platform !== 'darwin') return undefined
+  const userData = app.getPath('userData')
+  const cached = readUserPathCache(userData)
+  if (cached !== null) {
+    void resolveUserPathFromShell()
+      .then((fresh) => {
+        writeUserPathCache(userData, fresh)
+        resolvedUserPath = fresh
+      })
+      .catch(() => {})
+    return cached
+  }
+  const fresh = await resolveUserPathFromShell()
+  writeUserPathCache(userData, fresh)
+  return fresh
+}
+
 function stopHarnessService() {
   const current = service
   if (!current) return Promise.resolve()
@@ -642,7 +687,17 @@ function stopHarnessService() {
       resolve()
       return
     }
-    const timer = setTimeout(resolve, 5_000)
+    const timer = setTimeout(() => {
+      // The child ignored SIGTERM (hung thread, deadlock, ...): escalate to
+      // SIGKILL so a stale dsh host can never hold the loopback port while a
+      // replacement starts.
+      try {
+        current.child.kill('SIGKILL')
+      } catch {
+        // Already gone.
+      }
+      resolve()
+    }, 5_000)
     current.child.once('exit', () => {
       clearTimeout(timer)
       resolve()
@@ -733,6 +788,9 @@ async function launch() {
 
   resolvedUserPath = await loadUserPath()
   versionsDir = versionsDirFor(app.getPath('userData'))
+  // Remove staging dirs from installs interrupted by a crash or kill; they are
+  // never real versions and would otherwise accumulate forever.
+  cleanupStaleInstallDirs(versionsDir)
   versionState = readDshState(app.getPath('userData'))
   ensureSelection()
   writeDshState(app.getPath('userData'), versionState)
@@ -748,8 +806,8 @@ async function launch() {
     const message = error instanceof Error ? error.message : String(error)
     await dialog.showMessageBox({
       type: 'error',
-      title: `${APP_NAME} failed to start`,
-      message: 'DeepSeek Harness could not start.',
+      title: `${APP_NAME} 启动失败`,
+      message: 'DeepSeek Harness 无法启动。',
       detail: message,
     })
     app.quit()

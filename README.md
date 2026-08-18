@@ -27,7 +27,7 @@ DeepSeek Harness Desktop packages the official DeepSeek Harness Web experience a
 This project focuses on desktop hosting. It does not fork, modify, inject into, or reimplement the Harness UI. Models, sessions, settings, plugins, and agent capabilities remain provided by the official `@deepseek-ai/dsh` package.
 
 > [!IMPORTANT]
-> This is an unofficial community wrapper and an early-stage project. It depends on the rapidly evolving `@deepseek-ai/dsh@0.1.0-rc.6`. The macOS builds are not Apple-notarized, and the Windows builds are not commercially code-signed.
+> This is an unofficial community wrapper and an early-stage project. It depends on the rapidly evolving `@deepseek-ai/dsh` (currently pinned at `0.1.0-rc.7` in `package.json`). The macOS builds are not Apple-notarized, and the Windows builds are not commercially code-signed.
 
 ## Download
 
@@ -175,7 +175,8 @@ distribution should switch to Apple Developer ID signing plus notarization.
 
 ## Upstream version and license
 
-The project currently pins `@deepseek-ai/dsh@0.1.0-rc.6` as the bundled default
+The project currently pins `@deepseek-ai/dsh` (see the `dependencies` field in
+[`package.json`](package.json), currently `0.1.0-rc.7`) as the bundled default
 for reproducible packaging. Additional official versions can be installed from
 the DSH version manager at runtime.
 
