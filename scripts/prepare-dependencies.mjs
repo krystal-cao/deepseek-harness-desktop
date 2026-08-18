@@ -22,13 +22,20 @@ export function prepareBundledBin({ platform = process.platform, root = process.
   const binDir = path.join(root, 'assets', 'bin')
   mkdirSync(binDir, { recursive: true })
   rmSync(path.join(binDir, 'pnpm.cjs'), { force: true })
+  // Drop the old "node" shim from previous builds: it must never sit on the
+  // dsh host PATH under a bare "node" name again.
+  rmSync(path.join(binDir, 'node'), { force: true })
 
   // From <app>/Contents/Resources/app/assets/bin to the Electron binary at
-  // <app>/Contents/MacOS/DeepSeek Harness.
-  const nodeShimPath = path.join(binDir, 'node')
+  // <app>/Contents/MacOS/DeepSeek Harness. Named "dsh-node" (not "node") so
+  // prepending this directory to the dsh host PATH never shadows the user's
+  // real node: the dsh agent's shell tools resolve `node` to the system node,
+  // while pnpm keeps using this shim through the explicit path below.
+  const nodeShimPath = path.join(binDir, 'dsh-node')
   const nodeShim = `#!/bin/sh
 # Bundled Node shim: run the packaged Electron binary in Node mode so the
-# dsh runtime and plugin installs find "node" without a shell PATH.
+# bundled pnpm works without a shell PATH. Referenced by the pnpm wrapper
+# through an explicit path; never exposed as bare "node" on PATH.
 SELF="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 exec env ELECTRON_RUN_AS_NODE=1 "$SELF/../../../../MacOS/DeepSeek Harness" "$@"
 `
@@ -47,7 +54,7 @@ exec env ELECTRON_RUN_AS_NODE=1 "$SELF/../../../../MacOS/DeepSeek Harness" "$@"
   rmSync(pnpmWrapperPath, { recursive: true, force: true })
   const pnpmWrapper = `#!/bin/sh
 SELF="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-exec "$SELF/node" "$SELF/pnpm-pkg/bin/pnpm.cjs" "$@"
+exec "$SELF/dsh-node" "$SELF/pnpm-pkg/bin/pnpm.cjs" "$@"
 `
   writeFileSync(pnpmWrapperPath, pnpmWrapper)
   chmodSync(pnpmWrapperPath, 0o755)

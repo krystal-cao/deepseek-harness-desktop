@@ -37,7 +37,7 @@ export function unpackedPath(path) {
   return path.replace(/([/\\])app\.asar([/\\])/, '$1app.asar.unpacked$2')
 }
 
-/** Directory with the bundled node shim and pnpm, when packaged. */
+/** Directory with the bundled pnpm and its dsh-node shim, when packaged. */
 export function bundledBinDir() {
   const resources = typeof process.resourcesPath === 'string' ? process.resourcesPath : undefined
   if (!resources) return undefined
@@ -45,7 +45,12 @@ export function bundledBinDir() {
   return existsSync(dir) ? dir : undefined
 }
 
-/** Prepend the bundled bin directory so GUI launches find node/pnpm. */
+/**
+ * Prepend the bundled bin directory so GUI launches find pnpm (dsh plugin
+ * operations and profile healing). The directory deliberately contains no
+ * bare `node`, so the dsh agent's shell tools resolve `node` to the user's
+ * system node instead of the Electron-as-Node shim.
+ */
 export function withBundledBinPath(env, binDir = bundledBinDir()) {
   if (!binDir) return env
   const pathValue = env.PATH ?? ''
