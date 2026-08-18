@@ -10,6 +10,7 @@ import {
   resolveUpdateFeed,
   shouldEnableAutoUpdate,
 } from './updater-config.js'
+import { canStartCheck, createUpdaterState, reduceUpdaterState } from './updater-state.js'
 
 const CHECK_DELAY_MS = 5_000
 const { autoUpdater } = electronUpdater
@@ -22,22 +23,14 @@ export function initAutoUpdater({
   onBeforeInstall = () => {},
   intervalMs = resolveAutoCheckIntervalMs(),
 } = {}) {
-  const updater = {
-    state: 'idle', // idle | checking | downloading | downloaded | installing | error
-    lastError: null,
-    info: null,
-    manual: false,
-  }
+  const updater = createUpdaterState()
 
-  const updateState = (partial) => Object.assign(updater, partial)
+  const applyEvent = (event) => Object.assign(updater, reduceUpdaterState(updater, event))
 
   const checkForUpdates = async ({ manual = false } = {}) => {
     if (!autoUpdateEnabled()) return updater
-    if (['checking', 'downloading', 'downloaded', 'installing'].includes(updater.state)) {
-      return updater
-    }
-    updater.manual = manual
-    updateState({ state: 'checking', lastError: null })
+    if (!canStartCheck(updater)) return updater
+    applyEvent({ type: 'check', manual })
     try {
       await autoUpdater.checkForUpdates()
     } catch {
@@ -67,11 +60,11 @@ export function initAutoUpdater({
   }
 
   autoUpdater.on('checking-for-update', () => {
-    updateState({ state: 'checking', lastError: null })
+    applyEvent({ type: 'checking' })
   })
 
   autoUpdater.on('update-available', (info) => {
-    updateState({ state: 'downloading', info })
+    applyEvent({ type: 'available', info })
     void showMessage({
       type: 'info',
       title: '发现新版本',
@@ -82,7 +75,7 @@ export function initAutoUpdater({
   })
 
   autoUpdater.on('update-not-available', () => {
-    updateState({ state: 'idle' })
+    applyEvent({ type: 'not-available' })
     if (updater.manual) {
       void showMessage({
         type: 'info',
@@ -94,7 +87,7 @@ export function initAutoUpdater({
   })
 
   autoUpdater.on('update-downloaded', (info) => {
-    updateState({ state: 'downloaded', info })
+    applyEvent({ type: 'downloaded', info })
     void showMessage({
       type: 'info',
       title: '更新已就绪',
@@ -103,18 +96,33 @@ export function initAutoUpdater({
       buttons: ['稍后', '立即重启'],
       defaultId: 1,
       cancelId: 0,
-    }).then(({ response }) => {
-      if (response === 1) {
-        updateState({ state: 'installing' })
-        onBeforeInstall()
-        if (process.platform === 'darwin') {
-          void installDownloadedUpdate()
-            .then(() => {
-              app.quit()
-            })
-            .catch((error) => {
-              console.warn('self-install failed:', error)
-              updateState({ state: 'error', lastError: error })
+    })
+      .then(({ response }) => {
+        if (response === 1) {
+          applyEvent({ type: 'install' })
+          onBeforeInstall()
+          if (process.platform === 'darwin') {
+            void installDownloadedUpdate()
+              .then(() => {
+                app.quit()
+              })
+              .catch((error) => {
+                console.warn('self-install failed:', error)
+                applyEvent({ type: 'error', error })
+                void showMessage({
+                  type: 'error',
+                  title: '更新安装失败',
+                  message: '无法自动安装更新。',
+                  detail: '请到 GitHub Releases 页面手动下载新版本安装。',
+                  buttons: ['好'],
+                })
+              })
+          } else {
+            try {
+              autoUpdater.quitAndInstall(false, true)
+            } catch (error) {
+              console.warn('quitAndInstall failed:', error)
+              applyEvent({ type: 'error', error })
               void showMessage({
                 type: 'error',
                 title: '更新安装失败',
@@ -122,30 +130,23 @@ export function initAutoUpdater({
                 detail: '请到 GitHub Releases 页面手动下载新版本安装。',
                 buttons: ['好'],
               })
-            })
-        } else {
-          try {
-            autoUpdater.quitAndInstall(false, true)
-          } catch (error) {
-            console.warn('quitAndInstall failed:', error)
-            updateState({ state: 'error', lastError: error })
-            void showMessage({
-              type: 'error',
-              title: '更新安装失败',
-              message: '无法自动安装更新。',
-              detail: '请到 GitHub Releases 页面手动下载新版本安装。',
-              buttons: ['好'],
-            })
+            }
           }
+        } else {
+          // The user postponed the restart ("稍后"): reset to idle so the
+          // periodic checks keep running and a newer update can still be
+          // offered later in the same session.
+          applyEvent({ type: 'defer' })
         }
-      }
-    }).catch(() => {
-      // The dialog was closed before a choice was made.
-    })
+      })
+      .catch(() => {
+        // The dialog was closed before a choice was made; same as "稍后".
+        applyEvent({ type: 'defer' })
+      })
   })
 
   autoUpdater.on('error', (error) => {
-    updateState({ state: 'error', lastError: error })
+    applyEvent({ type: 'error', error })
     if (updater.manual) {
       void showMessage({
         type: 'error',
