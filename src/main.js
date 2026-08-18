@@ -1,5 +1,4 @@
 import { execFile } from 'node:child_process'
-import { existsSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -33,6 +32,7 @@ import { readDshState, writeDshState } from './dsh-state.js'
 import { readUserPathCache, writeUserPathCache } from './user-path-cache.js'
 import {
   addPlugin,
+  updatePlugin,
   ensureProfilePnpmWorkspaceConfig,
   listInstalledPlugins,
   listPluginUpdates,
@@ -43,13 +43,8 @@ import {
   runDshPluginCommand,
 } from './dsh-plugins.js'
 import { createPluginManagerApi } from './plugin-manager-ipc.js'
-import {
-  DSH_ANY_VERSION_PATTERN,
-  isNewerVersion,
-  normalizeNpmRegistry,
-  resolveNpmRegistry,
-  sortDshVersions,
-} from './updater-config.js'
+import { createVersionManagerApi } from './version-manager-api.js'
+import { isNewerVersion, resolveNpmRegistry, sortDshVersions } from './updater-config.js'
 
 const APP_NAME = 'DeepSeek Harness'
 const DESKTOP_HOST_PLUGIN = 'dsh-desktop-host'
@@ -72,9 +67,12 @@ let versionState = { selectedVersion: null, dismissedLatest: null }
 let catalog = { latest: null, versions: [] }
 let catalogError = null
 let managerWindow
-let installing = false
-let installingVersion = null
 let currentColorScheme = null
+
+// Mutable busy state shared between the version-manager IPC surface and the
+// auto-follow path: both install versions, so both must respect the same
+// in-flight guard and report the same "installing" version to the UI.
+const versionBusyState = { installing: false, installingVersion: null }
 
 app.setName(APP_NAME)
 app.setAboutPanelOptions({
@@ -230,7 +228,7 @@ function versionManagerSnapshot() {
     dismissedLatest: versionState.dismissedLatest,
     autoFollowLatest: versionState.autoFollowLatest,
     npmRegistry: versionState.npmRegistry,
-    installingVersion,
+    installingVersion: versionBusyState.installingVersion,
     installedVersions: installedVersionList(),
     availableVersions: sortDshVersions(catalog.versions.map((item) => item.version)).map((version) => ({
       version,
@@ -377,9 +375,32 @@ function stopManagerThemeSync() {
 }
 
 function registerVersionManagerIpc() {
+  const api = createVersionManagerApi({
+    busyState: versionBusyState,
+    snapshot: versionManagerSnapshot,
+    currentNpmRegistry,
+    readCatalog: () => catalog,
+    refreshCatalog,
+    updateState: (mutate) => {
+      mutate(versionState)
+      writeDshState(app.getPath('userData'), versionState)
+    },
+    installDshVersion,
+    versionsDir,
+    buildInstallEnv: () => ({
+      ...process.env,
+      ...(resolvedUserPath !== undefined ? { PATH: resolvedUserPath } : {}),
+      NODE_OPTIONS: '',
+    }),
+    onProgress: (progress) => managerWindow?.webContents.send('dsh-versions:progress', progress),
+    onStateChange: pushManagerSnapshot,
+    installedVersionList,
+    restartDshService,
+  })
+
   ipcMain.handle('dsh-versions:snapshot', (event) => {
     assertManagerSender(event)
-    return versionManagerSnapshot()
+    return api.snapshot()
   })
   ipcMain.handle('dsh-versions:theme-query', (event) => {
     assertManagerSender(event)
@@ -387,73 +408,27 @@ function registerVersionManagerIpc() {
   })
   ipcMain.handle('dsh-versions:refresh', async (event) => {
     assertManagerSender(event)
-    await refreshCatalog()
-    return versionManagerSnapshot()
+    return api.refresh()
   })
   ipcMain.handle('dsh-versions:install', async (event, version) => {
     assertManagerSender(event)
-    if (installing) throw new Error('已有 DSH 版本正在安装')
-    if (typeof version !== 'string') throw new Error('无效的版本号')
-    installing = true
-    installingVersion = version
-    pushManagerSnapshot()
-    try {
-      if (catalog.versions.length === 0) await refreshCatalog()
-      await installDshVersion({
-        versionsDir,
-        version,
-        availableVersions: catalog.versions.map((item) => item.version),
-        registry: currentNpmRegistry(),
-        env: {
-          ...process.env,
-          ...(resolvedUserPath !== undefined ? { PATH: resolvedUserPath } : {}),
-          NODE_OPTIONS: '',
-        },
-        onProgress: (progress) => managerWindow?.webContents.send('dsh-versions:progress', progress),
-      })
-      if (!versionState.selectedVersion) {
-        versionState.selectedVersion = version
-        writeDshState(app.getPath('userData'), versionState)
-      }
-    } finally {
-      installing = false
-      installingVersion = null
-    }
-    pushManagerSnapshot()
-    return versionManagerSnapshot()
+    return api.install(version)
   })
   ipcMain.handle('dsh-versions:select', async (event, version) => {
     assertManagerSender(event)
-    if (typeof version !== 'string') throw new Error('无效的版本号')
-    if (!installedVersionList().some((item) => item.version === version)) throw new Error('该版本尚未安装')
-    versionState.selectedVersion = version
-    writeDshState(app.getPath('userData'), versionState)
-    await restartDshService()
-    return versionManagerSnapshot()
+    return api.select(version)
   })
-  ipcMain.handle('dsh-versions:uninstall', (event, version) => {
+  ipcMain.handle('dsh-versions:uninstall', async (event, version) => {
     assertManagerSender(event)
-    if (typeof version !== 'string' || !DSH_ANY_VERSION_PATTERN.test(version)) {
-      throw new Error('无效的版本号')
-    }
-    if (version === versionState.selectedVersion) throw new Error('请先切换到其他版本，再卸载当前版本')
-    const target = path.join(versionsDir, version)
-    if (path.dirname(target) !== versionsDir || !existsSync(target)) throw new Error('该版本未安装')
-    rmSync(target, { recursive: true, force: true })
-    return versionManagerSnapshot()
+    return api.uninstall(version)
   })
   ipcMain.handle('dsh-versions:set-auto-follow', (event, value) => {
     assertManagerSender(event)
-    if (typeof value !== 'boolean') throw new Error('无效的自动跟随设置')
-    versionState.autoFollowLatest = value
-    writeDshState(app.getPath('userData'), versionState)
-    return versionManagerSnapshot()
+    return api.setAutoFollow(value)
   })
   ipcMain.handle('dsh-versions:set-npm-registry', (event, value) => {
     assertManagerSender(event)
-    versionState.npmRegistry = normalizeNpmRegistry(value)
-    writeDshState(app.getPath('userData'), versionState)
-    return versionManagerSnapshot()
+    return api.setNpmRegistry(value)
   })
 }
 
@@ -564,6 +539,14 @@ function registerPluginManagerIpc() {
           env: pluginCommandEnv(),
           registry: currentNpmRegistry(),
         }),
+      update: (name) =>
+        updatePlugin({
+          electronExecutable: process.execPath,
+          entry: currentDshEntry(),
+          name,
+          env: pluginCommandEnv(),
+          registry: currentNpmRegistry(),
+        }),
     },
     restartService: () => restartDshService(),
   })
@@ -606,9 +589,9 @@ async function followLatestIfEnabled() {
   const latest = catalog.latest
   const selected = versionState.selectedVersion
   if (!latest || !selected || !isNewerVersion(latest, selected)) return
-  if (installing || isRestartingService) return
-  installing = true
-  installingVersion = latest
+  if (versionBusyState.installing || isRestartingService) return
+  versionBusyState.installing = true
+  versionBusyState.installingVersion = latest
   pushManagerSnapshot()
   try {
     await installDshVersion({
@@ -629,8 +612,8 @@ async function followLatestIfEnabled() {
   } catch (error) {
     console.warn(`[auto-follow] install of DSH ${latest} failed:`, error instanceof Error ? error.message : error)
   } finally {
-    installing = false
-    installingVersion = null
+    versionBusyState.installing = false
+    versionBusyState.installingVersion = null
     pushManagerSnapshot()
   }
 }

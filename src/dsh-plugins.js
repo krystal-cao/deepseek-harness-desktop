@@ -16,7 +16,7 @@ export const DEFAULT_PROFILE = 'web'
 // specs. Conservative on purpose: anything a UI user types ends up as a pnpm
 // argument, so flags, paths and shell metacharacters are rejected outright.
 const NPM_SPEC = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*(@[^\s/@]+)?$/
-const GITHUB_SPEC = /^github:[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/
+export const GITHUB_SPEC = /^github:[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/
 
 /** The launcher args that run `dsh plugin --profile <name> <pnpm args>`. */
 export function buildDshPluginArgs(entry, args, profile = DEFAULT_PROFILE) {
@@ -352,6 +352,28 @@ export async function addPlugin({
   ensureProfileNpmrc(listed.path, registry)
   ensureProfilePnpmWorkspaceConfig(listed.path)
   return runDshPluginCommand({ electronExecutable, entry, args: ['add', spec], env, timeoutMs })
+}
+
+/**
+ * Update an installed npm-registry plugin to its latest version
+ * (`dsh plugin ... update <name> --latest`). The dedicated update path avoids
+ * re-adding the spec, so registry ranges are resolved by pnpm instead of
+ * force-installing a literal `@latest` tag. GitHub-source plugins cannot be
+ * updated this way and must be rejected by the caller (validatePluginSpec
+ * accepts them for add/remove, but there is no tag to resolve).
+ */
+export async function updatePlugin({
+  electronExecutable,
+  entry,
+  name,
+  env = process.env,
+  timeoutMs = 120_000,
+  registry,
+} = {}) {
+  const listed = await listInstalledPlugins({ electronExecutable, entry, env, timeoutMs, registry })
+  ensureProfileNpmrc(listed.path, registry)
+  ensureProfilePnpmWorkspaceConfig(listed.path)
+  return runDshPluginCommand({ electronExecutable, entry, args: ['update', name, '--latest'], env, timeoutMs })
 }
 
 /** Remove an out-of-tree plugin from the profile. */

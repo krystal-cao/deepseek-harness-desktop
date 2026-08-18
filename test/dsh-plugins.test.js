@@ -27,6 +27,10 @@ test('buildDshPluginArgs follows the dsh plugin subcommand grammar', () => {
     buildDshPluginArgs('/entry/bin.js', ['add', 'dshmarket']),
     ['--expose-internals', '/entry/bin.js', 'plugin', '--profile', 'web', 'add', 'dshmarket'],
   )
+  assert.deepEqual(
+    buildDshPluginArgs('/entry/bin.js', ['update', 'dshmarket', '--latest']),
+    ['--expose-internals', '/entry/bin.js', 'plugin', '--profile', 'web', 'update', 'dshmarket', '--latest'],
+  )
 })
 
 test('validatePluginSpec accepts npm names, scoped names and github specs', () => {
@@ -280,4 +284,3 @@ test('repointLocalSpec rewrites a file: dependency to the new target', () => {
     rmSync(dir, { recursive: true, force: true })
   }
 })
-

@@ -1,6 +1,6 @@
 // Pure controller for the plugin-management IPC surface, kept free of Electron
 // so the busy guard, spec validation and restart behavior can be unit-tested.
-import { validatePluginSpec } from './dsh-plugins.js'
+import { GITHUB_SPEC, validatePluginSpec } from './dsh-plugins.js'
 
 export function createPluginManagerApi({ listPlugins, mutatePlugin, restartService }) {
   let busy = false
@@ -36,7 +36,8 @@ export function createPluginManagerApi({ listPlugins, mutatePlugin, restartServi
     add: (spec) => runMutation(spec, mutatePlugin.add),
     update: async (spec) => {
       if (!validatePluginSpec(spec)) throw new Error('无效的插件名')
-      return runMutation(`${spec}@latest`, mutatePlugin.add)
+      if (GITHUB_SPEC.test(spec)) throw new Error('GitHub 源插件不支持自动更新')
+      return runMutation(spec, mutatePlugin.update)
     },
     remove: (spec) => runMutation(spec, mutatePlugin.remove),
   }

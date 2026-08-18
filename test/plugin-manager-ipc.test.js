@@ -3,7 +3,7 @@ import test from 'node:test'
 import { createPluginManagerApi } from '../src/plugin-manager-ipc.js'
 
 function makeApi(overrides = {}) {
-  const calls = { list: 0, add: 0, remove: 0, restart: 0 }
+  const calls = { list: 0, add: 0, remove: 0, update: 0, restart: 0 }
   const api = createPluginManagerApi({
     listPlugins: async () => {
       calls.list += 1
@@ -16,6 +16,10 @@ function makeApi(overrides = {}) {
       },
       remove: async (spec) => {
         calls.remove += 1
+        return { code: 0, stdout: '', stderr: '' }
+      },
+      update: async (spec) => {
+        calls.update += 1
         return { code: 0, stdout: '', stderr: '' }
       },
     },
@@ -73,12 +77,13 @@ test('add rejects non-zero exits without restarting', async () => {
   assert.equal(calls.restart, 0)
 })
 
-test('update validates the name and runs add with @latest', async () => {
+test('update validates the name and runs the update mutation', async () => {
   let seen = null
   const api = createPluginManagerApi({
     listPlugins: async () => ({ plugins: [] }),
     mutatePlugin: {
-      add: async (spec) => {
+      add: async () => ({ code: 0, stdout: '', stderr: '' }),
+      update: async (spec) => {
         seen = spec
         return { code: 0, stdout: '', stderr: '' }
       },
@@ -87,12 +92,19 @@ test('update validates the name and runs add with @latest', async () => {
     restartService: async () => {},
   })
   await api.update('dshmarket')
-  assert.equal(seen, 'dshmarket@latest')
+  assert.equal(seen, 'dshmarket')
 })
 
 test('update rejects invalid names without touching the CLI', async () => {
   const { api, calls } = makeApi()
   await assert.rejects(() => api.update('-rf /'), /无效的插件名/)
+  assert.equal(calls.add, 0)
+  assert.equal(calls.restart, 0)
+})
+
+test('update rejects GitHub-source plugins explicitly', async () => {
+  const { api, calls } = makeApi()
+  await assert.rejects(() => api.update('github:owner/repo'), /GitHub 源插件不支持自动更新/)
   assert.equal(calls.add, 0)
   assert.equal(calls.restart, 0)
 })
