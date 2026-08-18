@@ -5,3 +5,4 @@ output/
 *.log
 .DS_Store
 assets/bin/
+.codex/
