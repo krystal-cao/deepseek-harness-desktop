@@ -50,6 +50,18 @@ function activeInstall() {
   return snapshot?.installingVersion ?? localInstallingVersion
 }
 
+/** Re-fetch the plugin list with a bounded timeout; fall back on failure. */
+async function refetchPluginList(fallback) {
+  try {
+    return await Promise.race([
+      pluginsApi.list(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('刷新插件列表超时')), 10_000)),
+    ])
+  } catch {
+    return fallback
+  }
+}
+
 function setStatus(message, isError = false) {
   statusEl.textContent = message
   statusEl.hidden = !message
@@ -424,8 +436,8 @@ async function installPluginSpec(spec) {
   try {
     const result = await pluginsApi.add(spec)
     if (result?.error) throw new Error(result.error)
-    pluginsState = result
     pluginSpecEl.value = ''
+    pluginsState = await refetchPluginList(result)
     setStatus(`插件 ${spec} 已安装，dsh 服务已重启。`)
   } catch (error) {
     setStatus(error?.message ?? `安装 ${spec} 失败`, true)
@@ -446,7 +458,7 @@ async function removePluginByName(spec) {
   try {
     const result = await pluginsApi.remove(spec)
     if (result?.error) throw new Error(result.error)
-    pluginsState = result
+    pluginsState = await refetchPluginList(result)
     setStatus(`插件 ${spec} 已卸载，dsh 服务已重启。`)
   } catch (error) {
     setStatus(error?.message ?? `卸载 ${spec} 失败`, true)
@@ -483,7 +495,7 @@ async function updatePlugin(name) {
   try {
     const result = await pluginsApi.update(name)
     if (result?.error) throw new Error(result.error)
-    pluginsState = result
+    pluginsState = await refetchPluginList(result)
     try {
       pluginsState.outdated = await pluginsApi.outdated()
     } catch {
