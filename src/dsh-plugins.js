@@ -10,6 +10,42 @@ import { bundledBinDir, withBundledBinPath } from './dsh-service.js'
 import { resolvePnpmCli } from './dsh-versions.js'
 import { resolveNpmRegistry } from './updater-config.js'
 
+/**
+ * Strip an optional @version range from a plugin spec, leaving the bare
+ * package name (scoped names keep their @scope/). Used for registry
+ * existence checks before a pnpm add.
+ */
+export function packageNameFromSpec(spec) {
+  if (typeof spec !== 'string' || spec.length === 0) return null
+  const at = spec.indexOf('@', spec.startsWith('@') ? 1 : 0)
+  return at === -1 ? spec : spec.slice(0, at)
+}
+
+/**
+ * Query the registry for a package name. Returns true when it exists, false
+ * on an explicit 404, and null when the registry is unreachable (so callers
+ * can skip the precheck and let pnpm produce the authoritative error).
+ */
+export async function npmPackageExists({
+  name,
+  registry = resolveNpmRegistry(),
+  fetcher = fetch,
+  timeoutMs = 8_000,
+} = {}) {
+  if (typeof name !== 'string' || name === '') return null
+  const base = registry.replace(/\/+$/, '')
+  try {
+    const response = await fetcher(`${base}/${encodeURIComponent(name)}`, {
+      headers: { accept: 'application/vnd.npm.install-v1+json' },
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+    if (response.status === 404) return false
+    return response.ok
+  } catch {
+    return null
+  }
+}
+
 export const DEFAULT_PROFILE = 'web'
 
 // npm names (optionally scoped, optionally @version) and github:owner/repo
@@ -179,6 +215,14 @@ export function runDshPluginCommand({
   })
 }
 
+export function formatPnpmResultError(result, { maxLength = 800 } = {}) {
+  const stderr = String(result?.stderr ?? '').trim()
+  const stdout = String(result?.stdout ?? '').trim()
+  const combined = [stdout, stderr].filter((part) => part !== '').join('\n')
+  if (combined === '') return 'pnpm 退出码 ' + String(result?.code ?? 'unknown')
+  return combined.slice(-maxLength)
+}
+
 let cachedShimDir = null
 
 /**
@@ -279,7 +323,7 @@ export async function listInstalledPlugins({
     timeoutMs,
   })
   if (result.code !== 0) {
-    throw new Error(`读取插件列表失败（退出码 ${result.code}）：${(result.stderr || result.stdout).trim().slice(-500)}`)
+    throw new Error(`读取插件列表失败（退出码 ${result.code}）：${formatPnpmResultError(result, { maxLength: 500 })}`)
   }
   const parsed = parsePnpmListJson(result.stdout)
   ensureProfileNpmrc(parsed.path, registry)
@@ -334,7 +378,7 @@ export async function listPluginUpdates({
     timeoutMs,
   })
   if (result.code > 1) {
-    throw new Error(`检测插件更新失败（退出码 ${result.code}）：${(result.stderr || result.stdout).trim().slice(-500)}`)
+    throw new Error(`检测插件更新失败（退出码 ${result.code}）：${formatPnpmResultError(result, { maxLength: 500 })}`)
   }
   return parsePnpmOutdatedJson(result.stdout).outdated
 }
@@ -348,6 +392,18 @@ export async function addPlugin({
   timeoutMs = 120_000,
   registry,
 } = {}) {
+  // Fail fast for npm-registry plugins that do not exist: pnpm's 404 is
+  // only visible in a wall of progress output, so a cheap existence check
+  // gives the UI a clear, immediate message. GitHub and file:/link: specs
+  // are skipped (no registry name to check); an unreachable registry is
+  // skipped too and left for pnpm to report.
+  const bareName = packageNameFromSpec(spec)
+  if (bareName && !GITHUB_SPEC.test(spec)) {
+    const exists = await npmPackageExists({ name: bareName, registry })
+    if (exists === false) {
+      throw new Error(`未找到 npm 包 ${bareName}（HTTP 404），请检查拼写或确认该包已发布到当前镜像`)
+    }
+  }
   const listed = await listInstalledPlugins({ electronExecutable, entry, env, timeoutMs, registry })
   ensureProfileNpmrc(listed.path, registry)
   ensureProfilePnpmWorkspaceConfig(listed.path)

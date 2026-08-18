@@ -9,9 +9,12 @@ import {
   ensureProfileNpmrc,
   ensureProfilePnpmWorkspaceConfig,
   ensurePnpmShimDir,
+  formatPnpmResultError,
+  npmPackageExists,
+  packageNameFromSpec,
   parsePnpmListJson,
   parsePnpmOutdatedJson,
-  profileLocalSpecIsMissing,
+ profileLocalSpecIsMissing,
   resolveLocalPluginVersions,
   resolvePluginPnpmEnv,
   repointLocalSpec,
@@ -283,4 +286,45 @@ test('repointLocalSpec rewrites a file: dependency to the new target', () => {
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
+})
+
+test('formatPnpmResultError surfaces pnpm diagnostics from stdout over the dsh banner', () => {
+  const message = formatPnpmResultError({
+    code: 1,
+    stdout: '[ERR_PNPM_FETCH_404] GET https://registry.npmmirror.com/dsh-model-usage: Not Found - 404' + '\n' + 'dsh-model-usage is not in the npm registry',
+    stderr: 'dsh: pnpm failed in profile directory /Users/x/.dsh/profiles/web',
+  })
+  assert.match(message, /ERR_PNPM_FETCH_404/)
+  assert.match(message, /not in the npm registry/)
+  assert.match(message, /pnpm failed in profile directory/)
+})
+
+test('formatPnpmResultError keeps the tail within maxLength', () => {
+  const long = 'x'.repeat(2000)
+  const message = formatPnpmResultError({ code: 1, stdout: long, stderr: '' }, { maxLength: 100 })
+  assert.equal(message.length, 100)
+})
+
+test('formatPnpmResultError falls back to the exit code when both streams are empty', () => {
+  assert.match(formatPnpmResultError({ code: 127 }), /pnpm 退出码 127/)
+  assert.match(formatPnpmResultError({}), /pnpm 退出码 unknown/)
+})
+
+test('packageNameFromSpec strips optional version ranges', () => {
+  assert.equal(packageNameFromSpec('dshmarket'), 'dshmarket')
+  assert.equal(packageNameFromSpec('dshmarket@1.2.3'), 'dshmarket')
+  assert.equal(packageNameFromSpec('@scope/name'), '@scope/name')
+  assert.equal(packageNameFromSpec('@scope/name@1.2.3'), '@scope/name')
+  assert.equal(packageNameFromSpec(''), null)
+  assert.equal(packageNameFromSpec(undefined), null)
+})
+
+test('npmPackageExists reports 404 as false, ok as true, errors as unknown', async () => {
+  const fetcher = async (url) => ({ status: url.includes('missing') ? 404 : 200, ok: !url.includes('missing') })
+  assert.equal(await npmPackageExists({ name: 'dshmarket', fetcher }), true)
+  assert.equal(await npmPackageExists({ name: 'missing', fetcher }), false)
+  const throwing = async () => {
+    throw new Error('network down')
+  }
+  assert.equal(await npmPackageExists({ name: 'dshmarket', fetcher: throwing }), null)
 })

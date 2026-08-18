@@ -1,6 +1,6 @@
 // Pure controller for the plugin-management IPC surface, kept free of Electron
 // so the busy guard, spec validation and restart behavior can be unit-tested.
-import { GITHUB_SPEC, validatePluginSpec } from './dsh-plugins.js'
+import { GITHUB_SPEC, formatPnpmResultError, validatePluginSpec } from './dsh-plugins.js'
 
 export function createPluginManagerApi({ listPlugins, mutatePlugin, restartService }) {
   let busy = false
@@ -12,7 +12,7 @@ export function createPluginManagerApi({ listPlugins, mutatePlugin, restartServi
     try {
       const result = await action(spec)
       if (result.code !== 0) {
-        throw new Error(`${result.stderr || result.stdout}`.trim().slice(-800))
+        throw new Error(formatPnpmResultError(result, { maxLength: 800 }))
       }
       await restartService()
       return listPlugins()

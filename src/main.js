@@ -32,6 +32,7 @@ import { readDshState, writeDshState } from './dsh-state.js'
 import { readUserPathCache, writeUserPathCache } from './user-path-cache.js'
 import {
   addPlugin,
+  formatPnpmResultError,
   updatePlugin,
   ensureProfilePnpmWorkspaceConfig,
   listInstalledPlugins,
@@ -491,7 +492,7 @@ async function ensureDesktopHostPlugin() {
             env: pluginCommandEnv(),
           })
           if (result.code !== 0) {
-            throw new Error(`pnpm install exited ${result.code}: ${(result.stderr || result.stdout).trim().slice(-400)}`)
+            throw new Error(`pnpm install exited ${result.code}: ${formatPnpmResultError(result, { maxLength: 400 })}`)
           }
           await restartDshService()
           console.log('[dsh-bridge] desktop host plugin repointed to a live bundle; service restarted')
@@ -508,7 +509,7 @@ async function ensureDesktopHostPlugin() {
       registry: currentNpmRegistry(),
     })
     if (result.code !== 0) {
-      throw new Error(`pnpm add exited ${result.code}: ${(result.stderr || result.stdout).trim().slice(-400)}`)
+      throw new Error(`pnpm add exited ${result.code}: ${formatPnpmResultError(result, { maxLength: 400 })}`)
     }
     await restartDshService()
     console.log('[dsh-bridge] desktop host plugin installed; service restarted')
