@@ -331,9 +331,13 @@ function renderPluginRow(item) {
 }
 
 function renderPlugins() {
+  // Mutation responses (add/remove/update) carry { plugins, raw, path } but
+  // not `outdated`; without the guard Object.keys(undefined) throws here and
+  // leaves the previous busy render frozen on screen.
+  const outdated = pluginsState.outdated ?? {}
   pluginCountEl.textContent = pluginsState.plugins.length
   checkUpdatesButton.disabled = busy || checkingUpdates
-  const outdatedCount = Object.keys(pluginsState.outdated).length
+  const outdatedCount = Object.keys(outdated).length
   updateAllButton.hidden = outdatedCount <= 1
   updateAllButton.disabled = busy || checkingUpdates || updatingAll
   pluginsEl.replaceChildren()
