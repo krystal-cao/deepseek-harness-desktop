@@ -649,7 +649,12 @@ async function restartDshService() {
     const url = await next.ready
     serviceUrl = url
     if (mainWindow && !mainWindow.isDestroyed()) {
-      await mainWindow.loadURL(url)
+      // Do not block callers (version switch, plugin add/remove/update) on the
+      // web UI reload: the host is already ready, the reload finishes in the
+      // background and the bridge reports readiness when the UI is up.
+      void mainWindow.loadURL(url).catch((error) => {
+        console.warn('main window reload after service restart failed:', error)
+      })
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
