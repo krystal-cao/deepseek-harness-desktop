@@ -11,8 +11,10 @@ import {
   ensurePnpmShimDir,
   parsePnpmListJson,
   parsePnpmOutdatedJson,
+  profileLocalSpecIsMissing,
   resolveLocalPluginVersions,
   resolvePluginPnpmEnv,
+  repointLocalSpec,
   validatePluginSpec,
 } from '../src/dsh-plugins.js'
 
@@ -230,3 +232,52 @@ test('ensureProfilePnpmWorkspaceConfig replaces an existing release-age value in
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+
+test('profileLocalSpecIsMissing detects dead local file: specs', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dsh-profile-'))
+  try {
+    const live = path.join(dir, 'live-bundle')
+    mkdirSync(live)
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      dependencies: { 'dsh-desktop-host': `file:${live}` },
+    }))
+    assert.equal(profileLocalSpecIsMissing(dir, 'dsh-desktop-host'), false)
+
+    const dead = path.join(dir, 'gone-bundle')
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      dependencies: { 'dsh-desktop-host': `file:${dead}` },
+    }))
+    assert.equal(profileLocalSpecIsMissing(dir, 'dsh-desktop-host'), true)
+
+    // Registry specs are never "missing".
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      dependencies: { 'dsh-desktop-host': '^1.0.0' },
+    }))
+    assert.equal(profileLocalSpecIsMissing(dir, 'dsh-desktop-host'), false)
+    assert.equal(profileLocalSpecIsMissing(dir, 'unknown-plugin'), false)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('repointLocalSpec rewrites a file: dependency to the new target', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dsh-profile-'))
+  try {
+    const target = path.join(dir, 'with space', 'bundle')
+    mkdirSync(path.dirname(target), { recursive: true })
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      dependencies: { 'dsh-desktop-host': 'file:/old/gone', other: '^2.0.0' },
+    }))
+    assert.equal(repointLocalSpec(dir, 'dsh-desktop-host', target), true)
+    const manifest = JSON.parse(readFileSync(path.join(dir, 'package.json'), 'utf8'))
+    assert.equal(manifest.dependencies['dsh-desktop-host'], `file:${target}`)
+    assert.equal(manifest.dependencies.other, '^2.0.0')
+    // Missing plugin or missing manifest are left untouched.
+    assert.equal(repointLocalSpec(dir, 'missing-plugin', target), false)
+    assert.equal(repointLocalSpec(path.join(dir, 'nope'), 'dsh-desktop-host', target), false)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+

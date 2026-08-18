@@ -3,7 +3,7 @@
 // CLI can always find pnpm (Finder/Dock launches have no shell PATH, and the
 // bundled assets/bin shim only exists in packaged builds).
 import { spawn } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { bundledBinDir, withBundledBinPath } from './dsh-service.js'
@@ -56,6 +56,49 @@ export function parsePnpmListJson(stdout) {
 }
 
 const LOCAL_SPEC_PATTERN = /^(file:|link:|workspace:|\.\.?\/)/
+
+/**
+ * True when the profile manifest pins `pluginName` to a file:/link: spec
+ * whose target no longer exists (typically a dist build that was cleaned).
+ * pnpm aborts any add/remove/update in the profile while such a dead local
+ * spec is present, so the bundled bridge plugin must be repointed to a live
+ * bundle path before plugin management can work again.
+ */
+export function profileLocalSpecIsMissing(profileDir, pluginName) {
+  if (!profileDir) return false
+  let manifest
+  try {
+    manifest = JSON.parse(readFileSync(path.join(profileDir, 'package.json'), 'utf8'))
+  } catch {
+    return false
+  }
+  const spec = manifest?.dependencies?.[pluginName]
+  if (typeof spec !== 'string' || !LOCAL_SPEC_PATTERN.test(spec)) return false
+  const target = spec.replace(/^(file:|link:|workspace:)/, '')
+  const resolved = path.isAbsolute(target) ? target : path.resolve(profileDir, target)
+  return !existsSync(resolved)
+}
+
+/**
+ * Rewrite the profile manifest's dependency spec for `pluginName` to
+ * `file:<targetDir>`. Returns true when the manifest was updated. Used to
+ * repair stale bundled-bridge specs that point at deleted build output.
+ */
+export function repointLocalSpec(profileDir, pluginName, targetDir) {
+  if (!profileDir || typeof targetDir !== 'string' || targetDir.length === 0) return false
+  const manifestPath = path.join(profileDir, 'package.json')
+  let manifest
+  try {
+    manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  } catch {
+    return false
+  }
+  const deps = manifest?.dependencies
+  if (!deps || typeof deps[pluginName] !== 'string') return false
+  deps[pluginName] = 'file:' + targetDir
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n')
+  return true
+}
 
 /**
  * pnpm reports file:/link: dependencies with the spec path as their

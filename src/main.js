@@ -36,8 +36,11 @@ import {
   ensureProfilePnpmWorkspaceConfig,
   listInstalledPlugins,
   listPluginUpdates,
+  profileLocalSpecIsMissing,
   removePlugin,
+  repointLocalSpec,
   resolvePluginPnpmEnv,
+  runDshPluginCommand,
 } from './dsh-plugins.js'
 import { createPluginManagerApi } from './plugin-manager-ipc.js'
 import {
@@ -499,7 +502,29 @@ function readPluginList() {
 async function ensureDesktopHostPlugin() {
   try {
     const listed = await readPluginList()
-    if (listed.plugins.some((plugin) => plugin.name === DESKTOP_HOST_PLUGIN)) return false
+    if (listed.plugins.some((plugin) => plugin.name === DESKTOP_HOST_PLUGIN)) {
+      // The bridge is installed, but the manifest may still pin it to a
+      // deleted build location (cleaning dist is part of every release
+      // cycle). A dead file: spec breaks every pnpm add/remove/update in the
+      // profile, so repoint it to this instance's bundle and reinstall.
+      if (profileLocalSpecIsMissing(listed.path, DESKTOP_HOST_PLUGIN)) {
+        if (repointLocalSpec(listed.path, DESKTOP_HOST_PLUGIN, DESKTOP_HOST_BUNDLE_PATH)) {
+          const result = await runDshPluginCommand({
+            electronExecutable: process.execPath,
+            entry: currentDshEntry(),
+            args: ['install'],
+            env: pluginCommandEnv(),
+          })
+          if (result.code !== 0) {
+            throw new Error(`pnpm install exited ${result.code}: ${(result.stderr || result.stdout).trim().slice(-400)}`)
+          }
+          await restartDshService()
+          console.log('[dsh-bridge] desktop host plugin repointed to a live bundle; service restarted')
+        }
+      }
+      return false
+    }
+
     const result = await addPlugin({
       electronExecutable: process.execPath,
       entry: currentDshEntry(),
