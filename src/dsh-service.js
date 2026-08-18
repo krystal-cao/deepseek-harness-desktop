@@ -30,6 +30,10 @@ export function resolveDshEntry(version, versionsDir) {
   if (resolveDshEntrySource(version, versionsDir) === 'user') {
     return join(versionsDir, version, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
   }
+  // The full node_modules tree is unpacked: dsh's profile-healing symlinks
+  // need a real on-disk tree to point at (a symlink cannot target a path
+  // inside the app.asar archive), so the bundled entry resolves under
+  // app.asar.unpacked.
   return unpackedPath(fileURLToPath(import.meta.resolve('@deepseek-ai/dsh/lib/bin.js')))
 }
 
@@ -41,8 +45,13 @@ export function unpackedPath(path) {
 export function bundledBinDir() {
   const resources = typeof process.resourcesPath === 'string' ? process.resourcesPath : undefined
   if (!resources) return undefined
-  const dir = join(resources, 'app', 'assets', 'bin')
-  return existsSync(dir) ? dir : undefined
+  // With asar enabled, assets/bin lives outside the archive under
+  // app.asar.unpacked; fall back to the pre-asar app/ layout for old builds.
+  for (const layout of ['app.asar.unpacked', 'app']) {
+    const dir = join(resources, layout, 'assets', 'bin')
+    if (existsSync(dir)) return dir
+  }
+  return undefined
 }
 
 /**

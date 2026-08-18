@@ -1,6 +1,6 @@
 // Packaged-app smoke test (macOS only): boot the built .app, wait for the dsh
 // host, and confirm the Web UI responds.
-import { cpSync, mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { once } from 'node:events'
 import os from 'node:os'
 import path from 'node:path'
@@ -16,21 +16,50 @@ const defaultAppPath = path.join(
 )
 const appPath = process.env.PACKAGED_APP_PATH ?? defaultAppPath
 const electronExecutable = path.join(appPath, 'Contents', 'MacOS', 'DeepSeek Harness')
-const packagedResourcesRoot = path.join(appPath, 'Contents', 'Resources', 'app')
+const resourcesDir = path.join(appPath, 'Contents', 'Resources')
 const temporaryRoot =
   process.env.PACKAGED_APP_PATH === undefined
     ? mkdtempSync(path.join(os.tmpdir(), 'dsh-packaged-smoke-'))
     : undefined
-const resourcesRoot =
-  temporaryRoot === undefined ? packagedResourcesRoot : path.join(temporaryRoot, 'app')
+const resourcesRoot = temporaryRoot === undefined ? resourcesDir : temporaryRoot
+
+// Resolve the dsh entry inside the packaged payload. The full node_modules
+// tree is unpacked (dsh's profile-healing symlinks need a real file system),
+// so the entry lives under app.asar.unpacked; pre-asar builds keep a flat
+// app/ directory. Both are real directories, so plain node can probe them.
+const ENTRY_IN_UNPACKED = path.join('app.asar.unpacked', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+const ENTRY_IN_FLAT_APP = path.join('app', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+function resolveEntry() {
+  for (const candidate of [ENTRY_IN_UNPACKED, ENTRY_IN_FLAT_APP]) {
+    const entry = path.join(resourcesRoot, candidate)
+    if (existsSync(entry)) return entry
+  }
+  throw new Error(`dsh entry not found under ${resourcesRoot}`)
+}
 
 if (temporaryRoot !== undefined) {
-  cpSync(packagedResourcesRoot, resourcesRoot, { recursive: true })
+  // Replicate the Resources layout inside the temp root so the spawn stays
+  // isolated from the live app: copy app.asar (or app/) plus the unpacked
+  // tree when present.
+  const asarFile = path.join(resourcesDir, 'app.asar')
+  const flatApp = path.join(resourcesDir, 'app')
+  if (existsSync(asarFile)) {
+    const { copyFileSync } = await import('node:fs')
+    copyFileSync(asarFile, path.join(temporaryRoot, 'app.asar'))
+  } else if (existsSync(flatApp)) {
+    cpSync(flatApp, path.join(temporaryRoot, 'app'), { recursive: true })
+  } else {
+    throw new Error(`no app payload found under ${resourcesDir}`)
+  }
+  const unpacked = path.join(resourcesDir, 'app.asar.unpacked')
+  if (existsSync(unpacked)) {
+    cpSync(unpacked, path.join(temporaryRoot, 'app.asar.unpacked'), { recursive: true })
+  }
 }
 
 const service = startDshService({
   electronExecutable,
-  entry: path.join(resourcesRoot, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'),
+  entry: resolveEntry(),
   environment: {
     ...process.env,
     NODE_OPTIONS: '',

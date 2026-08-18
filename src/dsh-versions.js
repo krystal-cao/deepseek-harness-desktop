@@ -15,6 +15,7 @@ import {
 } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { unpackedPath } from './dsh-service.js'
 import { DSH_ANY_VERSION_PATTERN, resolveNpmRegistry } from './updater-config.js'
 
 const OFFICIAL_PACKAGE = '@deepseek-ai/dsh'
@@ -88,6 +89,21 @@ export function listInstalledVersions(versionsDir) {
   return entries
 }
 
+/**
+ * Remove staging directories left behind when an install was interrupted
+ * (process killed, crash, power loss). They use a `.install-` prefix that can
+ * never collide with a real version name, so they are safe to delete on every
+ * startup.
+ */
+export function cleanupStaleInstallDirs(versionsDir) {
+  if (!existsSync(versionsDir)) return
+  for (const name of readdirSync(versionsDir)) {
+    if (name.startsWith('.install-')) {
+      rmSync(path.join(versionsDir, name), { recursive: true, force: true })
+    }
+  }
+}
+
 /** Locate the bundled pnpm CLI (packaged assets first, dev node_modules next). */
 export function resolvePnpmCli() {
   const candidates = [
@@ -95,7 +111,7 @@ export function resolvePnpmCli() {
     new URL('../node_modules/pnpm/bin/pnpm.cjs', import.meta.url),
   ]
   for (const candidate of candidates) {
-    const file = fileURLToPath(candidate)
+    const file = unpackedPath(fileURLToPath(candidate))
     if (existsSync(file)) return file
   }
   throw new Error('找不到内置 pnpm CLI')

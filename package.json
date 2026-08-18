@@ -71,7 +71,12 @@
       "owner": "krystal-cao",
       "repo": "deepseek-harness-desktop"
     },
-    "asar": false,
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/**/*",
+      "assets/bin/**/*",
+      "assets/dsh-desktop-host/**/*"
+    ],
     "files": [
       "src/**/*",
       "config/**/*",

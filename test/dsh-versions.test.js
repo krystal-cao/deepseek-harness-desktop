@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import {
   bundledDshVersion,
+  cleanupStaleInstallDirs,
   collectBuildScripts,
   dshFamilyPins,
   listInstalledVersions,
@@ -60,6 +61,27 @@ test('listInstalledVersions only returns valid, complete dsh installs', () => {
 
 test('listInstalledVersions tolerates a missing versions dir', () => {
   assert.deepEqual(listInstalledVersions(path.join(os.tmpdir(), 'does-not-exist')), [])
+})
+
+test('cleanupStaleInstallDirs removes only interrupted install staging dirs', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dsh-stale-'))
+  try {
+    makeFakeVersion(dir, '0.1.0-rc.5')
+    mkdirSync(path.join(dir, '.install-0.1.0-rc.6-1234'))
+    mkdirSync(path.join(dir, '.install-0.1.0-rc.7-5678'))
+    cleanupStaleInstallDirs(dir)
+    assert.deepEqual(listInstalledVersions(dir), [{ version: '0.1.0-rc.5', source: 'installed' }])
+    assert.ok(!existsSync(path.join(dir, '.install-0.1.0-rc.6-1234')))
+    assert.ok(!existsSync(path.join(dir, '.install-0.1.0-rc.7-5678')))
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('cleanupStaleInstallDirs tolerates a missing versions dir', () => {
+  const dir = path.join(os.tmpdir(), 'does-not-exist-stale')
+  cleanupStaleInstallDirs(dir)
+  assert.ok(true)
 })
 
 test('bundledDshVersion reads the pinned package version', () => {
