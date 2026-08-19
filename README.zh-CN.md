@@ -22,12 +22,17 @@
 
 <img alt="DeepSeek Harness Desktop 截图" src="assets/screenshot.png" />
 
+<p align="center">
+  <img alt="DSH 版本管理" width="49%" src="assets/screenshot-2.png" />
+  <img alt="DSH 插件管理" width="49%" src="assets/screenshot-3.png" />
+</p>
+
 DeepSeek Harness Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。无需手动启动 CLI 或管理端口，打开应用即可使用完整 Harness 界面。
 
 本项目专注于桌面宿主能力，不 fork、不修改、不注入，也不重新实现 Harness UI。模型、会话、设置、插件和 Agent 能力均由官方 `@deepseek-ai/dsh` 提供。
 
 > [!IMPORTANT]
-> 本项目是非官方社区封装，目前仍属于早期版本，并依赖快速演进中的 `@deepseek-ai/dsh`（当前固定版本见 `package.json` 的 `dependencies` 字段）。macOS 构建尚未经过 Apple 公证，Windows 构建尚未进行商业代码签名。
+> 本项目是非官方社区封装，目前仍属于早期版本，并依赖快速演进中的 `@deepseek-ai/dsh`（当前固定版本见 `package.json` 的 `dependencies` 字段）。macOS 构建尚未经过 Apple 公证。
 
 ## 下载
 

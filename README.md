@@ -22,12 +22,17 @@
 
 <img alt="DeepSeek Harness Desktop screenshot" src="assets/screenshot.png" />
 
+<p align="center">
+  <img alt="DSH version manager" width="49%" src="assets/screenshot-2.png" />
+  <img alt="DSH plugin manager" width="49%" src="assets/screenshot-3.png" />
+</p>
+
 DeepSeek Harness Desktop packages the official DeepSeek Harness Web experience as a standalone desktop application. It removes the need to start the CLI manually or manage local ports while preserving the full Harness interface.
 
 This project focuses on desktop hosting. It does not fork, modify, inject into, or reimplement the Harness UI. Models, sessions, settings, plugins, and agent capabilities remain provided by the official `@deepseek-ai/dsh` package.
 
 > [!IMPORTANT]
-> This is an unofficial community wrapper and an early-stage project. It depends on the rapidly evolving `@deepseek-ai/dsh` (currently pinned at `0.1.0-rc.7` in `package.json`). The macOS builds are not Apple-notarized, and the Windows builds are not commercially code-signed.
+> This is an unofficial community wrapper and an early-stage project. It depends on the rapidly evolving `@deepseek-ai/dsh` (currently pinned at `0.1.0-rc.7` in `package.json`). The macOS builds are not Apple-notarized.
 
 ## Download
 
