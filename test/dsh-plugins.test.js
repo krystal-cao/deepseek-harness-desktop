@@ -10,6 +10,7 @@ import {
   ensureProfilePnpmWorkspaceConfig,
   ensurePnpmShimDir,
   formatPnpmResultError,
+  localSpecTarget,
   npmPackageExists,
   packageNameFromSpec,
   parsePnpmListJson,
@@ -240,6 +241,33 @@ test('ensureProfilePnpmWorkspaceConfig replaces an existing release-age value in
   }
 })
 
+
+test('localSpecTarget resolves the file: spec to an on-disk path', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dsh-profile-'))
+  try {
+    const abs = path.join(dir, 'abs-bundle')
+    mkdirSync(abs)
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      dependencies: { 'dsh-desktop-host': `file:${abs}` },
+    }))
+    assert.equal(localSpecTarget(dir, 'dsh-desktop-host'), abs)
+
+    // Relative file: specs resolve against the profile directory.
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      dependencies: { 'dsh-desktop-host': 'file:rel/bundle' },
+    }))
+    assert.equal(localSpecTarget(dir, 'dsh-desktop-host'), path.join(dir, 'rel', 'bundle'))
+
+    // Registry specs and unknown plugins have no local target.
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      dependencies: { 'dsh-desktop-host': '^1.0.0' },
+    }))
+    assert.equal(localSpecTarget(dir, 'dsh-desktop-host'), null)
+    assert.equal(localSpecTarget(dir, 'missing-plugin'), null)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
 
 test('profileLocalSpecIsMissing detects dead local file: specs', () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'dsh-profile-'))

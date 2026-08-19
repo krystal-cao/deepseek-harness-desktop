@@ -94,6 +94,26 @@ export function parsePnpmListJson(stdout) {
 const LOCAL_SPEC_PATTERN = /^(file:|link:|workspace:|\.\.?\/)/
 
 /**
+ * Resolve the on-disk path a local (file:/link:/workspace:) spec for
+ * `pluginName` points at, or null when the profile has no local spec for it.
+ * Both the installed flag and the "move/upgrade the app" repoint decision
+ * derive from this single source of truth.
+ */
+export function localSpecTarget(profileDir, pluginName) {
+  if (!profileDir) return null
+  let manifest
+  try {
+    manifest = JSON.parse(readFileSync(path.join(profileDir, 'package.json'), 'utf8'))
+  } catch {
+    return null
+  }
+  const spec = manifest?.dependencies?.[pluginName]
+  if (typeof spec !== 'string' || !LOCAL_SPEC_PATTERN.test(spec)) return null
+  const target = spec.replace(/^(file:|link:|workspace:)/, '')
+  return path.isAbsolute(target) ? path.resolve(target) : path.resolve(profileDir, target)
+}
+
+/**
  * True when the profile manifest pins `pluginName` to a file:/link: spec
  * whose target no longer exists (typically a dist build that was cleaned).
  * pnpm aborts any add/remove/update in the profile while such a dead local
@@ -101,18 +121,8 @@ const LOCAL_SPEC_PATTERN = /^(file:|link:|workspace:|\.\.?\/)/
  * bundle path before plugin management can work again.
  */
 export function profileLocalSpecIsMissing(profileDir, pluginName) {
-  if (!profileDir) return false
-  let manifest
-  try {
-    manifest = JSON.parse(readFileSync(path.join(profileDir, 'package.json'), 'utf8'))
-  } catch {
-    return false
-  }
-  const spec = manifest?.dependencies?.[pluginName]
-  if (typeof spec !== 'string' || !LOCAL_SPEC_PATTERN.test(spec)) return false
-  const target = spec.replace(/^(file:|link:|workspace:)/, '')
-  const resolved = path.isAbsolute(target) ? target : path.resolve(profileDir, target)
-  return !existsSync(resolved)
+  const target = localSpecTarget(profileDir, pluginName)
+  return target !== null && !existsSync(target)
 }
 
 /**

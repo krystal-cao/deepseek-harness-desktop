@@ -37,7 +37,7 @@ import {
   ensureProfilePnpmWorkspaceConfig,
   listInstalledPlugins,
   listPluginUpdates,
-  profileLocalSpecIsMissing,
+  localSpecTarget,
   removePlugin,
   repointLocalSpec,
   resolvePluginPnpmEnv,
@@ -479,11 +479,15 @@ async function ensureDesktopHostPlugin() {
   try {
     const listed = await readPluginList()
     if (listed.plugins.some((plugin) => plugin.name === DESKTOP_HOST_PLUGIN)) {
-      // The bridge is installed, but the manifest may still pin it to a
-      // deleted build location (cleaning dist is part of every release
-      // cycle). A dead file: spec breaks every pnpm add/remove/update in the
-      // profile, so repoint it to this instance's bundle and reinstall.
-      if (profileLocalSpecIsMissing(listed.path, DESKTOP_HOST_PLUGIN)) {
+      // The profile pins the bridge to a file: bundle. Whenever that spec no
+      // longer points at THIS instance's bundle, repoint and reinstall. This
+      // covers both a dead spec (dist cleaned on every release) and an app
+      // that was moved or reinstalled to a new path after the spec was
+      // written: the old target may still exist on disk, yet it is the wrong
+      // (stale-version) bundle. A registry spec (no local target) is left
+      // alone.
+      const currentSpecTarget = localSpecTarget(listed.path, DESKTOP_HOST_PLUGIN)
+      if (currentSpecTarget !== null && currentSpecTarget !== DESKTOP_HOST_BUNDLE_PATH) {
         if (repointLocalSpec(listed.path, DESKTOP_HOST_PLUGIN, DESKTOP_HOST_BUNDLE_PATH)) {
           const result = await runDshPluginCommand({
             electronExecutable: process.execPath,
@@ -495,7 +499,7 @@ async function ensureDesktopHostPlugin() {
             throw new Error(`pnpm install exited ${result.code}: ${formatPnpmResultError(result, { maxLength: 400 })}`)
           }
           await restartDshService()
-          console.log('[dsh-bridge] desktop host plugin repointed to a live bundle; service restarted')
+          console.log('[dsh-bridge] desktop host plugin repointed to the running bundle; service restarted')
         }
       }
       return false
