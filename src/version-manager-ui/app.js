@@ -316,7 +316,9 @@ function renderPluginRow(item) {
   if (localUninstallingPlugin === item.name) {
     actions.append(button('卸载中…', { danger: true, disabled: true }))
   } else if (item.managed) {
-    actions.append(badge('内置', 'gray'))
+    const builtInBtn = button('内置', { disabled: true })
+    builtInBtn.title = '应用内置核心插件，由桌面宿主统一管理'
+    actions.append(builtInBtn)
   } else {
     if (updateInfo?.latest) {
       actions.append(
