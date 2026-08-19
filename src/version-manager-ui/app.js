@@ -316,9 +316,11 @@ function renderPluginRow(item) {
   if (localUninstallingPlugin === item.name) {
     actions.append(button('卸载中…', { danger: true, disabled: true }))
   } else if (item.managed) {
+    const wrap = el('span', 'btn-wrap')
+    wrap.title = '应用内置核心插件，由桌面宿主统一管理'
     const builtInBtn = button('内置', { disabled: true })
-    builtInBtn.title = '应用内置核心插件，由桌面宿主统一管理'
-    actions.append(builtInBtn)
+    wrap.append(builtInBtn)
+    actions.append(wrap)
   } else {
     if (updateInfo?.latest) {
       actions.append(
@@ -612,11 +614,10 @@ pluginForm.addEventListener('submit', (event) => {
 autoFollowEl.addEventListener('change', async () => {
   try {
     snapshot = await api.setAutoFollow(autoFollowEl.checked)
-    setStatus(autoFollowEl.checked ? '已开启自动更新。' : '已关闭自动更新。')
     render()
   } catch (error) {
-    setStatus(error?.message ?? '保存自动更新设置失败', true)
-    render()
+    setStatus(error?.message ?? '设置失败', true)
+    autoFollowEl.checked = !autoFollowEl.checked
   }
 })
 registrySaveEl.addEventListener('click', () => {
