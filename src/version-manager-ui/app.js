@@ -11,6 +11,9 @@ const autoFollowTitleEl = document.getElementById('auto-follow-title')
 const registryInputEl = document.getElementById('registry-input')
 const registrySaveEl = document.getElementById('registry-save')
 const registryResetEl = document.getElementById('registry-reset')
+const registryComboEl = document.getElementById('registry-combo')
+const registryToggleEl = document.getElementById('registry-toggle')
+const registryMenuEl = document.getElementById('registry-menu')
 const installedEl = document.getElementById('installed')
 const availableEl = document.getElementById('available')
 const pluginForm = document.getElementById('plugin-form')
@@ -618,6 +621,39 @@ registrySaveEl.addEventListener('click', () => {
 registryResetEl.addEventListener('click', () => {
   registryInputEl.value = ''
   void saveRegistry(null)
+})
+
+/* ── registry combobox (custom dropdown; native datalist is unstyleable) ── */
+function setRegistryMenu(open) {
+  registryMenuEl.hidden = !open
+  registryComboEl.classList.toggle('open', open)
+  registryToggleEl.setAttribute('aria-expanded', String(open))
+  if (open) {
+    const current = registryInputEl.value.trim()
+    for (const option of registryMenuEl.querySelectorAll('.combobox-option')) {
+      option.classList.toggle('selected', option.dataset.value === current)
+    }
+  }
+}
+
+registryToggleEl.addEventListener('click', () => {
+  const open = registryMenuEl.hidden
+  setRegistryMenu(open)
+  if (open) registryInputEl.focus()
+})
+registryInputEl.addEventListener('focus', () => setRegistryMenu(true))
+registryInputEl.addEventListener('click', () => setRegistryMenu(true))
+registryInputEl.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') setRegistryMenu(false)
+})
+for (const option of registryMenuEl.querySelectorAll('.combobox-option')) {
+  option.addEventListener('click', () => {
+    registryInputEl.value = option.dataset.value
+    setRegistryMenu(false)
+  })
+}
+document.addEventListener('pointerdown', (event) => {
+  if (!registryMenuEl.hidden && !registryComboEl.contains(event.target)) setRegistryMenu(false)
 })
 api.onProgress((progress) => {
   if (progress?.message) setStatus(progress.message, progress.phase === 'failed')

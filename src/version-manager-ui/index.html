@@ -81,21 +81,39 @@
             <div class="card-title">npm 镜像地址</div>
             <div class="card-desc">用于版本目录、插件安装和插件管理，内置镜像失效时可切换备用镜像</div>
             <div class="row">
-              <input
-                id="registry-input"
-                class="input"
-                type="text"
-                list="registry-presets"
-                placeholder="https://registry.npmmirror.com/"
-                autocomplete="off"
-                spellcheck="false"
-              >
-              <datalist id="registry-presets">
-                <option value="https://registry.npmmirror.com/">npmmirror（国内）</option>
-                <option value="https://registry.npmjs.org/">npm 官方</option>
-                <option value="https://mirrors.cloud.tencent.com/npm/">腾讯云</option>
-                <option value="https://mirrors.huaweicloud.com/repository/npm/">华为云</option>
-              </datalist>
+              <div class="combobox" id="registry-combo">
+                <input
+                  id="registry-input"
+                  class="input"
+                  type="text"
+                  placeholder="https://registry.npmmirror.com/"
+                  autocomplete="off"
+                  spellcheck="false"
+                >
+                <button type="button" class="combobox-toggle" id="registry-toggle" aria-haspopup="listbox" aria-expanded="false" title="选择镜像">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6"></path>
+                  </svg>
+                </button>
+                <div class="combobox-menu" id="registry-menu" role="listbox" hidden>
+                  <button type="button" class="combobox-option" role="option" data-value="https://registry.npmmirror.com/">
+                    <span class="combobox-option-value">https://registry.npmmirror.com/</span>
+                    <span class="combobox-option-label">npmmirror（国内）</span>
+                  </button>
+                  <button type="button" class="combobox-option" role="option" data-value="https://registry.npmjs.org/">
+                    <span class="combobox-option-value">https://registry.npmjs.org/</span>
+                    <span class="combobox-option-label">npm 官方</span>
+                  </button>
+                  <button type="button" class="combobox-option" role="option" data-value="https://mirrors.cloud.tencent.com/npm/">
+                    <span class="combobox-option-value">https://mirrors.cloud.tencent.com/npm/</span>
+                    <span class="combobox-option-label">腾讯云</span>
+                  </button>
+                  <button type="button" class="combobox-option" role="option" data-value="https://mirrors.huaweicloud.com/repository/npm/">
+                    <span class="combobox-option-value">https://mirrors.huaweicloud.com/repository/npm/</span>
+                    <span class="combobox-option-label">华为云</span>
+                  </button>
+                </div>
+              </div>
               <button type="button" id="registry-save" class="button primary">保存</button>
               <button type="button" id="registry-reset" class="button ghost">恢复默认</button>
             </div>
