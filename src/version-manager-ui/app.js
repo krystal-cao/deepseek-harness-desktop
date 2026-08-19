@@ -123,35 +123,30 @@ function renderInstalledVersion(item) {
   const name = el('span', 'version-name', item.version)
   row.append(name)
 
-  if (isCurrent(item.version)) {
-    row.classList.add('current')
-    const badgesWrap = el('span')
-    badgesWrap.append(badge('当前版本', 'green'))
-    row.append(badgesWrap)
-    const meta = el('span', 'version-meta')
-    const source = item.source === 'bundled' ? '应用内置版本' : '已安装到本地'
-    const family = item.family ? familyMeta(item.family) : ''
-    meta.textContent = [source, family].filter(Boolean).join(' · ')
-    row.append(meta)
-    return row
-  }
-
   const meta = el('span', 'version-meta')
   const source = item.source === 'bundled' ? '应用内置版本' : '已安装到本地'
   const family = item.family ? familyMeta(item.family) : ''
   meta.textContent = [source, family].filter(Boolean).join(' · ')
   row.append(meta)
-  row.append(
+
+  const badgesWrap = el('span', 'badges-wrap')
+  if (isCurrent(item.version)) {
+    badgesWrap.append(badge('当前运行', 'active-badge'))
+    row.append(badgesWrap)
+    return row
+  }
+
+  const actions = el('div', 'row-actions')
+  actions.append(
     button('切换', {
-      primary: true,
       disabled: busy || activeInstall() !== null,
       onClick: () => selectVersion(item.version),
     }),
   )
   if (localUninstallingVersion === item.version) {
-    row.append(button('卸载中…', { danger: true, disabled: true }))
+    actions.append(button('卸载中…', { danger: true, disabled: true }))
   } else if (item.source === 'installed') {
-    row.append(
+    actions.append(
       button(confirmingVersion === item.version ? '确认卸载' : '卸载', {
         danger: true,
         disabled: busy || activeInstall() !== null,
@@ -165,6 +160,7 @@ function renderInstalledVersion(item) {
       }),
     )
   }
+  row.append(actions)
   return row
 }
 
@@ -176,7 +172,7 @@ function renderAvailableVersion(item) {
   const meta = el('span', 'version-meta', formatDate(item.publishedAt))
   row.append(meta)
 
-  const badgesWrap = el('span')
+  const badgesWrap = el('span', 'badges-wrap')
   if (isLatest(item.version)) {
     badgesWrap.append(badge('最新', 'green'), badge('推荐', 'blue'))
   }
@@ -192,26 +188,32 @@ function renderAvailableVersion(item) {
     row.append(badgesWrap)
   }
 
+  const actions = el('div', 'row-actions')
   const installed = (snapshot?.installedVersions ?? []).some((entry) => entry.version === item.version)
   const installing = activeInstall()
   if (isCurrent(item.version)) {
     // The selected tree may be gone/corrupted even though the selection
     // string matches; the shell then runs the bundled dsh, so this row must
     // not pretend the version is active.
-    row.append(button(snapshot?.selectedVersionFallback ? '不可用' : '使用中', { primary: true, disabled: true }))
+    actions.append(
+      badge(
+        snapshot?.selectedVersionFallback ? '不可用' : '使用中',
+        snapshot?.selectedVersionFallback ? 'next' : 'gray',
+      ),
+    )
   } else if (installing === item.version) {
-    row.append(button('安装中…', { primary: true, disabled: true }))
+    actions.append(button('安装中…', { disabled: true }))
   } else if (installed) {
-    row.append(
+    actions.append(
       button('切换', {
-        primary: true,
         disabled: busy || installing !== null,
         onClick: () => selectVersion(item.version),
       }),
     )
   } else {
-    row.append(button('安装', { disabled: busy || installing !== null, onClick: () => installVersion(item.version) }))
+    actions.append(button('安装', { disabled: busy || installing !== null, onClick: () => installVersion(item.version) }))
   }
+  row.append(actions)
   return row
 }
 
@@ -252,33 +254,27 @@ function render() {
     const visible = showAllVersions ? available : available.slice(0, VISIBLE_VERSION_LIMIT)
     for (const item of visible) availableEl.append(renderAvailableVersion(item))
     if (available.length > VISIBLE_VERSION_LIMIT) {
-      const toggle = button(showAllVersions ? '收起旧版本' : `显示全部 ${available.length} 个版本`, {
-        cls: 'ghost',
-        onClick: () => {
-          showAllVersions = !showAllVersions
-          render()
-        },
+      const toggle = el(
+        'button',
+        'group-toggle-btn',
+        showAllVersions ? '收起旧版本' : `显示全部 ${available.length} 个版本`,
+      )
+      toggle.type = 'button'
+      toggle.addEventListener('click', () => {
+        showAllVersions = !showAllVersions
+        render()
       })
-      toggle.style.alignSelf = 'flex-start'
       availableEl.append(toggle)
     }
   }
 }
 
 /* ── plugins ───────────────────────────────────────────────── */
-const TONES = ['tone-0', 'tone-1', 'tone-2', 'tone-3', 'tone-4', 'tone-5']
-
 const KNOWN_ICONS = {
   'dsh-desktop-host':
-    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg>',
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg>',
   dshmarket:
-    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16M4 11l1.5-6h13L20 11M4 11v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9"></path><path d="M9 11v3a3 3 0 0 0 6 0v-3"></path></svg>',
-}
-
-function pluginTone(name) {
-  let hash = 0
-  for (let i = 0; i < name.length; i += 1) hash = (hash * 31 + name.charCodeAt(i)) >>> 0
-  return TONES[hash % TONES.length]
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16M4 11l1.5-6h13L20 11M4 11v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9"></path><path d="M9 11v3a3 3 0 0 0 6 0v-3"></path></svg>',
 }
 
 function pluginInitial(name) {
@@ -288,7 +284,7 @@ function pluginInitial(name) {
 }
 
 function renderPluginIcon(name) {
-  const box = el('span', `plugin-icon ${pluginTone(name)}`)
+  const box = el('span', 'plugin-icon')
   const svg = KNOWN_ICONS[name]
   if (svg) box.innerHTML = svg
   else box.textContent = pluginInitial(name)
@@ -301,7 +297,10 @@ function renderPluginRow(item) {
 
   const updateInfo = pluginsState.outdated?.[item.name]
   const body = el('div', 'plugin-body')
-  const nameLine = el('div', 'plugin-name', item.name)
+  const nameLine = el('div', 'plugin-name')
+  const titleSpan = el('span', 'plugin-title', item.name)
+  nameLine.append(titleSpan)
+
   const version = el('span', 'version', item.version ? `v${item.version}${item.local ? ' · 本地' : ''}` : '')
   nameLine.append(version)
   if (updateInfo?.latest) {
@@ -313,13 +312,14 @@ function renderPluginRow(item) {
   if (item.description) body.append(el('div', 'plugin-desc', item.description))
   row.append(body)
 
+  const actions = el('div', 'row-actions')
   if (localUninstallingPlugin === item.name) {
-    row.append(button('卸载中…', { danger: true, disabled: true }))
+    actions.append(button('卸载中…', { danger: true, disabled: true }))
   } else if (item.managed) {
-    row.append(button('内置', { cls: 'gray', disabled: true }))
+    actions.append(badge('内置', 'gray'))
   } else {
     if (updateInfo?.latest) {
-      row.append(
+      actions.append(
         button(updatingPlugin === item.name ? '更新中…' : '更新', {
           primary: true,
           disabled: busy || checkingUpdates || updatingPlugin !== null,
@@ -327,7 +327,7 @@ function renderPluginRow(item) {
         }),
       )
     }
-    row.append(
+    actions.append(
       button(confirmingPlugin === item.name ? '确认卸载' : '卸载', {
         danger: true,
         disabled: busy || updatingPlugin !== null,
@@ -341,6 +341,7 @@ function renderPluginRow(item) {
       }),
     )
   }
+  row.append(actions)
   return row
 }
 
@@ -372,6 +373,7 @@ async function refresh() {
   confirmingVersion = null
   confirmingPlugin = null
   refreshButton.disabled = true
+  refreshButton.classList.add('spinning')
   try {
     if (activePanel === 'plugins') {
       setStatus('正在读取插件列表…')
@@ -388,6 +390,7 @@ async function refresh() {
   } finally {
     busy = false
     refreshButton.disabled = false
+    refreshButton.classList.remove('spinning')
     if (activePanel === 'plugins') renderPlugins()
     else render()
   }
