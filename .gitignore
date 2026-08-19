@@ -6,3 +6,5 @@ output/
 .DS_Store
 assets/bin/
 .codex/
+CONVERSATION_HANDOVER.md
+HANDOVER.md
