@@ -16,11 +16,19 @@
   <img alt="macOS" src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-171513.svg?style=flat-square" />
 </p>
 
-<img alt="DeepSeek Harness Desktop 截图" src="assets/screenshot.png" />
-
+<h3 align="center">主页面</h3>
 <p align="center">
-  <img alt="DSH 版本管理" width="49%" src="assets/screenshot-2.png" />
-  <img alt="DSH 插件管理" width="49%" src="assets/screenshot-3.png" />
+  <img alt="DeepSeek Harness Desktop 主页面" src="assets/screenshot.png" />
+</p>
+
+<h3 align="center">版本管理</h3>
+<p align="center">
+  <img alt="DSH 版本管理" src="assets/screenshot-2.png" />
+</p>
+
+<h3 align="center">插件管理</h3>
+<p align="center">
+  <img alt="DSH 插件管理" src="assets/screenshot-3.png" />
 </p>
 
 DeepSeek Harness Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。无需手动启动 CLI 或管理端口，打开应用即可使用完整 Harness 界面。
