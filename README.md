@@ -173,3 +173,7 @@ DeepSeek Harness Desktop
 桌面封装采用 [MIT License](LICENSE)。内置的 DeepSeek Harness 同样采用 MIT License，其许可声明保存在 [`third-party-licenses/deepseek-harness-LICENSE`](third-party-licenses/deepseek-harness-LICENSE)。
 
 本项目与 DeepSeek 不存在隶属或官方合作关系。DeepSeek Harness 及相关名称的权利归其各自所有者所有。应用图标使用上游 DeepSeek Harness Web favicon 中的黑色鲸鱼图案。
+
+## 致谢
+
+本项目基于 [steven-kid/deepseek-harness-desktop](https://github.com/steven-kid/deepseek-harness-desktop) 的代码基础迭代而来。尽管经过大量重构与扩展、与原始基础已有很大差异，我们仍然感谢原作者的开源贡献；其原始版权声明保留在 [LICENSE](LICENSE) 中。
