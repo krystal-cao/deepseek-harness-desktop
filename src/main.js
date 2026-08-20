@@ -51,6 +51,7 @@ import {
 import { createPluginManagerApi } from './plugin-manager-ipc.js'
 import { createVersionManagerApi } from './version-manager-api.js'
 import { isNewerVersion, resolveNpmRegistry, sortDshVersions } from './updater-config.js'
+import { migrateLegacyBundleName } from './bundle-migration.js'
 
 const APP_NAME = 'DSH'
 const DESKTOP_HOST_PLUGIN = 'dsh-desktop-host'
@@ -1084,7 +1085,10 @@ if (!hasSingleInstanceLock) {
     void showMainWindow()
   })
 
-  app.whenReady().then(launch)
+  app.whenReady().then(() => {
+    migrateLegacyBundleName()
+    return launch()
+  })
 }
 
 app.on('activate', () => {
