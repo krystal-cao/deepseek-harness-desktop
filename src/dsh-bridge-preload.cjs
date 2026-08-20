@@ -48,5 +48,9 @@ contextBridge.exposeInMainWorld('dshDesktop', {
     state.notify += 1
     ipcRenderer.send('dsh-bridge:notify', payload)
   },
+  debug: (message) => {
+    if (typeof message !== 'string') message = JSON.stringify(message)
+    ipcRenderer.send('dsh-bridge:debug', message)
+  },
   state: () => ({ ...state }),
 })

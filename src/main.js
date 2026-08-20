@@ -968,6 +968,9 @@ async function launch() {
     if (mainWindowFocused && mainWindow && !mainWindow.isDestroyed()) return
     showTaskDoneNotification(payload)
   })
+  ipcMain.on('dsh-bridge:debug', (_event, message) => {
+    appendDiag(`[bridge] ${message}`)
+  })
   try {
     createUpdater()
     createAppMenu()

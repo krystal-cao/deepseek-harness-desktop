@@ -39,7 +39,8 @@ window.__ModuleLoader__.load({
         var offSessions = null
         try {
           var list = ctx.sessions && ctx.sessions.list
-          if (list && typeof list.subscribe === "function" && typeof list.getSnapshot === "function") {
+          var hasApi = !!(list && typeof list.subscribe === "function" && typeof list.getSnapshot === "function")
+          if (hasApi) {
             function onSnapshot() {
               var state = list.getSnapshot() || {}
               var byId = state.byId || {}
@@ -71,6 +72,7 @@ window.__ModuleLoader__.load({
             offSessions = list.subscribe(onSnapshot)
           }
         } catch (error) {
+          if (host.debug) host.debug("sessions-subscribe-error " + (error && error.message ? error.message : String(error)))
           // Task-completion reporting is optional; the rest of the bridge keeps
           // working even if the sessions store is unreachable.
         }
