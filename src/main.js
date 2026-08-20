@@ -498,6 +498,22 @@ function registerVersionManagerIpc() {
   })
   ipcMain.handle('dsh-versions:select', async (event, version) => {
     assertManagerSender(event)
+    // Guard: switching to a version newer than the bundled one may break
+    // compatibility because the shell was built and tested against the bundled
+    // release. Ask the user to confirm before proceeding.
+    const bundled = bundledDshVersion()
+    if (bundled && isNewerVersion(version, bundled)) {
+      const { response } = await dialog.showMessageBox({
+        type: 'warning',
+        title: '版本兼容性提示',
+        message: `目标版本 ${version} 高于本应用内置的 DSH ${bundled}。`,
+        detail: '更高版本可能尚未与本应用充分适配，存在兼容性风险。是否仍要切换？',
+        buttons: ['取消', '继续切换'],
+        defaultId: 0,
+        cancelId: 0,
+      })
+      if (response !== 1) return versionManagerSnapshot()
+    }
     return api.select(version)
   })
   ipcMain.handle('dsh-versions:uninstall', async (event, version) => {
