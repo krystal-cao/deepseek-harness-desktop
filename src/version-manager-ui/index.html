@@ -82,6 +82,22 @@
             </div>
 
             <div class="card">
+              <div class="card-title">界面主题</div>
+              <div class="card-desc">选择 DSH 的配色风格，修改后立即生效</div>
+              <div class="theme-options" role="radiogroup" aria-label="界面主题">
+                <label class="theme-option">
+                  <input type="radio" name="ui-theme" value="default" checked>
+                  <span class="theme-option-label">默认主题</span>
+                </label>
+                <label class="theme-option">
+                  <input type="radio" name="ui-theme" value="claude">
+                  <span class="theme-option-label">Claude Code 主题</span>
+                </label>
+              </div>
+              <div id="theme-conflict-warning" class="theme-conflict-warning" hidden></div>
+            </div>
+
+            <div class="card">
               <div class="card-title">npm 镜像地址</div>
               <div class="card-desc">用于版本目录、插件安装和插件管理，内置镜像失效时可切换备用镜像</div>
               <div class="row">

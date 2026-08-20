@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { appendFileSync, existsSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, watch, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -14,7 +14,14 @@ import {
   Notification,
   shell,
 } from 'electron'
-import { resolveDshEntry, resolveDshEntrySource, startDshService, supportsNoOpen, unpackedPath } from './dsh-service.js'
+import {
+  checkPortAvailable,
+  resolveDshEntry,
+  resolveDshEntrySource,
+  startDshService,
+  supportsNoOpen,
+  unpackedPath,
+} from './dsh-service.js'
 import { buildAppMenuTemplate } from './app-menu.js'
 import { applyMacTitleBarStyle } from './mac-titlebar.js'
 import { initAutoUpdater } from './updater.js'
@@ -35,6 +42,7 @@ import { readUserPathCache, writeUserPathCache } from './user-path-cache.js'
 import {
   addPlugin,
   bridgePluginInstalled,
+  detectExternalThemeInProfile,
   formatPnpmResultError,
   updatePlugin,
   ensureProfilePnpmWorkspaceConfig,
@@ -130,15 +138,17 @@ let mainWindowFocused = true
 let service
 let serviceUrl
 let isQuitting = false
+let stopPromise
 let isRestartingService = false
 let updater
 let resolvedUserPath
 let versionsDir
-let versionState = { selectedVersion: null, dismissedLatest: null }
+let versionState = { selectedVersion: null, dismissedLatest: null, uiTheme: 'default' }
 let catalog = { latest: null, versions: [] }
 let catalogError = null
 let managerWindow
 let currentColorScheme = null
+let currentExternalTheme = null
 
 // Mutable busy state shared between the version-manager IPC surface and the
 // auto-follow path: both install versions, so both must respect the same
@@ -196,6 +206,9 @@ function createWindow(serviceUrl) {
   }
   injectShellStyles()
   mainWindow.webContents.on('dom-ready', injectShellStyles)
+  mainWindow.webContents.on('did-finish-load', () => {
+    void syncMainWindowUiTheme()
+  })
 
   mainWindow.on('focus', () => {
     mainWindowFocused = true
@@ -226,6 +239,7 @@ function createWindow(serviceUrl) {
     await mainWindow.loadURL(serviceUrl)
     await waitForBridgeOrUi(mainWindow.webContents)
     if (mainWindow.isDestroyed()) return
+    await syncMainWindowUiTheme()
     mainWindow.show()
     mainWindow.focus()
   })()
@@ -299,6 +313,7 @@ function versionManagerSnapshot() {
   const byVersion = new Map(catalog.versions.map((item) => [item.version, item]))
   const selected = versionState.selectedVersion
   const selectedSource = resolveDshEntrySource(selected, versionsDir)
+  const externalTheme = currentExternalTheme || detectExternalThemeInProfile()
   return {
     appVersion: app.getVersion(),
     selectedVersion: selected,
@@ -313,6 +328,8 @@ function versionManagerSnapshot() {
     autoFollowLatest: versionState.autoFollowLatest,
     npmRegistry: versionState.npmRegistry,
     dshPort: versionState.dshPort,
+    uiTheme: externalTheme ? 'default' : (versionState.uiTheme === 'claude' ? 'claude' : 'default'),
+    externalTheme,
     installingVersion: versionBusyState.installingVersion,
     installedVersions: installedVersionList(),
     availableVersions: sortDshVersions(catalog.versions.map((item) => item.version)).map((version) => ({
@@ -328,6 +345,26 @@ function pushManagerSnapshot() {
   if (managerWindow && !managerWindow.isDestroyed()) {
     managerWindow.webContents.send('dsh-versions:snapshot', versionManagerSnapshot())
   }
+}
+
+/** Apply the persisted shell theme to the live DSH Web UI without changing
+ * its text, typography, layout, or interaction model. */
+function syncMainWindowUiTheme() {
+  if (!mainWindow || mainWindow.isDestroyed()) return Promise.resolve()
+  const theme = versionState.uiTheme === 'claude' ? 'claude' : 'default'
+  const serialized = JSON.stringify(theme)
+  return mainWindow.webContents
+    .executeJavaScript(
+      `(() => {
+        const theme = ${serialized};
+        window.__DSH_DESKTOP_UI_THEME__ = theme;
+        window.dispatchEvent(new CustomEvent('dsh-desktop-ui-theme-change', { detail: { theme } }));
+      })()`,
+    )
+    .catch((error) => {
+      // The webview may not have finished mounting the bridge yet; ignore.
+      console.warn('syncMainWindowUiTheme failed:', error instanceof Error ? error.message : error)
+    })
 }
 
 async function refreshCatalog() {
@@ -366,6 +403,7 @@ function maybeNotifyDshUpdate() {
 
 function openVersionManagerWindow() {
   if (managerWindow && !managerWindow.isDestroyed()) {
+    pushManagerSnapshot()
     managerWindow.show()
     managerWindow.focus()
     return
@@ -401,6 +439,7 @@ function openVersionManagerWindow() {
   managerWindow.webContents.once('did-finish-load', () => {
     startManagerThemeSync()
     if (currentColorScheme) managerWindow?.webContents.send('dsh-versions:theme', { colorScheme: currentColorScheme })
+    pushManagerSnapshot()
   })
   managerWindow.on('closed', () => {
     stopManagerThemeSync()
@@ -548,6 +587,12 @@ function registerVersionManagerIpc() {
       if (response !== 1) return versionManagerSnapshot()
     }
     return api.setDshPort(value)
+  })
+  ipcMain.handle('dsh-versions:set-ui-theme', (event, value) => {
+    assertManagerSender(event)
+    const next = api.setUiTheme(value)
+    void syncMainWindowUiTheme()
+    return next
   })
 }
 
@@ -765,13 +810,17 @@ function registerPluginManagerIpc() {
     assertManagerSender(event)
     return api.list()
   })
-  ipcMain.handle('dsh-plugins:add', (event, spec) => {
+  ipcMain.handle('dsh-plugins:add', async (event, spec) => {
     assertManagerSender(event)
-    return api.add(spec)
+    const result = await api.add(spec)
+    pushManagerSnapshot()
+    return result
   })
-  ipcMain.handle('dsh-plugins:remove', (event, spec) => {
+  ipcMain.handle('dsh-plugins:remove', async (event, spec) => {
     assertManagerSender(event)
-    return api.remove(spec)
+    const result = await api.remove(spec)
+    pushManagerSnapshot()
+    return result
   })
   ipcMain.handle('dsh-plugins:outdated', async (event) => {
     assertManagerSender(event)
@@ -784,9 +833,11 @@ function registerPluginManagerIpc() {
       env: pluginCommandEnv(),
     })
   })
-  ipcMain.handle('dsh-plugins:update', (event, name) => {
+  ipcMain.handle('dsh-plugins:update', async (event, name) => {
     assertManagerSender(event)
-    return api.update(name)
+    const result = await api.update(name)
+    pushManagerSnapshot()
+    return result
   })
 }
 
@@ -857,6 +908,40 @@ function startHarnessService({ userPath = resolvedUserPath } = {}) {
   return service
 }
 
+async function ensureDshPortAvailable() {
+  const port = versionState.dshPort ?? 3080
+  try {
+    if (await checkPortAvailable(port)) return true
+  } catch (error) {
+    await dialog.showMessageBox({
+      type: 'error',
+      title: `${APP_NAME} 启动失败`,
+      message: '无法检查 DSH 服务端口。',
+      detail: error instanceof Error ? error.message : String(error),
+    })
+    return false
+  }
+
+  await showDshPortConflictDialog()
+  return false
+}
+
+function isDshPortConflict(error) {
+  const message = error instanceof Error ? error.message : String(error)
+  return /EADDRINUSE|address already in use/i.test(message)
+}
+
+function showDshPortConflictDialog() {
+  const port = versionState.dshPort ?? 3080
+  return dialog.showMessageBox({
+    type: 'error',
+    title: `${APP_NAME} 启动失败`,
+    message: `端口 ${port} 已被占用。`,
+    detail:
+      'DSH 需要使用此本地端口启动服务。请关闭其他 DSH 实例或占用该端口的程序，然后重新启动应用。',
+  })
+}
+
 /**
  * Resolve the user's real shell PATH so plugins can find Homebrew, nvm,
  * pyenv and other tools that GUI launches do not inherit. Falls back to the
@@ -905,14 +990,27 @@ async function loadUserPath() {
 }
 
 function stopHarnessService() {
+  if (stopPromise) return stopPromise
   const current = service
   if (!current) return Promise.resolve()
-  return new Promise((resolve) => {
-    if (current.child.exitCode !== null || current.child.killed) {
+  stopPromise = new Promise((resolve) => {
+    let timer
+    let forceTimer
+    const finish = () => {
+      clearTimeout(timer)
+      clearTimeout(forceTimer)
+      if (service === current) service = undefined
+      stopPromise = undefined
       resolve()
+    }
+
+    if (current.child.exitCode !== null) {
+      finish()
       return
     }
-    const timer = setTimeout(() => {
+
+    current.child.once('exit', finish)
+    timer = setTimeout(() => {
       // The child ignored SIGTERM (hung thread, deadlock, ...): escalate to
       // SIGKILL so a stale dsh host can never hold the loopback port while a
       // replacement starts.
@@ -921,14 +1019,26 @@ function stopHarnessService() {
       } catch {
         // Already gone.
       }
-      resolve()
+      // Keep shutdown bounded even if the child process is unable to emit its
+      // exit event. The OS will still release the port once SIGKILL takes
+      // effect.
+      forceTimer = setTimeout(finish, 1_000)
     }, 5_000)
-    current.child.once('exit', () => {
-      clearTimeout(timer)
-      resolve()
-    })
     current.stop()
   })
+  return stopPromise
+}
+
+async function quitAfterStoppingService(event) {
+  if (isQuitting) {
+    event.preventDefault()
+    return
+  }
+  isQuitting = true
+  event.preventDefault()
+  stopBridgeHealPoll()
+  await stopHarnessService()
+  app.exit(0)
 }
 
 async function restartDshService() {
@@ -950,12 +1060,16 @@ async function restartDshService() {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    await dialog.showMessageBox({
-      type: 'error',
-      title: '重启 dsh 服务失败',
-      message: 'DSH 服务重启失败。',
-      detail: message,
-    })
+    if (isDshPortConflict(error)) {
+      await showDshPortConflictDialog()
+    } else {
+      await dialog.showMessageBox({
+        type: 'error',
+        title: '重启 dsh 服务失败',
+        message: 'DSH 服务重启失败。',
+        detail: message,
+      })
+    }
   } finally {
     isRestartingService = false
   }
@@ -986,15 +1100,50 @@ function watchServiceExit() {
   })
 }
 
+let profileWatcher = null
+function watchProfileChanges() {
+  const profileDir = resolveWebProfileDir()
+  try {
+    if (!existsSync(profileDir)) mkdirSync(profileDir, { recursive: true })
+    let debounceTimer = null
+    const notifyChange = () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        pushManagerSnapshot()
+      }, 150)
+    }
+    profileWatcher = watch(profileDir, { recursive: false }, (_eventType, filename) => {
+      if (!filename || filename === 'package.json' || String(filename).endsWith('.json')) {
+        notifyChange()
+      }
+    })
+    app.on('before-quit', () => {
+      try {
+        profileWatcher?.close()
+      } catch {}
+    })
+  } catch {
+    // Best-effort file watching
+  }
+}
+
 async function launch() {
+  watchProfileChanges()
   ipcMain.on('dsh-bridge:ready', () => {
     console.log('[dsh-bridge] web plugins activated')
   })
   ipcMain.on('dsh-bridge:theme', (_event, snapshot) => {
     const colorScheme = snapshot?.colorScheme
+    const externalTheme = typeof snapshot?.externalTheme === 'string' ? snapshot.externalTheme : null
+    if (currentExternalTheme !== externalTheme) {
+      currentExternalTheme = externalTheme
+      pushManagerSnapshot()
+    }
     if (colorScheme === 'dark' || colorScheme === 'light') {
-      console.log('[dsh-bridge] theme', colorScheme)
-      syncManagerTheme(colorScheme)
+      if (currentColorScheme !== colorScheme) {
+        console.log('[dsh-bridge] theme', colorScheme)
+        syncManagerTheme(colorScheme)
+      }
     }
     if (!mainWindow || mainWindow.isDestroyed()) return
     // On macOS the sidebar material handles the window background (the page is
@@ -1031,6 +1180,10 @@ async function launch() {
   writeDshState(app.getPath('userData'), versionState)
   registerVersionManagerIpc()
   registerPluginManagerIpc()
+  if (!(await ensureDshPortAvailable())) {
+    app.quit()
+    return
+  }
   startHarnessService()
   watchServiceExit()
 
@@ -1039,13 +1192,18 @@ async function launch() {
     await createWindow(serviceUrl)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    await dialog.showMessageBox({
-      type: 'error',
-      title: `${APP_NAME} 启动失败`,
-      message: 'DSH 无法启动。',
-      detail: message,
-    })
+    if (isDshPortConflict(error)) {
+      await showDshPortConflictDialog()
+    } else {
+      await dialog.showMessageBox({
+        type: 'error',
+        title: `${APP_NAME} 启动失败`,
+        message: 'DSH 无法启动。',
+        detail: message,
+      })
+    }
     app.quit()
+    return
   }
 
   // Dev affordance: DSH_OPEN_MANAGER=1 opens the dsh manager window on launch
@@ -1087,8 +1245,6 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('before-quit', () => {
-  isQuitting = true
-  stopBridgeHealPoll()
-  service?.stop()
+app.on('before-quit', (event) => {
+  void quitAfterStoppingService(event)
 })

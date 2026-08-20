@@ -8,6 +8,8 @@ const statusEl = document.getElementById('status')
 const sidebarVersionEl = document.getElementById('sidebar-version')
 const autoFollowEl = document.getElementById('auto-follow')
 const autoFollowTitleEl = document.getElementById('auto-follow-title')
+const uiThemeEls = [...document.querySelectorAll('input[name="ui-theme"]')]
+const themeWarningEl = document.getElementById('theme-conflict-warning')
 const registryInputEl = document.getElementById('registry-input')
 const registrySaveEl = document.getElementById('registry-save')
 const registryResetEl = document.getElementById('registry-reset')
@@ -226,6 +228,27 @@ function render() {
   if (!snapshot) return
   autoFollowEl.checked = snapshot.autoFollowLatest ?? true
   autoFollowTitleEl.textContent = (snapshot.autoFollowLatest ?? true) ? '已开启自动更新' : '已关闭自动更新'
+  const externalTheme = snapshot.externalTheme
+  if (externalTheme) {
+    applyUiTheme('default')
+    for (const input of uiThemeEls) {
+      input.disabled = true
+      input.checked = input.value === 'default'
+    }
+    if (themeWarningEl) {
+      themeWarningEl.textContent = `已检测到第三方主题（${externalTheme}），内置主题已锁定以避免样式冲突。`
+      themeWarningEl.hidden = false
+    }
+  } else {
+    applyUiTheme(snapshot.uiTheme)
+    for (const input of uiThemeEls) {
+      input.disabled = false
+      input.checked = input.value === (snapshot.uiTheme === 'claude' ? 'claude' : 'default')
+    }
+    if (themeWarningEl) {
+      themeWarningEl.hidden = true
+    }
+  }
   registryInputEl.value = snapshot.npmRegistry ?? ''
   portInputEl.value = snapshot.dshPort ?? ''
   sidebarVersionEl.textContent = snapshot.selectedVersion ? `v${snapshot.selectedVersion}` : '—'
@@ -272,6 +295,26 @@ function render() {
       })
       availableEl.append(toggle)
     }
+  }
+}
+
+function applyUiTheme(value) {
+  const theme = value === 'claude' ? 'claude' : 'default'
+  document.documentElement.dataset.uiTheme = theme
+  for (const input of uiThemeEls) input.checked = input.value === theme
+}
+
+async function saveUiTheme(value) {
+  const theme = value === 'claude' ? 'claude' : 'default'
+  try {
+    applyUiTheme(theme)
+    snapshot = await api.setUiTheme(theme)
+    render()
+  } catch {
+    try {
+      snapshot = await api.getSnapshot()
+    } catch {}
+    render()
   }
 }
 
@@ -389,6 +432,9 @@ async function refresh() {
       setStatus('正在读取插件列表…')
       pluginsState = await pluginsApi.list()
       pluginsState.outdated = {}
+      try {
+        snapshot = await api.getSnapshot()
+      } catch {}
       setStatus('')
     } else {
       setStatus('正在刷新…')
@@ -401,8 +447,8 @@ async function refresh() {
     busy = false
     refreshButton.disabled = false
     refreshButton.classList.remove('spinning')
+    render()
     if (activePanel === 'plugins') renderPlugins()
-    else render()
   }
 }
 
@@ -469,6 +515,10 @@ async function installPluginSpec(spec) {
     if (result?.error) throw new Error(result.error)
     pluginSpecEl.value = ''
     pluginsState = await refetchPluginList(result)
+    try {
+      snapshot = await api.getSnapshot()
+    } catch {}
+    render()
     setStatus(`插件 ${spec} 已安装，dsh 服务已重启。`)
   } catch (error) {
     setStatus(error?.message ?? `安装 ${spec} 失败`, true)
@@ -490,6 +540,10 @@ async function removePluginByName(spec) {
     const result = await pluginsApi.remove(spec)
     if (result?.error) throw new Error(result.error)
     pluginsState = await refetchPluginList(result)
+    try {
+      snapshot = await api.getSnapshot()
+    } catch {}
+    render()
     setStatus(`插件 ${spec} 已卸载，dsh 服务已重启。`)
   } catch (error) {
     setStatus(error?.message ?? `卸载 ${spec} 失败`, true)
@@ -617,6 +671,7 @@ function setPanel(panel) {
   // The 通用 page persists its settings immediately; it has nothing to refresh.
   refreshButton.hidden = panel === 'general'
   setStatus('')
+  if (panel === 'general') render()
 }
 
 /* ── events ────────────────────────────────────────────────── */
@@ -697,6 +752,11 @@ for (const option of registryMenuEl.querySelectorAll('.combobox-option')) {
   option.addEventListener('click', () => {
     registryInputEl.value = option.dataset.value
     setRegistryMenu(false)
+  })
+}
+for (const input of uiThemeEls) {
+  input.addEventListener('change', () => {
+    if (input.checked) void saveUiTheme(input.value)
   })
 }
 document.addEventListener('pointerdown', (event) => {

@@ -6,6 +6,7 @@ import path from 'node:path'
 import {
   bridgePluginInstalled,
   buildDshPluginArgs,
+  detectExternalThemeInProfile,
   enrichPluginMetadata,
   ensureProfileNpmrc,
   ensureProfilePnpmWorkspaceConfig,
@@ -403,3 +404,32 @@ test('npmPackageExists reports 404 as false, ok as true, errors as unknown', asy
   }
   assert.equal(await npmPackageExists({ name: 'dshmarket', fetcher: throwing }), null)
 })
+
+test('detectExternalThemeInProfile finds third-party theme/skin packages in package.json', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dsh-profile-'))
+  try {
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      dependencies: {
+        'dsh-better-sidebar': '^0.14.0',
+        '@dsh-external/dsh-client-ui-skin-maid-whale-webui': 'github:yunxiiQwQ/dsh-maid-whale-webUI#path:/maid-whale-webui',
+      },
+    }))
+    assert.equal(
+      detectExternalThemeInProfile(dir),
+      '@dsh-external/dsh-client-ui-skin-maid-whale-webui',
+    )
+
+    // Ignores core deepseek-ai packages and desktop host/claude
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      dependencies: {
+        '@deepseek-ai/dsh-client-ui-theme': '^0.1.0',
+        'dsh-desktop-host': 'file:/tmp/host',
+        'dshmarket': '^1.0.0',
+      },
+    }))
+    assert.equal(detectExternalThemeInProfile(dir), null)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+

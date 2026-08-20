@@ -118,5 +118,17 @@ export function createVersionManagerApi({
       })
       return snapshot()
     },
+
+    setUiTheme: (value) => {
+      if (value !== 'default' && value !== 'claude') throw new Error('无效的界面主题')
+      const current = snapshot()
+      if (current?.externalTheme && value !== 'default') {
+        throw new Error(`检测到正在使用第三方主题（${current.externalTheme}），内置主题已锁定`)
+      }
+      updateState((state) => {
+        state.uiTheme = value
+      })
+      return snapshot()
+    },
   }
 }

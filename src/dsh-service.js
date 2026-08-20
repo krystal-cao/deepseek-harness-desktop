@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { createServer } from 'node:net'
 import { delimiter, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { DSH_ANY_VERSION_PATTERN } from './updater-config.js'
@@ -71,6 +72,33 @@ export function withBundledBinPath(env, binDir = bundledBinDir()) {
 
 export function extractReadyUrl(output) {
   return READY_PATTERN.exec(output)?.[1]
+}
+
+/**
+ * Probe whether the loopback port can be bound before starting dsh. Binding a
+ * short-lived server is more reliable than checking with a client connection:
+ * it also detects listeners that do not accept connections yet.
+ */
+export function checkPortAvailable(port, host = '127.0.0.1') {
+  return new Promise((resolve, reject) => {
+    const server = createServer()
+    server.once('error', (error) => {
+      if (error?.code === 'EADDRINUSE') {
+        resolve(false)
+        return
+      }
+      reject(error)
+    })
+    server.listen({ host, port }, () => {
+      server.close((error) => {
+        if (error) {
+          reject(error)
+          return
+        }
+        resolve(true)
+      })
+    })
+  })
 }
 
 /**

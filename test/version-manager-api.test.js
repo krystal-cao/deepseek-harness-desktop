@@ -7,13 +7,14 @@ import { createVersionManagerApi } from '../src/version-manager-api.js'
 
 function makeApi(overrides = {}) {
   const calls = { install: 0, refresh: 0, restart: 0, stateChanged: 0 }
-  const state = { selectedVersion: null, autoFollowLatest: true, npmRegistry: null }
+  const state = { selectedVersion: null, autoFollowLatest: true, npmRegistry: null, uiTheme: 'default' }
   const busyState = { installing: false, installingVersion: null }
   let catalog = { latest: '0.1.0-rc.8', versions: [{ version: '0.1.0-rc.8' }] }
   const defaultSnapshot = () => ({
     selectedVersion: state.selectedVersion,
     autoFollowLatest: state.autoFollowLatest,
     npmRegistry: state.npmRegistry,
+    uiTheme: state.uiTheme,
   })
   const api = createVersionManagerApi({
     busyState,
@@ -179,3 +180,33 @@ test('setNpmRegistry normalizes a valid URL', async () => {
   await api.setNpmRegistry('https://registry.npmjs.org/')
   assert.equal(state.npmRegistry, 'https://registry.npmjs.org/')
 })
+
+test('setUiTheme accepts the supported themes', async () => {
+  const { api, state } = makeApi()
+  await api.setUiTheme('claude')
+  assert.equal(state.uiTheme, 'claude')
+  await api.setUiTheme('default')
+  assert.equal(state.uiTheme, 'default')
+})
+
+test('setUiTheme rejects unknown values', async () => {
+  const { api } = makeApi()
+  await assert.rejects(async () => api.setUiTheme('midnight'), /无效的界面主题/)
+})
+
+test('setUiTheme rejects switching when an external theme is active', async () => {
+  const { api, state } = makeApi({
+    snapshot: () => ({
+      selectedVersion: null,
+      autoFollowLatest: true,
+      npmRegistry: null,
+      uiTheme: state.uiTheme,
+      externalTheme: 'dsh-theme-ti',
+    }),
+  })
+  await assert.rejects(async () => api.setUiTheme('claude'), /检测到正在使用第三方主题（dsh-theme-ti）/)
+  // Resetting to default is permitted
+  await api.setUiTheme('default')
+  assert.equal(state.uiTheme, 'default')
+})
+

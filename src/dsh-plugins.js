@@ -489,3 +489,30 @@ export async function removePlugin({
   ensureProfilePnpmWorkspaceConfig(listed.path)
   return runDshPluginCommand({ electronExecutable, entry, args: ['remove', spec], env, timeoutMs })
 }
+
+/**
+ * Detect if an out-of-tree theme or skin plugin is declared in the profile's
+ * package.json dependencies or dsh.profile.bundles list.
+ */
+export function detectExternalThemeInProfile(profileDir = resolveWebProfileDir()) {
+  try {
+    const pkgPath = path.join(profileDir, 'package.json')
+    if (!existsSync(pkgPath)) return null
+    const data = JSON.parse(readFileSync(pkgPath, 'utf8'))
+    const deps = Object.keys(data?.dependencies || {})
+    const bundles = Array.isArray(data?.dsh?.profile?.bundles) ? data.dsh.profile.bundles : []
+    const all = [...new Set([...deps, ...bundles])]
+    for (const name of all) {
+      if (typeof name !== 'string') continue
+      if (name.startsWith('@deepseek-ai/')) continue
+      if (name === 'dsh-desktop-host' || name === 'dsh-desktop-claude') continue
+      if (/theme|skin/i.test(name)) {
+        return name
+      }
+    }
+  } catch {
+    // Best-effort detection
+  }
+  return null
+}
+

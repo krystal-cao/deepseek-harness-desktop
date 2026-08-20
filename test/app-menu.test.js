@@ -35,7 +35,7 @@ test('macOS menu template is fully in Chinese with expected roles', () => {
   for (const role of ['about', 'services', 'hide', 'hideOthers', 'unhide', 'quit', 'close']) {
     assert.ok(roles.includes(role), `missing role ${role}`)
   }
-  for (const label of ['撤销', '重做', '剪切', '复制', '粘贴', '全选', '重新加载', '设置', '重启 dsh 服务', '检查更新…', '在 GitHub 上查看']) {
+  for (const label of ['撤销', '重做', '剪切', '复制', '粘贴', '全选', '重新加载', '设置…', '重启 dsh 服务', '检查更新…', '在 GitHub 上查看']) {
     assert.ok(items.some((item) => item.label === label), `missing label ${label}`)
   }
   assert.ok(items.every(
@@ -45,12 +45,13 @@ test('macOS menu template is fully in Chinese with expected roles', () => {
   // The DSH options are hosted in the first menu (the app menu), directly below 关于.
   const appMenu = template[0]
   const dshLabels = appMenu.submenu
-    .filter((item) => ['设置', '重启 dsh 服务', '检查更新…'].includes(item.label))
+    .filter((item) => ['设置…', '重启 dsh 服务', '检查更新…'].includes(item.label))
     .map((item) => item.label)
-  assert.deepEqual(dshLabels, ['设置', '重启 dsh 服务', '检查更新…'])
+  assert.deepEqual(dshLabels, ['设置…', '重启 dsh 服务', '检查更新…'])
   const aboutIndex = appMenu.submenu.findIndex((item) => item.role === 'about')
   assert.ok(aboutIndex !== -1)
-  assert.equal(appMenu.submenu[aboutIndex + 1].label, '设置')
+  assert.equal(appMenu.submenu[aboutIndex + 1].label, '设置…')
+  assert.equal(appMenu.submenu[aboutIndex + 1].accelerator, 'CmdOrCtrl+,')
 
   // The 帮助 menu now only surfaces the project link.
   const helpMenu = template.find((item) => item.label === '帮助')
@@ -75,6 +76,6 @@ test('non-macOS hosts the DSH options at the top of the 文件 menu', () => {
   const fileMenu = template[0]
   assert.deepEqual(
     fileMenu.submenu.map((item) => item.label ?? '[separator]'),
-    ['设置', '重启 dsh 服务', '检查更新…', '[separator]', '退出'],
+    ['设置…', '重启 dsh 服务', '检查更新…', '[separator]', '退出'],
   )
 })

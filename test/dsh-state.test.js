@@ -29,12 +29,14 @@ test('dsh state round-trips through userData', () => {
       autoFollowLatest: true,
       npmRegistry: null,
       dshPort: null,
+      uiTheme: 'default',
     })
     writeDshState(userData, {
       selectedVersion: '0.1.0-rc.6',
       dismissedLatest: '0.1.0-rc.7',
       autoFollowLatest: false,
       npmRegistry: 'https://registry.example.com/',
+      uiTheme: 'default',
     })
     assert.deepEqual(readDshState(userData), {
       schemaVersion: 1,
@@ -43,6 +45,7 @@ test('dsh state round-trips through userData', () => {
       autoFollowLatest: false,
       npmRegistry: 'https://registry.example.com/',
       dshPort: null,
+      uiTheme: 'default',
     })
     const raw = JSON.parse(readFileSync(path.join(userData, 'dsh-state.json'), 'utf8'))
     assert.equal(raw.selectedVersion, '0.1.0-rc.6')
@@ -62,6 +65,7 @@ test('dsh state falls back to defaults for corrupted files', () => {
       autoFollowLatest: true,
       npmRegistry: null,
       dshPort: null,
+      uiTheme: 'default',
     })
   } finally {
     rmSync(userData, { recursive: true, force: true })

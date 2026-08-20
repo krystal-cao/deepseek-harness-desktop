@@ -166,4 +166,3 @@ test('buildDshArgs appends --no-open only when requested', () => {
   assert.deepEqual(buildDshArgs('/app/dsh.js', { noOpen: false }), base)
   assert.deepEqual(buildDshArgs('/app/dsh.js', { noOpen: true }), [...base, '--no-open'])
 })
-

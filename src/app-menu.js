@@ -12,9 +12,9 @@ export function buildAppMenuTemplate({
   const isMac = platform === 'darwin'
   const template = []
 
-  // The DSH service options, in a fixed order: 设置 → 重启 dsh 服务 → 检查更新.
+  // The DSH service options, in a fixed order: 设置… → 重启 dsh 服务 → 检查更新….
   const dshMenuItems = [
-    ...(onOpenVersionManager ? [{ label: '设置', click: onOpenVersionManager }] : []),
+    ...(onOpenVersionManager ? [{ label: '设置…', accelerator: 'CmdOrCtrl+,', click: onOpenVersionManager }] : []),
     ...(onRestartService ? [{ label: '重启 dsh 服务', click: onRestartService }] : []),
     ...(onCheckForUpdates ? [{ label: '检查更新…', click: onCheckForUpdates }] : []),
   ]
