@@ -82,6 +82,7 @@ function findAppBundle(stagingRoot) {
 function assertReplaceableBundle(bundlePath) {
   try {
     accessSync(bundlePath, constants.W_OK)
+    accessSync(path.dirname(bundlePath), constants.W_OK)
   } catch {
     throw new Error(`the app bundle is not writable (running from a read-only volume?): ${bundlePath}`)
   }
@@ -90,7 +91,9 @@ function assertReplaceableBundle(bundlePath) {
 function scheduleSwap({ stagingRoot, extractedApp, bundlePath }) {
   const scriptPath = path.join(stagingRoot, 'install.sh')
   const logPath = path.join(stagingRoot, 'install.log')
+  const targetBundlePath = path.join(path.dirname(bundlePath), path.basename(extractedApp))
   const escapedBundle = bundlePath.replaceAll('"', '\\"')
+  const escapedTarget = targetBundlePath.replaceAll('"', '\\"')
   const escapedApp = extractedApp.replaceAll('"', '\\"')
   const backupPath = `${bundlePath}.dsh-old`
   const escapedBackup = backupPath.replaceAll('"', '\\"')
@@ -102,13 +105,16 @@ if ! mv "${escapedBundle}" "${escapedBackup}"; then
   echo "failed to move current app aside: ${bundlePath}" >&2
   exit 1
 fi
-if ! mv "${escapedApp}" "${escapedBundle}"; then
+if [ "${escapedBundle}" != "${escapedTarget}" ]; then
+  rm -rf "${escapedTarget}"
+fi
+if ! mv "${escapedApp}" "${escapedTarget}"; then
   mv "${escapedBackup}" "${escapedBundle}"
   echo "failed to install update; previous app restored: ${bundlePath}" >&2
   exit 1
 fi
 rm -rf "${escapedBackup}"
-open "${escapedBundle}"
+open "${escapedTarget}"
 `
   writeFileSync(scriptPath, script, { mode: 0o755 })
   spawn('sh', [scriptPath], { detached: true, stdio: 'ignore' }).unref()
