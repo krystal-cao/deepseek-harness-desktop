@@ -4,12 +4,14 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, wri
 import os from 'node:os'
 import path from 'node:path'
 import {
+  bridgePluginInstalled,
   buildDshPluginArgs,
   enrichPluginMetadata,
   ensureProfileNpmrc,
   ensureProfilePnpmWorkspaceConfig,
   ensurePnpmShimDir,
   formatPnpmResultError,
+  isLocalSpec,
   localSpecTarget,
   npmPackageExists,
   packageNameFromSpec,
@@ -18,6 +20,7 @@ import {
  profileLocalSpecIsMissing,
   resolveLocalPluginVersions,
   resolvePluginPnpmEnv,
+  resolveWebProfileDir,
   repointLocalSpec,
   validatePluginSpec,
 } from '../src/dsh-plugins.js'
@@ -269,6 +272,37 @@ test('localSpecTarget resolves the file: spec to an on-disk path', () => {
   }
 })
 
+test('bridgePluginInstalled reports presence by file spec and bundle existence', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dsh-profile-'))
+  try {
+    // No local spec at all → not installed (third-party removal clears it).
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ dependencies: {} }))
+    assert.equal(bridgePluginInstalled(dir, 'dsh-desktop-host'), false)
+
+    // Local spec present and target exists → installed.
+    const live = path.join(dir, 'bundle')
+    mkdirSync(live)
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      dependencies: { 'dsh-desktop-host': `file:${live}` },
+    }))
+    assert.equal(bridgePluginInstalled(dir, 'dsh-desktop-host'), true)
+
+    // Local spec present but target gone (dead spec) → not installed.
+    writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      dependencies: { 'dsh-desktop-host': 'file:/gone/bundle' },
+    }))
+    assert.equal(bridgePluginInstalled(dir, 'dsh-desktop-host'), false)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('resolveWebProfileDir honors DSH_HOME and the default home', () => {
+  assert.match(resolveWebProfileDir({ DSH_HOME: '/tmp/custom-dsh' }), /^\/tmp\/custom-dsh\/profiles\/web$/)
+  assert.match(resolveWebProfileDir({}), /\/\.dsh\/profiles\/web$/)
+  assert.match(resolveWebProfileDir(), /\/\.dsh\/profiles\/web$/)
+})
+
 test('profileLocalSpecIsMissing detects dead local file: specs', () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'dsh-profile-'))
   try {
@@ -345,6 +379,19 @@ test('packageNameFromSpec strips optional version ranges', () => {
   assert.equal(packageNameFromSpec('@scope/name@1.2.3'), '@scope/name')
   assert.equal(packageNameFromSpec(''), null)
   assert.equal(packageNameFromSpec(undefined), null)
+})
+
+test('isLocalSpec distinguishes local filesystem specs from registry names', () => {
+  assert.equal(isLocalSpec('file:/Users/x/bundle'), true)
+  assert.equal(isLocalSpec('file:./rel'), true)
+  assert.equal(isLocalSpec('link:/Users/x/bundle'), true)
+  assert.equal(isLocalSpec('workspace:foo'), true)
+  assert.equal(isLocalSpec('./rel/path'), true)
+  assert.equal(isLocalSpec('../up'), true)
+  assert.equal(isLocalSpec('dshmarket'), false)
+  assert.equal(isLocalSpec('@scope/name'), false)
+  assert.equal(isLocalSpec('@scope/name@1.2.3'), false)
+  assert.equal(isLocalSpec(undefined), false)
 })
 
 test('npmPackageExists reports 404 as false, ok as true, errors as unknown', async () => {

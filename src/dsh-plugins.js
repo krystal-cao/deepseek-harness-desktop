@@ -11,6 +11,28 @@ import { resolvePnpmCli } from './dsh-versions.js'
 import { resolveNpmRegistry } from './updater-config.js'
 
 /**
+ * Resolve a dsh profile directory from the environment without spawning the
+ * CLI: `<DSH_HOME>/profiles/<name>`, where DSH_HOME defaults to ~/.dsh.
+ * Mirrors the profile layout dsh itself uses (see bin.js: "--profile <name>",
+ * "the profile under $DSH_HOME/profiles to boot").
+ */
+export function resolveWebProfileDir(env = process.env) {
+  const dshHome = env.DSH_HOME || path.join(os.homedir(), '.dsh')
+  return path.join(dshHome, 'profiles', DEFAULT_PROFILE)
+}
+
+/**
+ * True when the bridge plugin's file: spec is present in the profile manifest
+ * and its bundle target still exists on disk. A cheap file-read check (no
+ * pnpm/spawn) used by the periodic self-heal poll to detect a bridge that a
+ * third-party plugin manager removed or broke out from under the shell.
+ */
+export function bridgePluginInstalled(profileDir, pluginName) {
+  const target = localSpecTarget(profileDir, pluginName)
+  return target !== null && existsSync(target)
+}
+
+/**
  * Strip an optional @version range from a plugin spec, leaving the bare
  * package name (scoped names keep their @scope/). Used for registry
  * existence checks before a pnpm add.
@@ -92,6 +114,16 @@ export function parsePnpmListJson(stdout) {
 }
 
 const LOCAL_SPEC_PATTERN = /^(file:|link:|workspace:|\.\.?\/)/
+
+/**
+ * True when a plugin spec refers to a local filesystem source (file:/link:/
+ * workspace:/relative path) rather than a registry package. Such specs have no
+ * npm name to validate, so they must be skipped by the registry existence
+ * precheck.
+ */
+export function isLocalSpec(spec) {
+  return typeof spec === 'string' && LOCAL_SPEC_PATTERN.test(spec)
+}
 
 /**
  * Resolve the on-disk path a local (file:/link:/workspace:) spec for
@@ -404,11 +436,12 @@ export async function addPlugin({
 } = {}) {
   // Fail fast for npm-registry plugins that do not exist: pnpm's 404 is
   // only visible in a wall of progress output, so a cheap existence check
-  // gives the UI a clear, immediate message. GitHub and file:/link: specs
-  // are skipped (no registry name to check); an unreachable registry is
-  // skipped too and left for pnpm to report.
+  // gives the UI a clear, immediate message. Local filesystem specs
+  // (file:/link:/workspace:/relative paths) and GitHub specs have no registry
+  // name to check and are skipped; an unreachable registry is skipped too and
+  // left for pnpm to report.
   const bareName = packageNameFromSpec(spec)
-  if (bareName && !GITHUB_SPEC.test(spec)) {
+  if (bareName && !GITHUB_SPEC.test(spec) && !isLocalSpec(spec)) {
     const exists = await npmPackageExists({ name: bareName, registry })
     if (exists === false) {
       throw new Error(`未找到 npm 包 ${bareName}（HTTP 404），请检查拼写或确认该包已发布到当前镜像`)

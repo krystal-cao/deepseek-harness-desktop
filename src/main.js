@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process'
+import { appendFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -32,6 +33,7 @@ import { readDshState, writeDshState } from './dsh-state.js'
 import { readUserPathCache, writeUserPathCache } from './user-path-cache.js'
 import {
   addPlugin,
+  bridgePluginInstalled,
   formatPnpmResultError,
   updatePlugin,
   ensureProfilePnpmWorkspaceConfig,
@@ -41,6 +43,7 @@ import {
   removePlugin,
   repointLocalSpec,
   resolvePluginPnpmEnv,
+  resolveWebProfileDir,
   runDshPluginCommand,
 } from './dsh-plugins.js'
 import { createPluginManagerApi } from './plugin-manager-ipc.js'
@@ -55,6 +58,19 @@ const DESKTOP_HOST_BUNDLE_PATH = unpackedPath(
   fileURLToPath(new URL('../assets/dsh-desktop-host', import.meta.url)),
 )
 const execFileAsync = promisify(execFile)
+
+/**
+ * Append a line to a diagnostic log under userData. The packaged GUI app's
+ * stdout/stderr are not reachable from a terminal, so the bridge self-heal
+ * writes its decisions and failures here for retrospection.
+ */
+function appendDiag(line) {
+  try {
+    appendFileSync(path.join(app.getPath('userData'), 'bridge-heal.log'), `${new Date().toISOString()} ${line}\n`)
+  } catch {
+    // Best effort; diagnostics must never break the app.
+  }
+}
 
 let mainWindow
 let service
@@ -470,12 +486,38 @@ function readPluginList() {
 }
 
 /**
+ * Ask the user before a bridge self-heal is allowed to restart the dsh
+ * service. Restarting reloads the web UI and can interrupt in-flight work, so
+ * a runtime heal (which may fire while the user is mid-task) confirms first.
+ * Startup heals keep `prompt` false and restart silently. Returns true when
+ * the restart should proceed now; false when the user chose to defer (the
+ * plugin is already reinstalled, just not yet active).
+ */
+async function confirmBridgeRestart(prompt) {
+  if (!prompt) return true
+  const { response } = await dialog.showMessageBox({
+    type: 'warning',
+    title: '需要重启 dsh 服务',
+    message: '检测到内置桥接插件被移除，已自动重新安装。',
+    detail: '重启 dsh 服务后才能生效（会重新加载当前窗口）。是否现在重启？',
+    buttons: ['稍后', '立即重启'],
+    defaultId: 1,
+    cancelId: 0,
+  })
+  return response === 1
+}
+
+/**
  * Make sure the desktop host bridge plugin is installed in the web profile.
  * It is bundled with the app and installed from a local path, so this is a
  * file: install with no network dependency. Returns true when a restart was
- * triggered because the plugin was newly added.
+ * triggered because the plugin was newly added (or repointed).
+ *
+ * `promptBeforeRestart` controls whether an automatic heal may restart the
+ * service unprompted: the runtime poll passes true so the user can defer an
+ * interrupting restart, while startup heals pass false and restart silently.
  */
-async function ensureDesktopHostPlugin() {
+async function ensureDesktopHostPlugin({ promptBeforeRestart = false } = {}) {
   try {
     const listed = await readPluginList()
     if (listed.plugins.some((plugin) => plugin.name === DESKTOP_HOST_PLUGIN)) {
@@ -498,8 +540,13 @@ async function ensureDesktopHostPlugin() {
           if (result.code !== 0) {
             throw new Error(`pnpm install exited ${result.code}: ${formatPnpmResultError(result, { maxLength: 400 })}`)
           }
-          await restartDshService()
-          console.log('[dsh-bridge] desktop host plugin repointed to the running bundle; service restarted')
+          if (await confirmBridgeRestart(promptBeforeRestart)) {
+            await restartDshService()
+            console.log('[dsh-bridge] desktop host plugin repointed to the running bundle; service restarted')
+          } else {
+            console.log('[dsh-bridge] desktop host plugin repointed; restart deferred by user')
+            appendDiag('repointed; restart deferred by user')
+          }
         }
       }
       return false
@@ -512,15 +559,72 @@ async function ensureDesktopHostPlugin() {
       env: pluginCommandEnv(),
       registry: currentNpmRegistry(),
     })
+    appendDiag(`ensure: addPlugin exit=${result.code} spec=file:${DESKTOP_HOST_BUNDLE_PATH}`)
     if (result.code !== 0) {
       throw new Error(`pnpm add exited ${result.code}: ${formatPnpmResultError(result, { maxLength: 400 })}`)
     }
-    await restartDshService()
-    console.log('[dsh-bridge] desktop host plugin installed; service restarted')
+    if (await confirmBridgeRestart(promptBeforeRestart)) {
+      await restartDshService()
+      console.log('[dsh-bridge] desktop host plugin installed; service restarted')
+      appendDiag('ensure: addPlugin ok + service restarted')
+    } else {
+      console.log('[dsh-bridge] desktop host plugin installed; restart deferred by user')
+      appendDiag('ensure: addPlugin ok; restart deferred by user')
+    }
     return true
   } catch (error) {
-    console.warn('[dsh-bridge] could not install desktop host plugin:', error instanceof Error ? error.message : error)
+    const message = error instanceof Error ? error.message : String(error)
+    appendDiag(`ensure threw: ${message}`)
+    console.warn('[dsh-bridge] could not install desktop host plugin:', message)
     return false
+  }
+}
+
+/**
+ * Periodic self-heal for the bundled bridge plugin. A third-party plugin
+ * manager (e.g. dshmarket) runs pnpm against the web profile directly and can
+ * remove `dsh-desktop-host` out from under the shell — the desktop IPC guards
+ * cannot block that channel, and dsh itself has no "managed" declaration. The
+ * cheap profile check detects the removal and reinstalls the bridge so its
+ * readiness/theme reporting (and thus the whole plugin experience) recovers
+ * without waiting for an app restart.
+ */
+const BRIDGE_HEAL_INTERVAL_MS = 30_000
+let bridgeHealTimer = null
+let bridgeHealRunning = false
+
+async function runBridgeHeal() {
+  if (bridgeHealRunning || isQuitting || isRestartingService) return
+  bridgeHealRunning = true
+  try {
+    const profileDir = resolveWebProfileDir()
+    const installed = bridgePluginInstalled(profileDir, DESKTOP_HOST_PLUGIN)
+    if (installed) return
+    console.warn('[dsh-bridge] detected missing desktop host plugin; reinstalling')
+    appendDiag('detected missing; calling ensureDesktopHostPlugin (prompting before restart)')
+    await ensureDesktopHostPlugin({ promptBeforeRestart: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    appendDiag(`poll failed: ${message}\n${error instanceof Error ? error.stack : ''}`)
+    console.warn('[dsh-bridge] bridge self-heal failed:', message)
+  } finally {
+    bridgeHealRunning = false
+  }
+}
+
+function startBridgeHealPoll() {
+  // Prime check shortly after launch (the startup ensure covers it, but a
+  // removal right at boot should be caught without waiting a full interval),
+  // then poll periodically. The interval is high-enough that the cheap
+  // file-read poll costs nothing while idle.
+  setTimeout(() => void runBridgeHeal(), 5_000)
+  bridgeHealTimer = setInterval(() => void runBridgeHeal(), BRIDGE_HEAL_INTERVAL_MS)
+}
+
+function stopBridgeHealPoll() {
+  if (bridgeHealTimer) {
+    clearInterval(bridgeHealTimer)
+    bridgeHealTimer = null
   }
 }
 
@@ -832,6 +936,7 @@ async function launch() {
     setTimeout(() => openVersionManagerWindow(), 500)
   }
   void ensureDesktopHostPlugin()
+  startBridgeHealPoll()
   void refreshCatalog()
     .then(() => followLatestIfEnabled())
     .then(() => maybeNotifyDshUpdate())
@@ -859,5 +964,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   isQuitting = true
+  stopBridgeHealPoll()
   service?.stop()
 })
