@@ -7,7 +7,6 @@ export function buildAppMenuTemplate({
   onRestartService,
   onOpenVersionManager,
   onOpenGithub,
-  icons = {},
   platform = process.platform,
 } = {}) {
   const isMac = platform === 'darwin'
@@ -15,9 +14,9 @@ export function buildAppMenuTemplate({
 
   // The DSH service options, in a fixed order: 设置 → 重启 dsh 服务 → 检查更新.
   const dshMenuItems = [
-    ...(onOpenVersionManager ? [{ label: '设置', click: onOpenVersionManager, ...(icons.settings ? { icon: icons.settings } : {}) }] : []),
-    ...(onRestartService ? [{ label: '重启 dsh 服务', click: onRestartService, ...(icons.restart ? { icon: icons.restart } : {}) }] : []),
-    ...(onCheckForUpdates ? [{ label: '检查更新…', click: onCheckForUpdates, ...(icons.update ? { icon: icons.update } : {}) }] : []),
+    ...(onOpenVersionManager ? [{ label: '设置', click: onOpenVersionManager }] : []),
+    ...(onRestartService ? [{ label: '重启 dsh 服务', click: onRestartService }] : []),
+    ...(onCheckForUpdates ? [{ label: '检查更新…', click: onCheckForUpdates }] : []),
   ]
 
   if (isMac) {

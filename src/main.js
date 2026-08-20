@@ -10,7 +10,6 @@ import {
   dialog,
   ipcMain,
   Menu,
-  nativeImage,
   nativeTheme,
   Notification,
   shell,
@@ -263,21 +262,10 @@ function createUpdater() {
   })
 }
 
-function createMenuIcons() {
-  const make = (name) => {
-    const img = nativeImage.createFromPath(fileURLToPath(new URL(`./menu-icons/${name}Template.png`, import.meta.url)))
-    if (img.isEmpty()) return undefined
-    if (process.platform === 'darwin') img.setTemplateImage(true)
-    return img
-  }
-  return { settings: make('settings'), restart: make('restart'), update: make('update') }
-}
-
 function createAppMenu() {
   if (process.platform !== 'darwin') return
   Menu.setApplicationMenu(Menu.buildFromTemplate(buildAppMenuTemplate({
     appName: APP_NAME,
-    icons: createMenuIcons(),
     onCheckForUpdates: () => void updater?.checkForUpdates({ manual: true }),
     onRestartService: () => void restartDshService(),
     onOpenVersionManager: () => openVersionManagerWindow(),
