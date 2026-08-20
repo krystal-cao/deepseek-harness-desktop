@@ -116,6 +116,7 @@
     },
     "dmg": {
       "title": "DSH Desktop ${version}",
+      "icon": "assets/dmg-icon.icns",
       "backgroundColor": "#f5f7fb",
       "window": {
         "width": 540,
