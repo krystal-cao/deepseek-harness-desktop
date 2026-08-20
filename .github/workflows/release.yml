@@ -36,8 +36,8 @@ jobs:
       - run: npm run smoke:packaged
       - name: Verify traffic-light inset
         run: |
-          pkill -f "DeepSeek Harness" 2>/dev/null || true
-          APP="$PWD/dist/mac-arm64/DeepSeek Harness.app/Contents/MacOS/DeepSeek Harness"
+          pkill -f "DSH" 2>/dev/null || true
+          APP="$PWD/dist/mac-arm64/DSH.app/Contents/MacOS/DSH"
           "$APP" --remote-debugging-port=9333 > /tmp/dsh-inset.log 2>&1 &
           APP_PID=$!
           trap 'kill $APP_PID 2>/dev/null || true' EXIT

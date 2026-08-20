@@ -104,8 +104,8 @@ test('resolveDshEntrySource and resolveDshEntry agree on the same candidate', ()
 
 test('unpackedPath maps packaged dependencies to Electron unpacked resources', () => {
   assert.equal(
-    unpackedPath('/Applications/DeepSeek Harness.app/Contents/Resources/app.asar/node_modules/@deepseek-ai/dsh/lib/bin.js'),
-    '/Applications/DeepSeek Harness.app/Contents/Resources/app.asar.unpacked/node_modules/@deepseek-ai/dsh/lib/bin.js',
+    unpackedPath('/Applications/DSH.app/Contents/Resources/app.asar/node_modules/@deepseek-ai/dsh/lib/bin.js'),
+    '/Applications/DSH.app/Contents/Resources/app.asar.unpacked/node_modules/@deepseek-ai/dsh/lib/bin.js',
   )
   assert.equal(unpackedPath('/workspace/node_modules/@deepseek-ai/dsh/lib/bin.js'), '/workspace/node_modules/@deepseek-ai/dsh/lib/bin.js')
 })
@@ -119,16 +119,16 @@ test('buildDshArgs includes the runtime flag required by upstream HMR', () => {
     '--host',
     '127.0.0.1',
     '--port',
-    '0',
+    '3080',
   ])
 })
 
 test('buildDshCommand starts Electron directly with the dsh args', () => {
   assert.deepEqual(buildDshCommand({
-    electronExecutable: 'C:\\app\\DeepSeek Harness.exe',
+    electronExecutable: 'C:\\app\\DSH.exe',
     entry: 'C:\\app\\dsh.js',
   }), {
-    command: 'C:\\app\\DeepSeek Harness.exe',
+    command: 'C:\\app\\DSH.exe',
     args: [
       '--expose-internals',
       'C:\\app\\dsh.js',
@@ -137,7 +137,7 @@ test('buildDshCommand starts Electron directly with the dsh args', () => {
       '--host',
       '127.0.0.1',
       '--port',
-      '0',
+      '3080',
     ],
   })
 })
@@ -160,7 +160,7 @@ test('buildDshArgs appends --no-open only when requested', () => {
     '--host',
     '127.0.0.1',
     '--port',
-    '0',
+    '3080',
   ]
   assert.deepEqual(buildDshArgs('/app/dsh.js'), base)
   assert.deepEqual(buildDshArgs('/app/dsh.js', { noOpen: false }), base)

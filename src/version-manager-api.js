@@ -108,5 +108,15 @@ export function createVersionManagerApi({
       })
       return snapshot()
     },
+
+    setDshPort: (value) => {
+      if (value !== null && (typeof value !== 'number' || !Number.isInteger(value) || value < 1024 || value > 65535)) {
+        throw new Error('无效的端口号')
+      }
+      updateState((state) => {
+        state.dshPort = value
+      })
+      return snapshot()
+    },
   }
 }

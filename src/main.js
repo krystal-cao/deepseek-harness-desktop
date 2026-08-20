@@ -10,6 +10,7 @@ import {
   dialog,
   ipcMain,
   Menu,
+  nativeImage,
   nativeTheme,
   Notification,
   shell,
@@ -51,7 +52,7 @@ import { createPluginManagerApi } from './plugin-manager-ipc.js'
 import { createVersionManagerApi } from './version-manager-api.js'
 import { isNewerVersion, resolveNpmRegistry, sortDshVersions } from './updater-config.js'
 
-const APP_NAME = 'DeepSeek Harness'
+const APP_NAME = 'DSH'
 const DESKTOP_HOST_PLUGIN = 'dsh-desktop-host'
 // the file: install target for the bundled bridge plugin. When asar is on the
 // bundle is unpacked under app.asar.unpacked; pnpm needs a real on-disk path.
@@ -261,13 +262,25 @@ function createUpdater() {
   })
 }
 
+function createMenuIcons() {
+  const make = (name) => {
+    const img = nativeImage.createFromPath(fileURLToPath(new URL(`./menu-icons/${name}Template.png`, import.meta.url)))
+    if (img.isEmpty()) return undefined
+    if (process.platform === 'darwin') img.setTemplateImage(true)
+    return img
+  }
+  return { settings: make('settings'), restart: make('restart'), update: make('update') }
+}
+
 function createAppMenu() {
   if (process.platform !== 'darwin') return
   Menu.setApplicationMenu(Menu.buildFromTemplate(buildAppMenuTemplate({
     appName: APP_NAME,
+    icons: createMenuIcons(),
     onCheckForUpdates: () => void updater?.checkForUpdates({ manual: true }),
     onRestartService: () => void restartDshService(),
     onOpenVersionManager: () => openVersionManagerWindow(),
+    onOpenGithub: () => void shell.openExternal('https://github.com/krystal-cao/deepseek-harness-desktop'),
   })))
 }
 
@@ -310,6 +323,7 @@ function versionManagerSnapshot() {
     dismissedLatest: versionState.dismissedLatest,
     autoFollowLatest: versionState.autoFollowLatest,
     npmRegistry: versionState.npmRegistry,
+    dshPort: versionState.dshPort,
     installingVersion: versionBusyState.installingVersion,
     installedVersions: installedVersionList(),
     availableVersions: sortDshVersions(catalog.versions.map((item) => item.version)).map((version) => ({
@@ -527,6 +541,24 @@ function registerVersionManagerIpc() {
   ipcMain.handle('dsh-versions:set-npm-registry', (event, value) => {
     assertManagerSender(event)
     return api.setNpmRegistry(value)
+  })
+  ipcMain.handle('dsh-versions:set-port', async (event, value) => {
+    assertManagerSender(event)
+    if (value !== null && value !== 3080) {
+      const { response } = await dialog.showMessageBox({
+        type: 'warning',
+        title: '服务端口修改提示',
+        message: `设置的端口 ${value} 与默认端口 3080 不一致。`,
+        detail:
+          `DSH 默认监听 3080 端口，该端口会被作为环境信息注入系统提示词。将其修改为其他端口后，历史会话重新提问时会因系统提示词变动导致大模型上下文缓存失效，从而显著增加 API 调用费用与响应延迟；同时默认连接 3080 端口的外部插件与工具也可能受到影响。\n\n` +
+          `保存后需重启应用生效。是否仍要继续修改？`,
+        buttons: ['取消', '仍要修改'],
+        defaultId: 0,
+        cancelId: 0,
+      })
+      if (response !== 1) return versionManagerSnapshot()
+    }
+    return api.setDshPort(value)
   })
 }
 
@@ -825,6 +857,7 @@ function startHarnessService({ userPath = resolvedUserPath } = {}) {
     electronExecutable: process.execPath,
     entry: currentDshEntry(),
     noOpen,
+    port: versionState.dshPort ?? 3080,
     environment: {
       ...process.env,
       ...(userPath !== undefined ? { PATH: userPath } : {}),
@@ -931,7 +964,7 @@ async function restartDshService() {
     await dialog.showMessageBox({
       type: 'error',
       title: '重启 dsh 服务失败',
-      message: 'DeepSeek Harness 服务重启失败。',
+      message: 'DSH 服务重启失败。',
       detail: message,
     })
   } finally {
@@ -1020,7 +1053,7 @@ async function launch() {
     await dialog.showMessageBox({
       type: 'error',
       title: `${APP_NAME} 启动失败`,
-      message: 'DeepSeek Harness 无法启动。',
+      message: 'DSH 无法启动。',
       detail: message,
     })
     app.quit()

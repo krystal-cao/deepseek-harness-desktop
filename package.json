@@ -1,7 +1,7 @@
 {
   "name": "deepseek-harness-desktop",
-  "version": "0.3.1",
-  "description": "An unofficial desktop wrapper for DeepSeek Harness.",
+  "version": "0.3.2",
+  "description": "An unofficial desktop wrapper for DSH (DeepSeek Harness).",
   "type": "module",
   "main": "src/main.js",
   "author": {
@@ -64,8 +64,8 @@
   "build": {
     "afterSign": "scripts/after-pack.cjs",
     "appId": "io.github.krystal-cao.deepseek-harness-desktop",
-    "productName": "DeepSeek Harness",
-    "artifactName": "DeepSeek-Harness-Desktop-${version}-${arch}.${ext}",
+    "productName": "DSH",
+    "artifactName": "DSH-Desktop-${version}-${arch}.${ext}",
     "publish": {
       "provider": "github",
       "owner": "krystal-cao",
@@ -115,7 +115,7 @@
       ]
     },
     "dmg": {
-      "title": "DeepSeek Harness Desktop ${version}",
+      "title": "DSH Desktop ${version}",
       "backgroundColor": "#f5f7fb",
       "window": {
         "width": 540,

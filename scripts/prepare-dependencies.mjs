@@ -27,7 +27,7 @@ export function prepareBundledBin({ platform = process.platform, root = process.
   rmSync(path.join(binDir, 'node'), { force: true })
 
   // From <app>/Contents/Resources/app/assets/bin to the Electron binary at
-  // <app>/Contents/MacOS/DeepSeek Harness. Named "dsh-node" (not "node") so
+  // <app>/Contents/MacOS/DSH. Named "dsh-node" (not "node") so
   // prepending this directory to the dsh host PATH never shadows the user's
   // real node: the dsh agent's shell tools resolve `node` to the system node,
   // while pnpm keeps using this shim through the explicit path below.
@@ -37,7 +37,7 @@ export function prepareBundledBin({ platform = process.platform, root = process.
 # bundled pnpm works without a shell PATH. Referenced by the pnpm wrapper
 # through an explicit path; never exposed as bare "node" on PATH.
 SELF="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-exec env ELECTRON_RUN_AS_NODE=1 "$SELF/../../../../MacOS/DeepSeek Harness" "$@"
+exec env ELECTRON_RUN_AS_NODE=1 "$SELF/../../../../MacOS/DSH" "$@"
 `
   writeFileSync(nodeShimPath, nodeShim)
   chmodSync(nodeShimPath, 0o755)

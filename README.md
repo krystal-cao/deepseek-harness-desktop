@@ -1,7 +1,7 @@
 <h1 align="center">
-  <img src="assets/icon.png" width="72" alt="DeepSeek Harness Desktop 标志" />
+  <img src="assets/icon.png" width="72" alt="DSH Desktop 标志" />
   <br />
-  DeepSeek Harness Desktop
+  DSH Desktop
 </h1>
 
 <p align="center">
@@ -18,7 +18,7 @@
 
 <h3 align="center">主页面</h3>
 <p align="center">
-  <img alt="DeepSeek Harness Desktop 主页面" src="assets/screenshot.png" />
+  <img alt="DSH Desktop 主页面" src="assets/screenshot.png" />
 </p>
 
 <h3 align="center">版本管理</h3>
@@ -31,7 +31,7 @@
   <img alt="DSH 插件管理" src="assets/screenshot-3.png" />
 </p>
 
-DeepSeek Harness Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。无需手动启动 CLI 或管理端口，打开应用即可使用完整 Harness 界面。
+DSH Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。无需手动启动 CLI 或管理端口，打开应用即可使用完整 Harness 界面。
 
 本项目专注于桌面宿主能力，不 fork、不修改、不注入，也不重新实现 Harness UI。模型、会话、设置、插件和 Agent 能力均由官方 `@deepseek-ai/dsh` 提供。
 
@@ -49,10 +49,10 @@ DeepSeek Harness Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌
 
 ## 为什么需要桌面版
 
-DeepSeek Harness 已经提供完整的 Agent Runtime 和 Web UI。本项目不重复实现这些能力，而是补充桌面应用所需的宿主层：
+DeepSeek Harness 已经提供完整的 Agent Runtime 和 Web UI。DSH Desktop 不重复实现这些能力，而是补充桌面应用所需的宿主层：
 
 - 自动启动和关闭本地 Harness 服务
-- 自动分配随机 `127.0.0.1` 回环端口
+- 固定使用 `127.0.0.1:3080` 回环端口
 - 等待 Harness 就绪后再显示应用窗口
 - 提供单实例桌面窗口和外部链接安全处理
 - 为渲染进程启用沙箱、`contextIsolation` 和导航限制
@@ -65,7 +65,7 @@ DeepSeek Harness 已经提供完整的 Agent Runtime 和 Web UI。本项目不�
 - macOS 下关闭窗口时隐藏到 Dock（不再使用托盘图标）
 - 保留完整的设置、模型、会话、插件和 Agent 能力
 - 应用退出时自动终止 Harness 子进程
-- Web 服务仅监听随机本地回环端口，不暴露到局域网
+- Web 服务仅监听固定本地回环端口（3080），不暴露到局域网
 - macOS 支持 Apple Silicon 和 Intel
 - macOS 标题栏会与 DSH 当前浅色或深色主题自然融合，侧边栏收起时红绿灯也始终落在栏上
 - 内置 dsh 版本管理：可从 npm 安装、切换、卸载官方 `@deepseek-ai/dsh` 版本，
@@ -87,17 +87,17 @@ DeepSeek Harness 已经提供完整的 Agent Runtime 和 Web UI。本项目不�
 
 macOS 构建已进行完整性签名，但尚未经过 Apple 公证。首次启动：
 
-1. 打开 DMG，将 **DeepSeek Harness** 拖入“应用程序”。
+1. 打开 DMG，将 **DSH** 拖入“应用程序”。
 2. 尝试打开应用；如果 macOS 阻止启动，请点击“完成”。
 3. 打开“系统设置 → 隐私与安全性”。
-4. 在“安全性”区域找到 DeepSeek Harness，点击“仍要打开”。
+4. 在“安全性”区域找到 DSH，点击“仍要打开”。
 5. 再次点击“打开”确认。
 
 该确认通常只需完成一次。
 
 ## 安全模型
 
-- Harness 服务仅绑定 `127.0.0.1`，每次启动使用随机端口
+- Harness 服务仅绑定 `127.0.0.1:3080`，固定端口避免 prompt cache 失效
 - Renderer 禁用 Node.js 集成
 - 启用 `contextIsolation` 和 Chromium sandbox
 - 新窗口和跨域导航交由系统浏览器处理
@@ -109,16 +109,16 @@ macOS 构建已进行完整性签名，但尚未经过 Apple 公证。首次启�
 ## 运行架构
 
 ```text
-DeepSeek Harness Desktop
+DSH Desktop
 ├── Electron Main
 │   ├── 单实例窗口
 │   ├── Harness 子进程生命周期
-│   ├── 随机回环端口与就绪检测
+│   ├── 固定回环端口 (3080) 与就绪检测
 │   └── 平台菜单和外部链接处理
 │
 ├── Harness Child Process
 │   └── @deepseek-ai/dsh web
-│       └── http://127.0.0.1:<random-port>
+│       └── http://127.0.0.1:3080
 │
 └── Sandboxed BrowserWindow
     └── DeepSeek Harness Web UI

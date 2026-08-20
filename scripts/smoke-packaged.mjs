@@ -12,10 +12,10 @@ const defaultAppPath = path.join(
   root,
   'dist',
   process.arch === 'x64' ? 'mac' : 'mac-arm64',
-  'DeepSeek Harness.app',
+  'DSH.app',
 )
 const appPath = process.env.PACKAGED_APP_PATH ?? defaultAppPath
-const electronExecutable = path.join(appPath, 'Contents', 'MacOS', 'DeepSeek Harness')
+const electronExecutable = path.join(appPath, 'Contents', 'MacOS', 'DSH')
 const resourcesDir = path.join(appPath, 'Contents', 'Resources')
 const temporaryRoot =
   process.env.PACKAGED_APP_PATH === undefined
@@ -71,11 +71,11 @@ try {
   const url = await service.ready
   const response = await fetch(url)
   if (!response.ok) {
-    throw new Error(`Packaged DeepSeek Harness returned HTTP ${response.status}`)
+    throw new Error(`Packaged DSH returned HTTP ${response.status}`)
   }
   const html = await response.text()
   if (!html.includes('__DSH_BOOT__')) {
-    throw new Error('Packaged DeepSeek Harness did not return its Web UI')
+    throw new Error('Packaged DSH did not return its Web UI')
   }
   console.log(`packaged smoke: ${response.status} ${url}`)
 } finally {

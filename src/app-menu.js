@@ -2,20 +2,30 @@
 // Electron imports so the label/role wiring can be unit-tested.
 
 export function buildAppMenuTemplate({
-  appName = 'DeepSeek Harness',
+  appName = 'DSH',
   onCheckForUpdates,
   onRestartService,
   onOpenVersionManager,
+  onOpenGithub,
+  icons = {},
   platform = process.platform,
 } = {}) {
   const isMac = platform === 'darwin'
   const template = []
+
+  // The DSH service options, in a fixed order: 设置 → 重启 dsh 服务 → 检查更新.
+  const dshMenuItems = [
+    ...(onOpenVersionManager ? [{ label: '设置', click: onOpenVersionManager, ...(icons.settings ? { icon: icons.settings } : {}) }] : []),
+    ...(onRestartService ? [{ label: '重启 dsh 服务', click: onRestartService, ...(icons.restart ? { icon: icons.restart } : {}) }] : []),
+    ...(onCheckForUpdates ? [{ label: '检查更新…', click: onCheckForUpdates, ...(icons.update ? { icon: icons.update } : {}) }] : []),
+  ]
 
   if (isMac) {
     template.push({
       label: appName,
       submenu: [
         { role: 'about', label: `关于 ${appName}` },
+        ...dshMenuItems,
         { type: 'separator' },
         { role: 'services', label: '服务' },
         { type: 'separator' },
@@ -32,6 +42,9 @@ export function buildAppMenuTemplate({
     {
       label: '文件',
       submenu: [
+        // On non-Mac the DSH options live in 文件 (kept at the top for
+        // consistency with the macOS app menu placement below 关于).
+        ...(isMac ? [] : [...dshMenuItems, ...(dshMenuItems.length ? [{ type: 'separator' }] : [])]),
         ...(isMac ? [{ role: 'close', label: '关闭窗口' }] : [{ role: 'quit', label: '退出' }]),
       ],
     },
@@ -74,11 +87,7 @@ export function buildAppMenuTemplate({
     label: '帮助',
     role: 'help',
     submenu: [
-      ...(onOpenVersionManager ? [{ label: 'dsh 版本管理…', click: onOpenVersionManager }] : []),
-      ...(onOpenVersionManager && (onRestartService || onCheckForUpdates) ? [{ type: 'separator' }] : []),
-      ...(onRestartService ? [{ label: '重启 dsh 服务', click: onRestartService }] : []),
-      ...(onRestartService && onCheckForUpdates ? [{ type: 'separator' }] : []),
-      ...(onCheckForUpdates ? [{ label: '检查更新…', click: onCheckForUpdates }] : []),
+      ...(onOpenGithub ? [{ label: '在 GitHub 上查看', click: onOpenGithub }] : []),
     ],
   })
 

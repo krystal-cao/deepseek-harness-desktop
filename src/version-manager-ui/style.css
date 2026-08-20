@@ -23,7 +23,7 @@
   --red: #ef4444;
   --radius: 12px;
   --radius-sm: 8px;
-  --sidebar-width: 190px;
+  --sidebar-width: 162px;
   --shadow: 0 1px 3px rgba(15, 17, 21, 0.04);
   --hover-bg: rgba(15, 17, 21, 0.04);
   --soft-bg: #f1f3f6;
@@ -34,6 +34,10 @@
   --switch-track: rgba(15, 17, 21, 0.16);
   --shadow-soft: rgba(15, 17, 21, 0.04);
   --dsw-alias-label-primary-inverted: #ffffff;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 html[data-theme="dark"] {
@@ -122,7 +126,7 @@ button {
   background: color-mix(in srgb, var(--sidebar-bg) 70%, transparent);
   border-right: 1px solid var(--border);
   /* Top padding reserves the 40px drag strip + macOS traffic lights. */
-  padding: 40px 12px 12px;
+  padding: 40px 10px 12px;
 }
 
 button,
@@ -138,14 +142,14 @@ label,
 .brand {
   display: flex;
   align-items: center;
-  padding: 6px 8px 18px;
+  padding: 4px 5px 18px;
   color: var(--text);
 }
 
 .brand-svg {
   display: block;
   width: auto;
-  height: 19px;
+  height: 22px;
   max-width: 100%;
 }
 
@@ -598,6 +602,13 @@ html[data-theme="dark"] .switch input:checked + .slider::before {
   color: var(--muted);
 }
 
+/* The 已安装 heading opens the versions page; align it with the first element
+   of the other panels (which sit flush against the .content top padding), so
+   the vertical rhythm matches 通用 / 插件. */
+#panel-versions > .section-title:first-child {
+  margin-top: 0;
+}
+
 .section-head {
   display: flex;
   align-items: baseline;
@@ -842,6 +853,21 @@ html[data-theme="dark"] .switch input:checked + .slider::before {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── port input ─────────────────────────────────────────────── */
+.port-input {
+  flex: none;
+  width: 120px;
+  /* Hide the native number spinner (Chromium shows it on hover). */
+  appearance: none;
+  -moz-appearance: textfield;
+}
+
+.port-input::-webkit-outer-spin-button,
+.port-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 /* ── combobox (custom registry dropdown) ───────────────────── */

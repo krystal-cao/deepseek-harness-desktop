@@ -85,7 +85,7 @@ export function supportsNoOpen(version) {
   return Number(match[1]) >= 8
 }
 
-export function buildDshArgs(entry, { noOpen = false } = {}) {
+export function buildDshArgs(entry, { noOpen = false, port = 3080 } = {}) {
   const args = [
     '--expose-internals',
     entry,
@@ -94,7 +94,7 @@ export function buildDshArgs(entry, { noOpen = false } = {}) {
     '--host',
     '127.0.0.1',
     '--port',
-    '0',
+    String(port),
   ]
   // Upstream dsh@0.1.0-rc.8 added `dsh web --no-open` (auto-opens the default
   // browser by default). The desktop shell hosts its own window, so the host
@@ -108,12 +108,13 @@ export function buildDshCommand({
   electronExecutable,
   entry = resolveDshEntry(),
   noOpen = false,
+  port = 3080,
 } = {}) {
   if (!electronExecutable) {
     throw new Error('electronExecutable is required')
   }
 
-  return { command: electronExecutable, args: buildDshArgs(entry, { noOpen }) }
+  return { command: electronExecutable, args: buildDshArgs(entry, { noOpen, port }) }
 }
 
 export function startDshService({
@@ -122,11 +123,13 @@ export function startDshService({
   environment = process.env,
   timeoutMs = 60_000,
   noOpen = false,
+  port = 3080,
 } = {}) {
   const { command, args } = buildDshCommand({
     electronExecutable,
     entry,
     noOpen,
+    port,
   })
 
   const finalEnv = withBundledBinPath({
@@ -164,13 +167,13 @@ export function startDshService({
     child.once('exit', (code, signal) => {
       finish(
         reject,
-        new Error(`DeepSeek Harness stopped before it was ready (code ${String(code)}, signal ${String(signal)}).\n${output}`),
+        new Error(`DSH stopped before it was ready (code ${String(code)}, signal ${String(signal)}).\n${output}`),
       )
     })
 
     const timeout = setTimeout(() => {
       child.kill('SIGTERM')
-      finish(reject, new Error(`DeepSeek Harness did not become ready within ${timeoutMs}ms.\n${output}`))
+      finish(reject, new Error(`DSH did not become ready within ${timeoutMs}ms.\n${output}`))
     }, timeoutMs)
   })
 

@@ -14,6 +14,9 @@ const registryResetEl = document.getElementById('registry-reset')
 const registryComboEl = document.getElementById('registry-combo')
 const registryToggleEl = document.getElementById('registry-toggle')
 const registryMenuEl = document.getElementById('registry-menu')
+const portInputEl = document.getElementById('port-input')
+const portSaveEl = document.getElementById('port-save')
+const portResetEl = document.getElementById('port-reset')
 const installedEl = document.getElementById('installed')
 const availableEl = document.getElementById('available')
 const pluginForm = document.getElementById('plugin-form')
@@ -25,12 +28,14 @@ const checkUpdatesButton = document.getElementById('check-updates')
 const updateAllButton = document.getElementById('update-all')
 const navButtons = [...document.querySelectorAll('.nav-item')]
 const panels = {
+  general: document.getElementById('panel-general'),
   versions: document.getElementById('panel-versions'),
   plugins: document.getElementById('panel-plugins'),
 }
 
 const PAGE_META = {
-  versions: { title: '版本管理', subtitle: '管理 dsh 的版本与镜像源' },
+  general: { title: '通用设置', subtitle: '自动更新、镜像源与端口配置' },
+  versions: { title: '版本管理', subtitle: '管理 dsh 的版本' },
   plugins: { title: '插件管理', subtitle: '发现并管理 dsh 插件' },
 }
 
@@ -42,7 +47,7 @@ let pluginsState = { plugins: [], error: null }
 let checkingUpdates = false
 let updatingPlugin = null
 let updatingAll = false
-let activePanel = 'versions'
+let activePanel = 'general'
 let localInstallingVersion = null
 let localUninstallingVersion = null
 let localUninstallingPlugin = null
@@ -222,6 +227,7 @@ function render() {
   autoFollowEl.checked = snapshot.autoFollowLatest ?? true
   autoFollowTitleEl.textContent = (snapshot.autoFollowLatest ?? true) ? '已开启自动更新' : '已关闭自动更新'
   registryInputEl.value = snapshot.npmRegistry ?? ''
+  portInputEl.value = snapshot.dshPort ?? ''
   sidebarVersionEl.textContent = snapshot.selectedVersion ? `v${snapshot.selectedVersion}` : '—'
 
   installedEl.replaceChildren()
@@ -586,12 +592,30 @@ async function saveRegistry(value) {
   }
 }
 
+async function savePort(value) {
+  try {
+    snapshot = await api.setDshPort(value)
+    if (value !== null && value !== 3080 && snapshot?.dshPort !== value) {
+      // User cancelled the prompt dialog
+      portInputEl.value = snapshot?.dshPort ?? ''
+      return
+    }
+    setStatus(value === null ? '已恢复默认端口 3080，重启应用后生效。' : `端口已设置为 ${value}，重启应用后生效。`)
+    render()
+  } catch (error) {
+    setStatus(error?.message ?? '保存端口失败', true)
+    portInputEl.value = snapshot?.dshPort ?? ''
+  }
+}
+
 function setPanel(panel) {
   activePanel = panel
   for (const nav of navButtons) nav.classList.toggle('active', nav.dataset.panel === panel)
   for (const [name, node] of Object.entries(panels)) node.hidden = name !== panel
   titleEl.textContent = PAGE_META[panel].title
   subtitleEl.textContent = PAGE_META[panel].subtitle
+  // The 通用 page persists its settings immediately; it has nothing to refresh.
+  refreshButton.hidden = panel === 'general'
   setStatus('')
 }
 
@@ -627,6 +651,23 @@ registrySaveEl.addEventListener('click', () => {
 registryResetEl.addEventListener('click', () => {
   registryInputEl.value = ''
   void saveRegistry(null)
+})
+portSaveEl.addEventListener('click', () => {
+  const raw = portInputEl.value.trim()
+  if (raw === '') {
+    void savePort(null)
+    return
+  }
+  const num = Number(raw)
+  if (!Number.isInteger(num) || num < 1024 || num > 65535) {
+    setStatus('端口号必须是 1024–65535 之间的整数', true)
+    return
+  }
+  void savePort(num)
+})
+portResetEl.addEventListener('click', () => {
+  portInputEl.value = ''
+  void savePort(null)
 })
 
 /* ── registry combobox (custom dropdown; native datalist is unstyleable) ── */
@@ -678,6 +719,11 @@ api.getTheme()
   .then((theme) => applyTheme(theme))
   .catch(() => {})
 api.onTheme((theme) => applyTheme(theme))
+
+// The window opens on the 通用 panel; setPanel also toggles the refresh
+// button's visibility (hidden on 通用), so it must run once at startup and
+// not only on nav clicks.
+setPanel(activePanel)
 
 api.getSnapshot()
   .then((next) => {

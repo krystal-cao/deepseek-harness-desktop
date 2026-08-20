@@ -11,7 +11,7 @@ export function createWindowOptions(platform = process.platform, useDarkColors =
     minWidth: 960,
     minHeight: 640,
     show: false,
-    title: 'DeepSeek Harness',
+    title: 'DSH',
     backgroundColor: isMac ? '#00000000' : useDarkColors ? '#151517' : '#ffffff',
     titleBarStyle: isMac ? 'hiddenInset' : 'default',
     ...(isMac
