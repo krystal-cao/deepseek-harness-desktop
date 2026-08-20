@@ -73,8 +73,20 @@ export function extractReadyUrl(output) {
   return READY_PATTERN.exec(output)?.[1]
 }
 
-export function buildDshArgs(entry) {
-  return [
+/**
+ * Whether a dsh version supports `dsh web --no-open`, added in 0.1.0-rc.8.
+ * Versions before that reject the unknown flag. Handles the `0.1.0-rc.N`
+ * train we track; unrecognized versions are assumed to support it (newer).
+ */
+export function supportsNoOpen(version) {
+  if (typeof version !== 'string') return false
+  const match = /^0\.1\.0-rc\.(\d+)$/.exec(version.trim())
+  if (!match) return true // unrecognized/stable → assume newer
+  return Number(match[1]) >= 8
+}
+
+export function buildDshArgs(entry, { noOpen = false } = {}) {
+  const args = [
     '--expose-internals',
     entry,
     '--profile',
@@ -84,17 +96,24 @@ export function buildDshArgs(entry) {
     '--port',
     '0',
   ]
+  // Upstream dsh@0.1.0-rc.8 added `dsh web --no-open` (auto-opens the default
+  // browser by default). The desktop shell hosts its own window, so the host
+  // must not spawn a system browser. Only pass it when the running dsh
+  // supports the flag (older versions reject unknown options).
+  if (noOpen) args.push('--no-open')
+  return args
 }
 
 export function buildDshCommand({
   electronExecutable,
   entry = resolveDshEntry(),
+  noOpen = false,
 } = {}) {
   if (!electronExecutable) {
     throw new Error('electronExecutable is required')
   }
 
-  return { command: electronExecutable, args: buildDshArgs(entry) }
+  return { command: electronExecutable, args: buildDshArgs(entry, { noOpen }) }
 }
 
 export function startDshService({
@@ -102,10 +121,12 @@ export function startDshService({
   entry = resolveDshEntry(),
   environment = process.env,
   timeoutMs = 60_000,
+  noOpen = false,
 } = {}) {
   const { command, args } = buildDshCommand({
     electronExecutable,
     entry,
+    noOpen,
   })
 
   const finalEnv = withBundledBinPath({

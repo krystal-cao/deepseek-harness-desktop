@@ -14,7 +14,7 @@ import {
   Notification,
   shell,
 } from 'electron'
-import { resolveDshEntry, resolveDshEntrySource, startDshService, unpackedPath } from './dsh-service.js'
+import { resolveDshEntry, resolveDshEntrySource, startDshService, supportsNoOpen, unpackedPath } from './dsh-service.js'
 import { buildAppMenuTemplate } from './app-menu.js'
 import { applyMacTitleBarStyle } from './mac-titlebar.js'
 import { initAutoUpdater } from './updater.js'
@@ -801,9 +801,14 @@ function startHarnessService({ userPath = resolvedUserPath } = {}) {
   if (selected && resolveDshEntrySource(selected, versionsDir) === 'bundled' && selected !== bundledDshVersion()) {
     console.warn(`[dsh-service] selected DSH ${selected} is unavailable; running bundled ${bundledDshVersion()}`)
   }
+  // The desktop shell hosts its own window, so the dsh web host must not also
+  // open a system browser. --no-open is only understood from rc.8 onward.
+  const currentVersion = selected && resolveDshEntrySource(selected, versionsDir) === 'user' ? selected : bundledDshVersion()
+  const noOpen = supportsNoOpen(currentVersion)
   service = startDshService({
     electronExecutable: process.execPath,
     entry: currentDshEntry(),
+    noOpen,
     environment: {
       ...process.env,
       ...(userPath !== undefined ? { PATH: userPath } : {}),

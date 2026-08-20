@@ -9,6 +9,7 @@ import {
   extractReadyUrl,
   resolveDshEntry,
   resolveDshEntrySource,
+  supportsNoOpen,
   unpackedPath,
   withBundledBinPath,
 } from '../src/dsh-service.js'
@@ -140,3 +141,29 @@ test('buildDshCommand starts Electron directly with the dsh args', () => {
     ],
   })
 })
+
+test('supportsNoOpen only for dsh 0.1.0-rc.8 and later', () => {
+  assert.equal(supportsNoOpen('0.1.0-rc.7'), false)
+  assert.equal(supportsNoOpen('0.1.0-rc.8'), true)
+  assert.equal(supportsNoOpen('0.1.0-rc.9'), true)
+  // Unrecognized/stable versions are assumed newer-capable.
+  assert.equal(supportsNoOpen('0.2.0'), true)
+  assert.equal(supportsNoOpen(undefined), false)
+})
+
+test('buildDshArgs appends --no-open only when requested', () => {
+  const base = [
+    '--expose-internals',
+    '/app/dsh.js',
+    '--profile',
+    'web',
+    '--host',
+    '127.0.0.1',
+    '--port',
+    '0',
+  ]
+  assert.deepEqual(buildDshArgs('/app/dsh.js'), base)
+  assert.deepEqual(buildDshArgs('/app/dsh.js', { noOpen: false }), base)
+  assert.deepEqual(buildDshArgs('/app/dsh.js', { noOpen: true }), [...base, '--no-open'])
+})
+
