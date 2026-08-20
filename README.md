@@ -33,7 +33,7 @@
 
 DSH Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。无需手动启动 CLI 或管理端口，打开应用即可使用完整 Harness 界面。
 
-本项目专注于桌面宿主能力，不 fork、不修改、不注入，也不重新实现 Harness UI。模型、会话、设置、插件和 Agent 能力均由官方 `@deepseek-ai/dsh` 提供。
+本项目专注于桌面宿主能力，模型、会话、设置、插件和 Agent 能力均由官方 `@deepseek-ai/dsh` 提供。同时提供优雅的桌面宿主扩展（如 Claude Code 暖色风主题、版本与插件管理面板、任务完成桌面通知等）。
 
 > [!IMPORTANT]
 > 本项目是非官方社区封装，目前仍属于早期版本，并依赖快速演进中的 `@deepseek-ai/dsh`（当前固定版本见 `package.json` 的 `dependencies` 字段）。macOS 构建尚未经过 Apple 公证。
@@ -52,7 +52,7 @@ DSH Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。�
 DeepSeek Harness 已经提供完整的 Agent Runtime 和 Web UI。DSH Desktop 不重复实现这些能力，而是补充桌面应用所需的宿主层：
 
 - 自动启动和关闭本地 Harness 服务
-- 固定使用 `127.0.0.1:3080` 回环端口
+- 默认监听 `127.0.0.1:3080` 本地回环端口（支持在设置中自定义）
 - 等待 Harness 就绪后再显示应用窗口
 - 提供单实例桌面窗口和外部链接安全处理
 - 为渲染进程启用沙箱、`contextIsolation` 和导航限制
@@ -60,26 +60,15 @@ DeepSeek Harness 已经提供完整的 Agent Runtime 和 Web UI。DSH Desktop �
 
 ## 主要特性
 
-- Harness 就绪后直接进入官方界面，无额外操作步骤
-- 启动 Harness 服务时显示轻量等待界面，不再出现无响应感
-- macOS 下关闭窗口时隐藏到 Dock（不再使用托盘图标）
-- 保留完整的设置、模型、会话、插件和 Agent 能力
-- 应用退出时自动终止 Harness 子进程
-- Web 服务仅监听固定本地回环端口（3080），不暴露到局域网
-- macOS 支持 Apple Silicon 和 Intel
-- macOS 标题栏会与 DSH 当前浅色或深色主题自然融合，侧边栏收起时红绿灯也始终落在栏上
-- 内置 dsh 版本管理：可从 npm 安装、切换、卸载官方 `@deepseek-ai/dsh` 版本，
-  安装时自动把桌面内置的插件族对齐到同一版本，无需重新打包应用
-- 可自动跟随官方最新 RC：启动后后台安装并切换到 npm 上最新的
-  `0.1.0-rc.*` 版本（可在 dsh 管理窗口中关闭）
-- 支持插件管理：可在 dsh 管理窗口中列出、安装、卸载 web profile 的第三方
-  插件（等价于 `dsh plugin --profile web ...`），操作完成后自动重启 dsh 服务
-- 内置桌面宿主桥接插件：自动安装到 web profile，通过 preload 桥接向壳层
-  上报插件激活（就绪）和主题变化，不再依赖 UI 文本/类名嗅探——原有的
-  DOM/CSS 探测只作为兜底保留
-- 桌面任务完成通知：当 Agent 执行耗时任务时，如果窗口失去焦点或已隐藏，
-  任务完成后会弹出系统通知提醒你（窗口在前台时不打扰）；首次启动即提前
-  请求通知权限，避免在使用中途突然弹权限提示
+- **官方原生体验**：Harness 就绪后直接进入官方界面，保留完整的会话、模型、插件和 Agent 能力。
+- **内置界面主题切换**：支持默认主题与「Claude Code 暖色主题」（warm paper 纸感调色板与陶土橙品牌色），即点即换，完全静默无感。
+- **第三方主题防冲突保护**：全链路智能识别外部主题与各类独立皮肤插件，激活外部主题时自动熔断内置主题；卸载外部主题后自动恢复原设主题。
+- **通用设置面板**：支持设置自动更新开关、界面主题、npm 镜像源预设以及自定义 DSH 服务启动端口。
+- **内置 DSH 版本管理**：可从 npm 直接安装、切换、卸载官方 `@deepseek-ai/dsh` 版本，安装时自动对齐桌面内置插件族，无需重新打包应用。
+- **支持自动跟随官方最新 RC**：启动后后台静默检测、安装并切换到 npm 上最新的 `0.1.0-rc.*` 版本。
+- **可视化插件管理**：在设置窗口中一键查看、安装、卸载 web profile 的第三方插件（等价于 `dsh plugin --profile web ...`），操作后自动重启服务生效。
+- **桌面任务完成通知**：当 Agent 执行耗时任务时，若窗口失去焦点或已最小化/隐藏，任务完成后自动发送 macOS 系统级通知，点击可快速唤回主窗口。
+- **原生 macOS 体验**：自定义沉浸式标题栏与深浅色主题自然融合，红绿灯始终对齐侧边栏；支持快捷键 `⌘,` 随时唤起设置窗口。
 
 ## 安装说明
 
@@ -139,24 +128,18 @@ DSH Desktop
 - macOS 尚未接入 Developer ID 和 notarization
 - 目前只提供 macOS 构建（Apple Silicon 与 Intel）
 
-## 自动更新
+## 自动更新与配置管理
 
-本 fork 通过 `electron-updater` 提供整包自动更新。一次更新会替换整个应用，
-包括内置的 `@deepseek-ai/dsh` 运行时。想更快跟上上游，也可以使用内置的
-**dsh 管理窗口**（帮助 → dsh 版本管理…）直接从 npm 安装并切换到新版官方
-`@deepseek-ai/dsh`，不必等待新版桌面包。窗口中还提供“自动跟随最新 RC”
-开关和 web profile 的插件管理（列表、安装、卸载）。
+本应用通过 `electron-updater` 提供整包自动更新。一次更新会替换整个应用，包括内置的 `@deepseek-ai/dsh` 运行时。
 
-- 打包后的应用会在启动 5 秒后检查更新，之后每 4 小时检查一次；**帮助**菜单也
-  提供**检查更新…**入口。
-- 更新源在构建时写入 `app-update.yml`。CI 会自动指向本仓库的 GitHub Releases；
-  本地构建则修改 `package.json` 中 `build.publish.owner` / `build.publish.repo`。
-- 运行时覆盖：设置 `DSH_UPDATE_URL` 可切换到 generic 更新源（适合测试或非
-  GitHub 镜像）；设置 `DSH_DISABLE_AUTO_UPDATE=1` 可关闭更新。npm registry
-  默认使用国内镜像 `registry.npmmirror.com`（用于版本目录和运行时安装），
-  可通过 `DSH_NPM_REGISTRY` 覆盖，例如改回 `https://registry.npmjs.org/`。
-  也可以在“帮助 → dsh 版本管理… → npm 镜像地址”里直接修改并保存（提供
-  npmmirror、npm 官方、腾讯云、华为云等常用镜像建议）。
+如果想更快跟上上游，也可以使用内置的**设置窗口**（顶部菜单 `DSH → 设置…` 或快捷键 `⌘,`）：
+- **通用**：设置界面主题（默认 / Claude Code）、自动更新开关、npm 镜像源预设（支持 npmmirror、官方、腾讯云等）以及自定义 DSH 服务启动端口。
+- **版本**：直接从 npm 安装并切换到新版官方 `@deepseek-ai/dsh`，支持开启“自动跟随最新 RC”。
+- **插件**：可视化查看、安装、卸载 web profile 的第三方插件。
+
+- 打包后的应用会在启动 5 秒后检查更新，之后每 4 小时检查一次；**DSH** 应用菜单也提供**检查更新…**入口。
+- 更新源在构建时写入 `app-update.yml`。CI 会自动指向本仓库的 GitHub Releases；本地构建则修改 `package.json` 中 `build.publish.owner` / `build.publish.repo`。
+- 运行时覆盖：设置 `DSH_UPDATE_URL` 可切换到 generic 更新源（适合测试或非 GitHub 镜像）；设置 `DSH_DISABLE_AUTO_UPDATE=1` 可关闭更新。npm registry 默认使用国内镜像 `registry.npmmirror.com`（用于版本目录和运行时安装），可通过 `DSH_NPM_REGISTRY` 覆盖或直接在设置面板中修改保存。
 
 ### 发版流程
 
