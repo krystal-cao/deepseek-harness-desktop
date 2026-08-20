@@ -10,10 +10,6 @@
 </p>
 
 <p align="center">
-  <strong>简体中文</strong>
-</p>
-
-<p align="center">
   <a href="https://github.com/krystal-cao/deepseek-harness-desktop/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/krystal-cao/deepseek-harness-desktop?style=flat-square&color=171513" /></a>
   <a href="LICENSE"><img alt="许可证：MIT" src="https://img.shields.io/badge/License-MIT-171513.svg?style=flat-square" /></a>
   <a href="https://github.com/krystal-cao/deepseek-harness-desktop/actions/workflows/release.yml"><img alt="发行构建" src="https://github.com/krystal-cao/deepseek-harness-desktop/actions/workflows/release.yml/badge.svg" /></a>
