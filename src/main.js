@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { appendFileSync } from 'node:fs'
+import { appendFileSync, existsSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -11,6 +11,7 @@ import {
   ipcMain,
   Menu,
   nativeTheme,
+  Notification,
   shell,
 } from 'electron'
 import { resolveDshEntry, resolveDshEntrySource, startDshService, unpackedPath } from './dsh-service.js'
@@ -72,7 +73,59 @@ function appendDiag(line) {
   }
 }
 
+/**
+ * Show a macOS/Windows system notification that an agent task finished. Falls
+ * back silently if notifications are unsupported (e.g. headless) or the
+ * payload is empty.
+ */
+function showTaskDoneNotification(payload) {
+  if (!payload || typeof payload !== 'object') return
+  const sessionLabel = payload.title && String(payload.title).trim() ? String(payload.title).trim() : '会话'
+  // Show the workspace (the cwd's basename) instead of the long absolute path.
+  let workspace = null
+  if (payload.cwd && typeof payload.cwd === 'string' && payload.cwd.trim() !== '') {
+    const parts = payload.cwd.trim().replace(/\/+$/, '').split(/[/\\]/).filter(Boolean)
+    workspace = parts.length > 0 ? parts[parts.length - 1] : null
+  }
+  const detail = workspace ? `工作区：${workspace}` : undefined
+  try {
+    const notification = new Notification({
+      title: '任务完成',
+      body: detail ? `${sessionLabel}\n${detail}` : sessionLabel,
+      silent: false,
+    })
+    notification.on('click', () => showMainWindow())
+    notification.show()
+  } catch (error) {
+    console.warn('showTaskDoneNotification failed:', error instanceof Error ? error.message : error)
+  }
+}
+
+/**
+ * macOS has no Electron API to query or request notification permission ahead
+ * of time — the system only prompts on the first `show()`. To surface the
+ * prompt at a calm moment (app launch) instead of the first time a task
+ * finishes, show one unobtrusive placeholder notification on first launch and
+ * remember it (via a marker file) so repeat launches do not nag.
+ */
+const NOTIF_WARM_MARKER = 'notif-permission-warmed'
+function warmNotificationPermission() {
+  try {
+    if (!Notification.isSupported()) return
+    const marker = path.join(app.getPath('userData'), NOTIF_WARM_MARKER)
+    if (existsSync(marker)) return
+    // A tiny, silent placeholder: it exists only to trigger the OS permission
+    // prompt on first launch. A click does nothing (do not divert to the app).
+    new Notification({ title: '', body: '', silent: true }).show()
+    writeFileSync(marker, String(Date.now()), { mode: 0o600 })
+  } catch (error) {
+    // The permission prompt is best-effort; failures must not break startup.
+    console.warn('warmNotificationPermission failed:', error instanceof Error ? error.message : error)
+  }
+}
+
 let mainWindow
+let mainWindowFocused = true
 let service
 let serviceUrl
 let isQuitting = false
@@ -142,6 +195,18 @@ function createWindow(serviceUrl) {
   }
   injectShellStyles()
   mainWindow.webContents.on('dom-ready', injectShellStyles)
+
+  mainWindow.on('focus', () => {
+    mainWindowFocused = true
+  })
+  mainWindow.on('blur', () => {
+    mainWindowFocused = false
+  })
+  mainWindow.on('show', () => {
+    // A window can be shown while unfocused (e.g. programmatic show); treat a
+    // freshly shown window as focused so notifications do not leak in.
+    mainWindowFocused = true
+  })
 
   mainWindow.on('close', (event) => {
     // No tray icon anymore: on macOS keep the app running in the dock and
@@ -896,6 +961,13 @@ async function launch() {
       mainWindow.setBackgroundColor(colorScheme === 'dark' ? '#151517' : '#ffffff')
     }
   })
+  ipcMain.on('dsh-bridge:notify', (_event, payload) => {
+    // Only surface a system notification when the window is not focused (or
+    // hidden) — if it is on screen and focused the running UI already shows
+    // the result, so an extra notification would just be noise.
+    if (mainWindowFocused && mainWindow && !mainWindow.isDestroyed()) return
+    showTaskDoneNotification(payload)
+  })
   try {
     createUpdater()
     createAppMenu()
@@ -937,6 +1009,10 @@ async function launch() {
   }
   void ensureDesktopHostPlugin()
   startBridgeHealPoll()
+  // Ask for notification permission at a calm moment so the first real
+  // "task done" notification (which may fire while the window is hidden) does
+  // not surface a permission prompt mid-use.
+  warmNotificationPermission()
   void refreshCatalog()
     .then(() => followLatestIfEnabled())
     .then(() => maybeNotifyDshUpdate())

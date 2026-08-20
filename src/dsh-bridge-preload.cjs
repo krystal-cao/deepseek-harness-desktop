@@ -4,7 +4,7 @@
 // Runs in the isolated preload world; the page only sees the exposed surface.
 const { contextBridge, ipcRenderer } = require('electron')
 
-const state = { ready: 0, theme: 0 }
+const state = { ready: 0, theme: 0, notify: 0 }
 const DRAG_REGION_HEIGHT = 40
 
 /**
@@ -43,6 +43,10 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   theme: (snapshot) => {
     state.theme += 1
     ipcRenderer.send('dsh-bridge:theme', snapshot)
+  },
+  notify: (payload) => {
+    state.notify += 1
+    ipcRenderer.send('dsh-bridge:notify', payload)
   },
   state: () => ({ ...state }),
 })
