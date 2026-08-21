@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import {
   parseAllowScriptKey,
+  rewriteDshLockfile,
   rewriteDshPins,
   syncAllowScriptsVersions,
 } from '../scripts/dsh-version.mjs'
@@ -62,4 +63,39 @@ test('syncAllowScriptsVersions rewrites pins to installed versions', () => {
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+test('rewriteDshLockfile rewrites packages and dependency ranges', () => {
+  const lock = {
+    packages: {
+      '': {
+        dependencies: {
+          '@deepseek-ai/dsh': '0.1.0-rc.6',
+          electron: '43.4.0',
+        },
+      },
+      'node_modules/@deepseek-ai/dsh': {
+        version: '0.1.0-rc.6',
+        resolved: 'https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-0.1.0-rc.6.tgz',
+        integrity: 'sha512-abc',
+        dependencies: {
+          '@deepseek-ai/dsh-fs': '^0.1.0-rc.6',
+          other: '1.0.0',
+        },
+      },
+    },
+  }
+  const changed = rewriteDshLockfile(lock, '0.1.1-rc.1')
+  assert.equal(changed, 3)
+  assert.equal(lock.packages[''].dependencies['@deepseek-ai/dsh'], '0.1.1-rc.1')
+  assert.equal(lock.packages['node_modules/@deepseek-ai/dsh'].version, '0.1.1-rc.1')
+  assert.equal(
+    lock.packages['node_modules/@deepseek-ai/dsh'].resolved,
+    'https://registry.npmjs.org/@deepseek-ai/dsh/-/dsh-0.1.1-rc.1.tgz',
+  )
+  assert.equal(lock.packages['node_modules/@deepseek-ai/dsh'].integrity, undefined)
+  assert.equal(
+    lock.packages['node_modules/@deepseek-ai/dsh'].dependencies['@deepseek-ai/dsh-fs'],
+    '^0.1.1-rc.1',
+  )
 })

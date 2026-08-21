@@ -68,3 +68,48 @@ export function syncAllowScriptsVersions(pkg, installedRoot) {
   pkg.allowScripts = next
   return changed
 }
+
+/**
+ * Rewrite every @deepseek-ai/dsh* package entry in package-lock.json to target.
+ * Updates root dependencies, nested package entries, resolved tarball URLs,
+ * and internal package dependency constraints. Returns total entries changed.
+ */
+export function rewriteDshLockfile(lock, target) {
+  let changed = 0
+  const rewriteDeps = (deps) => {
+    if (!deps) return
+    for (const [k, v] of Object.entries(deps)) {
+      if (k === '@deepseek-ai/dsh' || k.startsWith('@deepseek-ai/dsh-')) {
+        if (typeof v === 'string') {
+          const isCaret = v.startsWith('^')
+          const nextVal = isCaret ? `^${target}` : target
+          if (v !== nextVal) {
+            deps[k] = nextVal
+            changed++
+          }
+        }
+      }
+    }
+  }
+
+  if (lock.packages) {
+    for (const [key, pkg] of Object.entries(lock.packages)) {
+      if (key.includes('node_modules/@deepseek-ai/dsh')) {
+        if (pkg.version !== target) {
+          pkg.version = target
+          if (typeof pkg.resolved === 'string') {
+            pkg.resolved = pkg.resolved.replace(/\d+\.\d+\.\d+(?:-rc\.\d+)?/g, target)
+          }
+          delete pkg.integrity
+          changed++
+        }
+      }
+      rewriteDeps(pkg.dependencies)
+      rewriteDeps(pkg.devDependencies)
+      rewriteDeps(pkg.peerDependencies)
+      rewriteDeps(pkg.optionalDependencies)
+    }
+  }
+
+  return changed
+}
