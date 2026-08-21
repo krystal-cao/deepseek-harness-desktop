@@ -18,7 +18,7 @@
 
 DSH Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。无需手动启动 CLI 或管理端口，打开应用即可使用完整 Harness 界面。
 
-本项目专注于桌面宿主能力，模型、会话、设置、插件和 Agent 能力均由官方 `@deepseek-ai/dsh` 提供。同时提供优雅的桌面宿主扩展（如 Claude Code 暖色风主题、版本与插件管理面板、任务完成桌面通知等）。
+本项目专注于桌面宿主能力，模型、会话、设置、插件和 Agent 能力均由官方 `@deepseek-ai/dsh` 提供。同时提供优雅的桌面宿主扩展（如 Claude Code 暖色风主题、命令说明汉化、版本与插件管理面板、任务完成桌面通知等）。
 
 > [!IMPORTANT]
 > 本项目是非官方社区封装，目前仍属于早期版本，并依赖快速演进中的 `@deepseek-ai/dsh`（当前固定版本见 `package.json` 的 `dependencies` 字段）。macOS 构建尚未经过 Apple 公证。
@@ -32,20 +32,51 @@ DSH Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。�
 
 全部当前和历史安装包可在 [GitHub Releases](https://github.com/krystal-cao/deepseek-harness-desktop/releases) 查看。
 
-<h3 align="center">主页面</h3>
+---
+
+## 界面预览
+
+### 💬 主界面与主题配色
+
+<h4 align="center">原生默认主题</h4>
 <p align="center">
-  <img alt="DSH Desktop 主页面" src="assets/screenshot.png" />
+  <img alt="DSH Desktop 原生默认主题" src="assets/screenshot.png" />
 </p>
 
-<h3 align="center">版本管理</h3>
+<h4 align="center">Claude Code 暖色纸感主题</h4>
 <p align="center">
-  <img alt="DSH 版本管理" src="assets/screenshot-2.png" />
+  <img alt="DSH Desktop Claude Code 暖色主题" src="assets/screenshot-claude-theme.png" />
 </p>
 
-<h3 align="center">插件管理</h3>
+### ⚙️ 独立设置中心 (`⌘,`)
+
+快捷键 `⌘,` 随时唤起独立设置管理窗口，提供三大核心管理模块：
+
+<h4 align="center">1. 通用设置</h4>
 <p align="center">
-  <img alt="DSH 插件管理" src="assets/screenshot-3.png" />
+  <i>支持配置自动更新开关、内置斜杠命令说明汉化、界面主题切换、npm 镜像源预设以及自定义服务监听端口。</i>
 </p>
+<p align="center">
+  <img alt="DSH 通用设置" src="assets/screenshot-settings-general.png" />
+</p>
+
+<h4 align="center">2. 版本管理</h4>
+<p align="center">
+  <i>实时抓取 npm 官方最新版本与 Release Candidate 候选版本，支持一键安装、平滑切换与卸载，自动对齐宿主插件族。</i>
+</p>
+<p align="center">
+  <img alt="DSH 版本管理" src="assets/screenshot-settings-versions.png" />
+</p>
+
+<h4 align="center">3. 插件管理</h4>
+<p align="center">
+  <i>可视化管理 Web Profile 下的全部第三方插件，支持一键安装、检查更新、一键全量升级与安全卸载。</i>
+</p>
+<p align="center">
+  <img alt="DSH 插件管理" src="assets/screenshot-settings-plugins.png" />
+</p>
+
+---
 
 ## 为什么需要桌面版
 
@@ -62,8 +93,10 @@ DeepSeek Harness 已经提供完整的 Agent Runtime 和 Web UI。DSH Desktop �
 
 - **官方原生体验**：Harness 就绪后直接进入官方界面，保留完整的会话、模型、插件和 Agent 能力。
 - **内置界面主题切换**：支持默认主题与「Claude Code 暖色主题」（warm paper 纸感调色板与陶土橙品牌色），即点即换，完全静默无感。
+- **内置斜杠命令说明汉化**：在通用设置中一键开启内置斜杠命令（`/compact`、`/plan`、`/permission` 等）的中文说明提示，即时生效。
+- **全量中英文双向同步**：系统主菜单栏（Menu Bar）与设置管理窗口实时跟随 DSH 宿主语言（`zh` / `en`）自动切换，无缝本地化。
 - **第三方主题防冲突保护**：全链路智能识别外部主题与各类独立皮肤插件，激活外部主题时自动熔断内置主题；卸载外部主题后自动恢复原设主题。
-- **通用设置面板**：支持设置自动更新开关、界面主题、npm 镜像源预设以及自定义 DSH 服务启动端口。
+- **通用设置面板**：支持设置自动更新开关、命令汉化开关、界面主题、npm 镜像源预设以及自定义 DSH 服务启动端口。
 - **内置 DSH 版本管理**：可从 npm 直接安装、切换、卸载官方 `@deepseek-ai/dsh` 版本，安装时自动对齐桌面内置插件族，无需重新打包应用。
 - **支持自动跟随官方最新 RC**：启动后后台静默检测、安装并切换到 npm 上最新的 `0.1.0-rc.*` 版本。
 - **可视化插件管理**：在设置窗口中一键查看、安装、卸载 web profile 的第三方插件（等价于 `dsh plugin --profile web ...`），操作后自动重启服务生效。
@@ -133,7 +166,7 @@ DSH Desktop
 本应用通过 `electron-updater` 提供整包自动更新。一次更新会替换整个应用，包括内置的 `@deepseek-ai/dsh` 运行时。
 
 如果想更快跟上上游，也可以使用内置的**设置窗口**（顶部菜单 `DSH → 设置…` 或快捷键 `⌘,`）：
-- **通用**：设置界面主题（默认 / Claude Code）、自动更新开关、npm 镜像源预设（支持 npmmirror、官方、腾讯云等）以及自定义 DSH 服务启动端口。
+- **通用**：设置界面主题（默认 / Claude Code）、命令说明汉化、自动更新开关、npm 镜像源预设（支持 npmmirror、官方、腾讯云等）以及自定义 DSH 服务启动端口。
 - **版本**：直接从 npm 安装并切换到新版官方 `@deepseek-ai/dsh`，支持开启“自动跟随最新 RC”。
 - **插件**：可视化查看、安装、卸载 web profile 的第三方插件。
 
