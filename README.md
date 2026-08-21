@@ -178,7 +178,7 @@ DSH Desktop
 
 1. `node scripts/check-upstream.mjs` — 对比当前固定的 dsh 版本与 npm 最新版。
 2. `node scripts/bump-dsh.mjs <version>` — 把所有 `@deepseek-ai/dsh*` 固定依赖
-   升到同一版本，重新安装并运行测试。
+   升到同一版本，刷新锁文件、同步 native 构建白名单并运行测试。
 3. `npm run dist:mac:all && npm run smoke:packaged` — 验证打包后的应用能启动
    并返回 HTTP 200（同时构建 Apple Silicon 与 Intel）。
 4. `npm run clean:dist` — 删除本地构建产物，避免 Spotlight/Finder 索引到第二份应用。

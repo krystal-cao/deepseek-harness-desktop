@@ -43,15 +43,61 @@ export function bundledDshVersion(pkg = readPackageJson()) {
 }
 
 /**
- * The @deepseek-ai/dsh* plugin family the desktop build pins alongside the
- * core package. Runtime installs mirror these at the same version so a
- * switched version carries the whole family the web profile relies on,
- * instead of depending on upstream caret ranges drifting between RCs.
+ * The DSH plugin packages that must be hoisted into the app's runtime tree.
+ * The aggregate package declares these as runtime imports, but packaged
+ * Electron resolution still requires them at the top-level node_modules path.
  */
 export function dshFamilyPins(pkg = readPackageJson()) {
   return Object.keys(pkg.dependencies ?? {})
     .filter((name) => name.startsWith('@deepseek-ai/dsh-'))
     .sort()
+}
+
+/**
+ * Query the registry for family packages published at a DSH version. Older
+ * releases may not publish every package, so only available packages are
+ * added to the managed install.
+ */
+export async function resolveAlignedFamily({
+  version,
+  names = dshFamilyPins(),
+  registry = resolveNpmRegistry(),
+  fetcher = fetch,
+  timeoutMs = 10_000,
+} = {}) {
+  const base = registry.replace(/\/+$/, '')
+  const results = await Promise.all(
+    names.map(async (name) => {
+      try {
+        const response = await fetcher(`${base}/${name}`, {
+          headers: { accept: 'application/vnd.npm.install-v1+json' },
+          signal: AbortSignal.timeout(timeoutMs),
+        })
+        if (!response.ok) return { name, available: false }
+        const data = await response.json()
+        return { name, available: Boolean(data.versions?.[version]) }
+      } catch {
+        return { name, available: false }
+      }
+    }),
+  )
+  return {
+    available: results.filter((item) => item.available).map((item) => item.name).sort(),
+    missing: results.filter((item) => !item.available).map((item) => item.name).sort(),
+  }
+}
+
+/** Report the managed install's family package versions for diagnostics. */
+export function readInstalledFamily(root, version) {
+  return dshFamilyPins().map((name) => {
+    const manifestPath = path.join(root, 'node_modules', name, 'package.json')
+    try {
+      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+      return { name, version: manifest.version ?? null, aligned: manifest.version === version }
+    } catch {
+      return { name, version: null, aligned: false }
+    }
+  })
 }
 
 function resolvePackageRoot(root) {
@@ -115,56 +161,6 @@ export function resolvePnpmCli() {
     if (existsSync(file)) return file
   }
   throw new Error('找不到内置 pnpm CLI')
-}
-
-/**
- * Query the registry for which family packages published `version`, so the
- * staging project only pins packages upstream actually shipped for that
- * version. Uses the abbreviated metadata format npm install itself uses.
- */
-export async function resolveAlignedFamily({
-  version,
-  names = dshFamilyPins(),
-  registry = resolveNpmRegistry(),
-  fetcher = fetch,
-  timeoutMs = 10_000,
-} = {}) {
-  const base = registry.replace(/\/+$/, '')
-  const results = await Promise.all(
-    names.map(async (name) => {
-      try {
-        const response = await fetcher(`${base}/${name}`, {
-          headers: { accept: 'application/vnd.npm.install-v1+json' },
-          signal: AbortSignal.timeout(timeoutMs),
-        })
-        if (!response.ok) return { name, available: false }
-        const data = await response.json()
-        return { name, available: Boolean(data.versions?.[version]) }
-      } catch {
-        return { name, available: false }
-      }
-    }),
-  )
-  return {
-    available: results.filter((item) => item.available).map((item) => item.name).sort(),
-    missing: results.filter((item) => !item.available).map((item) => item.name).sort(),
-  }
-}
-
-/**
- * Report which family packages are present in an installed version tree and
- * whether each matches the tree's dsh version.
- */
-export function readInstalledFamily(root, version) {
-  return dshFamilyPins().map((name) => {
-    const manifestPath = path.join(root, 'node_modules', name, 'package.json')
-    try {
-      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
-      return { name, version: manifest.version ?? null, aligned: manifest.version === version }
-    } catch {
-      return { name, version: null, aligned: false }
-    }
-  })
 }
 
 function runPnpmCommand(staging, args, env) {
@@ -260,10 +256,15 @@ export function writePnpmWorkspace(staging, buildScriptNames) {
 
 /**
  * Write the staging project files pnpm needs for an official dsh install.
- * `extraDeps` carries the version-aligned plugin family so the installed tree
- * is a complete installation, not just the core package.
+ * `extraDeps` carries the version-aligned plugin family required by the
+ * packaged runtime's top-level module resolution.
  */
-export function writeStagingProject(staging, version, extraDeps = {}, registry = resolveNpmRegistry()) {
+export function writeStagingProject(
+  staging,
+  version,
+  extraDeps = {},
+  registry = resolveNpmRegistry(),
+) {
   writeFileSync(
     path.join(staging, 'package.json'),
     `${JSON.stringify(

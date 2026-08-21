@@ -28,11 +28,10 @@ if (!DSH_VERSION_PATTERN.test(requested)) {
 const pkg = JSON.parse(readFileSync(packagePath, 'utf8'))
 const changed = rewriteDshPins(pkg, requested)
 if (changed.length === 0) {
-  console.log(`all @deepseek-ai/dsh* pins are already at ${requested}; nothing to do`)
-  process.exit(0)
+  console.log(`all @deepseek-ai/dsh* pins are already at ${requested}; checking native build permissions`)
+} else {
+  writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`)
 }
-
-writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`)
 
 const npmMajor = Number(execFileSync('npm', ['-v'], { encoding: 'utf8' }).trim().split('.')[0])
 const installArgs = ['install', '--no-audit', '--no-fund']
@@ -48,5 +47,5 @@ if (synced > 0) {
 }
 execFileSync('npm', ['test'], { cwd: root, stdio: 'inherit' })
 
-console.log(`\nbumped ${changed.length} packages to ${requested}`)
+console.log(`\nbumped ${changed.length} dsh packages to ${requested}`)
 console.log('next: verify with "npm run dist:mac:arm64" and "npm run smoke:packaged", then bump the app version and tag a release')

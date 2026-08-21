@@ -9,7 +9,6 @@ import {
   collectBuildScripts,
   dshFamilyPins,
   listInstalledVersions,
-  readInstalledFamily,
   resolveAlignedFamily,
   versionEntryFor,
   versionsDirFor,
@@ -175,14 +174,14 @@ test('writeStagingProject honours a configured registry', () => {
   }
 })
 
-test('dshFamilyPins covers every pinned @deepseek-ai/dsh-* package', () => {
+test('dshFamilyPins covers every pinned plugin package', () => {
   const pins = dshFamilyPins()
   assert.ok(pins.length > 0)
   assert.ok(pins.includes('@deepseek-ai/dsh-fs'))
   assert.ok(!pins.includes('@deepseek-ai/dsh'))
 })
 
-test('resolveAlignedFamily keeps only versions the registry published', async () => {
+test('resolveAlignedFamily keeps only versions published by the registry', async () => {
   const family = await resolveAlignedFamily({
     version: '0.1.0-rc.6',
     names: ['@deepseek-ai/dsh-fs', '@deepseek-ai/dsh-sandbox'],
@@ -201,33 +200,4 @@ test('resolveAlignedFamily keeps only versions the registry published', async ()
     available: ['@deepseek-ai/dsh-fs'],
     missing: ['@deepseek-ai/dsh-sandbox'],
   })
-})
-
-test('resolveAlignedFamily tolerates registry failures', async () => {
-  const family = await resolveAlignedFamily({
-    version: '0.1.0-rc.6',
-    names: ['@deepseek-ai/dsh-fs'],
-    fetcher: async () => {
-      throw new Error('offline')
-    },
-  })
-  assert.deepEqual(family, { available: [], missing: ['@deepseek-ai/dsh-fs'] })
-})
-
-test('readInstalledFamily reports aligned and missing family packages', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'dsh-family-'))
-  try {
-    mkdirSync(path.join(root, 'node_modules', '@deepseek-ai', 'dsh-fs'), { recursive: true })
-    writeFileSync(
-      path.join(root, 'node_modules', '@deepseek-ai', 'dsh-fs', 'package.json'),
-      `${JSON.stringify({ name: '@deepseek-ai/dsh-fs', version: '0.1.0-rc.6' })}\n`,
-    )
-    const family = readInstalledFamily(root, '0.1.0-rc.6')
-    const fsEntry = family.find((item) => item.name === '@deepseek-ai/dsh-fs')
-    const sandboxEntry = family.find((item) => item.name === '@deepseek-ai/dsh-sandbox')
-    assert.deepEqual(fsEntry, { name: '@deepseek-ai/dsh-fs', version: '0.1.0-rc.6', aligned: true })
-    assert.deepEqual(sandboxEntry, { name: '@deepseek-ai/dsh-sandbox', version: null, aligned: false })
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
 })

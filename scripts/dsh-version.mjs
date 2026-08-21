@@ -1,9 +1,9 @@
-// Shared logic for rewriting the pinned @deepseek-ai/dsh* version train.
+// Shared logic for updating the pinned @deepseek-ai/dsh* package family.
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
 /**
- * Rewrite every @deepseek-ai/dsh* dependency pin to one version.
+ * Rewrite every direct @deepseek-ai/dsh* dependency pin to one version.
  * Returns the list of pins that changed.
  */
 export function rewriteDshPins(pkg, version) {
@@ -12,11 +12,10 @@ export function rewriteDshPins(pkg, version) {
     const deps = pkg[section]
     if (!deps) continue
     for (const [name, spec] of Object.entries(deps)) {
-      if (name === '@deepseek-ai/dsh' || name.startsWith('@deepseek-ai/dsh-')) {
-        if (spec !== version) {
-          deps[name] = version
-          changed.push(`${name}@${version}`)
-        }
+      if (name !== '@deepseek-ai/dsh' && !name.startsWith('@deepseek-ai/dsh-')) continue
+      if (spec !== version) {
+        deps[name] = version
+        changed.push(`${name}@${version}`)
       }
     }
   }
@@ -41,6 +40,36 @@ export function parseAllowScriptKey(key) {
  * of entries whose version changed.
  */
 export function syncAllowScriptsVersions(pkg, installedRoot) {
+  return syncAllowScriptsVersionsWithLookup(pkg, (name) => {
+    try {
+      return JSON.parse(
+        readFileSync(path.join(installedRoot, 'node_modules', name, 'package.json'), 'utf8'),
+      ).version
+    } catch {
+      return null
+    }
+  })
+}
+
+/**
+ * Sync native build permissions from an npm lockfile. This is used by the
+ * automated upstream bump path, where the lockfile is refreshed before the
+ * new dependency tree is installed locally.
+ */
+export function syncAllowScriptsVersionsFromLock(pkg, lock) {
+  const entries = Object.entries(lock?.packages ?? {})
+  return syncAllowScriptsVersionsWithLookup(pkg, (name) => {
+    const suffix = `/node_modules/${name}`
+    const match = entries
+      .filter(([key]) => key === `node_modules/${name}` || key.endsWith(suffix))
+      .sort(([a], [b]) => a.length - b.length)[0]
+    const packageInfo = match?.[1]
+    if (!packageInfo?.resolved && !packageInfo?.integrity) return null
+    return packageInfo.version ?? null
+  })
+}
+
+function syncAllowScriptsVersionsWithLookup(pkg, lookupVersion) {
   const allowScripts = pkg.allowScripts ?? {}
   const next = {}
   let changed = 0
@@ -50,68 +79,14 @@ export function syncAllowScriptsVersions(pkg, installedRoot) {
       next[key] = value
       continue
     }
-    let installedVersion = null
-    try {
-      installedVersion = JSON.parse(
-        readFileSync(path.join(installedRoot, 'node_modules', parsed.name, 'package.json'), 'utf8'),
-      ).version
-    } catch {
-      // Package no longer installed; keep the original key.
-    }
-    if (installedVersion && installedVersion !== parsed.version) {
+    const resolvedVersion = lookupVersion(parsed.name)
+    if (resolvedVersion && resolvedVersion !== parsed.version) {
       changed += 1
-      next[`${parsed.name}@${installedVersion}`] = value
+      next[`${parsed.name}@${resolvedVersion}`] = value
     } else {
       next[key] = value
     }
   }
   pkg.allowScripts = next
-  return changed
-}
-
-/**
- * Rewrite every @deepseek-ai/dsh* package entry in package-lock.json to target.
- * Updates root dependencies, nested package entries, resolved tarball URLs,
- * and internal package dependency constraints. Returns total entries changed.
- */
-export function rewriteDshLockfile(lock, target) {
-  let changed = 0
-  const rewriteDeps = (deps) => {
-    if (!deps) return
-    for (const [k, v] of Object.entries(deps)) {
-      if (k === '@deepseek-ai/dsh' || k.startsWith('@deepseek-ai/dsh-')) {
-        if (typeof v === 'string') {
-          const isCaret = v.startsWith('^')
-          const nextVal = isCaret ? `^${target}` : target
-          if (v !== nextVal) {
-            deps[k] = nextVal
-            changed++
-          }
-        }
-      }
-    }
-  }
-
-  if (lock.packages) {
-    for (const [key, pkg] of Object.entries(lock.packages)) {
-      const parts = key.split('node_modules/')
-      const name = parts[parts.length - 1]
-      if (name === '@deepseek-ai/dsh' || name.startsWith('@deepseek-ai/dsh-')) {
-        if (pkg.version !== target) {
-          pkg.version = target
-          if (typeof pkg.resolved === 'string') {
-            pkg.resolved = pkg.resolved.replace(/\d+\.\d+\.\d+(?:-rc\.\d+)?/g, target)
-          }
-          delete pkg.integrity
-          changed++
-        }
-      }
-      rewriteDeps(pkg.dependencies)
-      rewriteDeps(pkg.devDependencies)
-      rewriteDeps(pkg.peerDependencies)
-      rewriteDeps(pkg.optionalDependencies)
-    }
-  }
-
   return changed
 }

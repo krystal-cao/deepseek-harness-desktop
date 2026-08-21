@@ -888,7 +888,7 @@ function registerPluginManagerIpc() {
 /**
  * With auto-follow enabled, install and select the newest official RC in the
  * background once the catalog is loaded, then restart the service so the new
- * runtime (and its aligned plugin family) takes effect.
+ * runtime and its aligned plugin family take effect.
  */
 async function followLatestIfEnabled() {
   if (!versionState.autoFollowLatest) return

@@ -315,6 +315,20 @@ function button(label, { cls = '', primary = false, danger = false, disabled = f
   return node
 }
 
+function formatDate(publishedAt) {
+  if (!publishedAt) return ''
+  const locale = getLanguage() === 'en' ? 'en-US' : 'zh-CN'
+  return new Date(publishedAt).toLocaleDateString(locale)
+}
+
+function isLatest(version) {
+  return snapshot?.latestVersion === version
+}
+
+function isCurrent(version) {
+  return snapshot?.selectedVersion === version
+}
+
 function familyMeta(family = []) {
   const total = family.length
   const aligned = family.filter((item) => item.aligned).length
@@ -331,20 +345,6 @@ function familyMeta(family = []) {
   return isEn
     ? `Plugin family ${aligned}/${total} aligned (missing ${missing.join(', ')}${suffix})`
     : `插件族 ${aligned}/${total} 对齐（缺 ${missing.join(', ')}${suffix}）`
-}
-
-function formatDate(publishedAt) {
-  if (!publishedAt) return ''
-  const locale = getLanguage() === 'en' ? 'en-US' : 'zh-CN'
-  return new Date(publishedAt).toLocaleDateString(locale)
-}
-
-function isLatest(version) {
-  return snapshot?.latestVersion === version
-}
-
-function isCurrent(version) {
-  return snapshot?.selectedVersion === version
 }
 
 /* ── static i18n synchronization ───────────────────────────── */

@@ -5,11 +5,11 @@
 //   node scripts/check-upstream.mjs --write    # prepare the dependency bump
 //   node scripts/check-upstream.mjs --github-output  # emit workflow outputs
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DSH_VERSION_PATTERN, isNewerVersion } from '../src/updater-config.js'
-import { rewriteDshLockfile, rewriteDshPins } from './dsh-version.mjs'
+import { rewriteDshPins, syncAllowScriptsVersionsFromLock } from './dsh-version.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const packagePath = path.join(root, 'package.json')
@@ -57,17 +57,23 @@ if (process.argv.includes('--github-output')) {
 if (process.argv.includes('--write') && update) {
   const changed = rewriteDshPins(pkg, target)
   writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`)
-  console.log(`wrote ${changed.length} pins to ${target}`)
+  console.log(`wrote ${changed.length} dsh packages to ${target}`)
 
+  // Regenerate the lockfile from npm's resolver instead of editing package
+  // entries and tarball URLs by hand. The official dsh package owns its
+  // transitive dependency graph and the direct DSH family layout, so npm is
+  // the source of truth here.
+  const npmMajor = Number(execFileSync('npm', ['-v'], { encoding: 'utf8' }).trim().split('.')[0])
+  const installArgs = ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund']
+  if (npmMajor >= 11) installArgs.push('--allow-git=all')
+  const execEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_SSH_COMMAND: 'ssh -o BatchMode=yes' }
+  execFileSync('npm', installArgs, { cwd: root, stdio: 'inherit', env: execEnv })
   const lockPath = path.join(root, 'package-lock.json')
-  if (existsSync(lockPath)) {
-    try {
-      const lock = JSON.parse(readFileSync(lockPath, 'utf8'))
-      const lockChanged = rewriteDshLockfile(lock, target)
-      writeFileSync(lockPath, `${JSON.stringify(lock, null, 2)}\n`)
-      console.log(`updated ${lockChanged} lockfile entries to ${target}`)
-    } catch (err) {
-      console.warn(`failed to rewrite package-lock.json: ${err.message}`)
-    }
+  const lock = JSON.parse(readFileSync(lockPath, 'utf8'))
+  const synced = syncAllowScriptsVersionsFromLock(pkg, lock)
+  if (synced > 0) {
+    writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`)
+    console.log(`synced ${synced} native build permission pins`)
   }
+  console.log('updated package-lock.json')
 }
