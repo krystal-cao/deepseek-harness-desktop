@@ -83,6 +83,11 @@ test('rewriteDshLockfile rewrites packages and dependency ranges', () => {
           other: '1.0.0',
         },
       },
+      'node_modules/@deepseek-ai/dsh-skill-filesystem/node_modules/chokidar': {
+        version: '5.0.0',
+        resolved: 'https://registry.npmjs.org/chokidar/-/chokidar-5.0.0.tgz',
+        integrity: 'sha512-def',
+      },
     },
   }
   const changed = rewriteDshLockfile(lock, '0.1.1-rc.1')
@@ -97,5 +102,13 @@ test('rewriteDshLockfile rewrites packages and dependency ranges', () => {
   assert.equal(
     lock.packages['node_modules/@deepseek-ai/dsh'].dependencies['@deepseek-ai/dsh-fs'],
     '^0.1.1-rc.1',
+  )
+  assert.equal(
+    lock.packages['node_modules/@deepseek-ai/dsh-skill-filesystem/node_modules/chokidar'].version,
+    '5.0.0',
+  )
+  assert.equal(
+    lock.packages['node_modules/@deepseek-ai/dsh-skill-filesystem/node_modules/chokidar'].resolved,
+    'https://registry.npmjs.org/chokidar/-/chokidar-5.0.0.tgz',
   )
 })

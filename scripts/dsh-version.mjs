@@ -94,7 +94,9 @@ export function rewriteDshLockfile(lock, target) {
 
   if (lock.packages) {
     for (const [key, pkg] of Object.entries(lock.packages)) {
-      if (key.includes('node_modules/@deepseek-ai/dsh')) {
+      const parts = key.split('node_modules/')
+      const name = parts[parts.length - 1]
+      if (name === '@deepseek-ai/dsh' || name.startsWith('@deepseek-ai/dsh-')) {
         if (pkg.version !== target) {
           pkg.version = target
           if (typeof pkg.resolved === 'string') {
