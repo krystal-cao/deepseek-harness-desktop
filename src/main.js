@@ -356,6 +356,7 @@ function versionManagerSnapshot() {
     })),
     error: catalogError,
     language: currentLanguage,
+    colorScheme: currentColorScheme ?? 'light',
   }
 }
 

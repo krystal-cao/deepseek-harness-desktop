@@ -475,6 +475,9 @@ function render() {
   if (snapshot.language && snapshot.language !== getLanguage()) {
     setLanguage(snapshot.language)
   }
+  if (snapshot.colorScheme) {
+    applyTheme(snapshot.colorScheme)
+  }
   applyStaticI18n()
 
   autoFollowEl.checked = snapshot.autoFollowLatest ?? true
@@ -1025,23 +1028,31 @@ async function saveUiTheme(theme) {
 }
 
 function applyTheme(theme) {
+  const mode = typeof theme === 'object' && theme !== null ? theme.colorScheme : theme
   const root = document.documentElement
-  if (theme === 'dark') {
+  if (mode === 'dark') {
+    root.setAttribute('data-theme', 'dark')
     root.classList.add('dark')
     root.classList.remove('light')
   } else {
+    root.removeAttribute('data-theme')
     root.classList.add('light')
     root.classList.remove('dark')
   }
 }
 
 api.onTheme?.((theme) => {
-  if (theme === 'dark' || theme === 'light') applyTheme(theme)
+  applyTheme(theme)
 })
 
 async function init() {
   try {
-    snapshot = await api.getSnapshot()
+    const [snap, themeRes] = await Promise.all([
+      api.getSnapshot(),
+      api.getTheme?.().catch(() => null),
+    ])
+    snapshot = snap
+    if (themeRes) applyTheme(themeRes)
     render()
   } catch (error) {
     setStatus(error?.message ?? (getLanguage() === 'en' ? 'Initialization failed' : '初始化失败'), true)
