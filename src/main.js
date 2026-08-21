@@ -285,8 +285,8 @@ function createUpdater() {
     appName: APP_NAME,
     getMainWindow: () => mainWindow,
     onBeforeInstall: () => {
-      isQuitting = true
-      service?.stop()
+      // onBeforeInstall triggers right before app.quit(); let quitAfterStoppingService
+      // perform the graceful service shutdown when the quit lifecycle begins.
     },
   })
 }
@@ -1074,13 +1074,16 @@ function stopHarnessService() {
 
 async function quitAfterStoppingService(event) {
   if (isQuitting) {
-    event.preventDefault()
     return
   }
   isQuitting = true
-  event.preventDefault()
+  event?.preventDefault()
   stopBridgeHealPoll()
-  await stopHarnessService()
+  try {
+    await stopHarnessService()
+  } catch (error) {
+    console.warn('error stopping harness service before quit:', error)
+  }
   app.exit(0)
 }
 
