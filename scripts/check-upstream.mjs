@@ -61,5 +61,9 @@ if (process.argv.includes('--write') && update) {
   const npmMajor = Number(execFileSync('npm', ['-v'], { encoding: 'utf8' }).trim().split('.')[0])
   const installArgs = ['install', '--package-lock-only', '--ignore-scripts']
   if (npmMajor >= 12) installArgs.push('--allow-git=all')
-  execFileSync('npm', installArgs, { cwd: root, stdio: 'inherit' })
+  execFileSync('npm', installArgs, {
+    cwd: root,
+    stdio: 'inherit',
+    env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_SSH_COMMAND: 'ssh -o BatchMode=yes' },
+  })
 }

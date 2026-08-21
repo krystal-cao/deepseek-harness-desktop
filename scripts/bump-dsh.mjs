@@ -37,13 +37,14 @@ writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`)
 const npmMajor = Number(execFileSync('npm', ['-v'], { encoding: 'utf8' }).trim().split('.')[0])
 const installArgs = ['install']
 if (npmMajor >= 12) installArgs.push('--allow-git=all')
-execFileSync('npm', installArgs, { cwd: root, stdio: 'inherit' })
+const execEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_SSH_COMMAND: 'ssh -o BatchMode=yes' }
+execFileSync('npm', installArgs, { cwd: root, stdio: 'inherit', env: execEnv })
 const synced = syncAllowScriptsVersions(pkg, root)
 writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`)
 if (synced > 0) {
   console.log(`synced ${synced} allowScripts entries to installed versions`)
   // Re-install so the newly allowed native build scripts actually run.
-  execFileSync('npm', installArgs, { cwd: root, stdio: 'inherit' })
+  execFileSync('npm', installArgs, { cwd: root, stdio: 'inherit', env: execEnv })
 }
 execFileSync('npm', ['test'], { cwd: root, stdio: 'inherit' })
 
