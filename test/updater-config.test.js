@@ -45,12 +45,16 @@ test('isNewerVersion compares rc and stable versions', () => {
   assert.equal(isNewerVersion('0.1.0-rc.6', undefined), false)
 })
 
-test('DSH_VERSION_PATTERN accepts only the 0.1.0-rc train', () => {
+test('DSH_VERSION_PATTERN accepts official dsh semver and rc versions', () => {
   assert.match('0.1.0-rc.6', DSH_VERSION_PATTERN)
   assert.match('0.1.0-rc.10', DSH_VERSION_PATTERN)
-  assert.doesNotMatch('0.0.1-rc.5', DSH_VERSION_PATTERN)
-  assert.doesNotMatch('0.1.0', DSH_VERSION_PATTERN)
+  assert.match('0.1.1-rc.1', DSH_VERSION_PATTERN)
+  assert.match('0.0.1-rc.5', DSH_VERSION_PATTERN)
+  assert.match('0.1.0', DSH_VERSION_PATTERN)
+  assert.match('1.0.0', DSH_VERSION_PATTERN)
   assert.doesNotMatch('0.1.0-rc', DSH_VERSION_PATTERN)
+  assert.doesNotMatch('../../etc', DSH_VERSION_PATTERN)
+  assert.doesNotMatch('latest', DSH_VERSION_PATTERN)
 })
 
 test('DSH_ANY_VERSION_PATTERN accepts every official dsh version', () => {

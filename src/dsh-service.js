@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { delimiter, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { DSH_ANY_VERSION_PATTERN } from './updater-config.js'
+import { DSH_ANY_VERSION_PATTERN, isNewerVersion } from './updater-config.js'
 
 const READY_PATTERN = /^dsh web: (http:\/\/127\.0\.0\.1:\d+)\b/m
 
@@ -103,14 +103,11 @@ export function checkPortAvailable(port, host = '127.0.0.1') {
 
 /**
  * Whether a dsh version supports `dsh web --no-open`, added in 0.1.0-rc.8.
- * Versions before that reject the unknown flag. Handles the `0.1.0-rc.N`
- * train we track; unrecognized versions are assumed to support it (newer).
+ * Versions before that reject the unknown flag.
  */
 export function supportsNoOpen(version) {
   if (typeof version !== 'string') return false
-  const match = /^0\.1\.0-rc\.(\d+)$/.exec(version.trim())
-  if (!match) return true // unrecognized/stable → assume newer
-  return Number(match[1]) >= 8
+  return isNewerVersion(version.trim(), '0.1.0-rc.7')
 }
 
 export function buildDshArgs(entry, { noOpen = false, port = 3080 } = {}) {

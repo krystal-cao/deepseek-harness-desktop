@@ -2,7 +2,7 @@
 // it can be unit-tested with plain `node --test`.
 
 /** The npm version train the desktop wrapper follows upstream. */
-export const DSH_VERSION_PATTERN = /^0\.1\.0-rc\.\d+$/
+export const DSH_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-rc\.\d+)?$/
 
 /** Any official dsh version the version manager may install (semver-ish). */
 export const DSH_ANY_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-rc\.\d+)?$/

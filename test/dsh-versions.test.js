@@ -17,6 +17,7 @@ import {
   writeStagingProject,
 } from '../src/dsh-versions.js'
 import { readFileSync } from 'node:fs'
+import { DSH_ANY_VERSION_PATTERN } from '../src/updater-config.js'
 
 function makeFakeVersion(root, version) {
   const packageRoot = path.join(root, version, 'node_modules', '@deepseek-ai', 'dsh')
@@ -86,7 +87,7 @@ test('cleanupStaleInstallDirs tolerates a missing versions dir', () => {
 
 test('bundledDshVersion reads the pinned package version', () => {
   const version = bundledDshVersion()
-  assert.match(version ?? '', /^0\.1\.0-rc\.\d+$/)
+  assert.match(version ?? '', DSH_ANY_VERSION_PATTERN)
 })
 
 test('writeStagingProject writes a minimal installable project', () => {

@@ -98,7 +98,7 @@ DeepSeek Harness 已经提供完整的 Agent Runtime 和 Web UI。DSH Desktop �
 - **第三方主题防冲突保护**：全链路智能识别外部主题与各类独立皮肤插件，激活外部主题时自动熔断内置主题；卸载外部主题后自动恢复原设主题。
 - **通用设置面板**：支持设置自动更新开关、命令汉化开关、界面主题、npm 镜像源预设以及自定义 DSH 服务启动端口。
 - **内置 DSH 版本管理**：可从 npm 直接安装、切换、卸载官方 `@deepseek-ai/dsh` 版本，安装时自动对齐桌面内置插件族，无需重新打包应用。
-- **支持自动跟随官方最新 RC**：启动后后台静默检测、安装并切换到 npm 上最新的 `0.1.0-rc.*` 版本。
+- **支持自动跟随官方最新版本**：启动后后台静默检测、安装并切换到 npm 上最新的官方版本。
 - **可视化插件管理**：在设置窗口中一键查看、安装、卸载 web profile 的第三方插件（等价于 `dsh plugin --profile web ...`），操作后自动重启服务生效。
 - **桌面任务完成通知**：当 Agent 执行耗时任务时，若窗口失去焦点或已最小化/隐藏，任务完成后自动发送 macOS 系统级通知，点击可快速唤回主窗口。
 - **原生 macOS 体验**：自定义沉浸式标题栏与深浅色主题自然融合，红绿灯始终对齐侧边栏；支持快捷键 `⌘,` 随时唤起设置窗口。
@@ -177,7 +177,7 @@ DSH Desktop
 ### 发版流程
 
 1. `node scripts/check-upstream.mjs` — 对比当前固定的 dsh 版本与 npm 最新版。
-2. `node scripts/bump-dsh.mjs 0.1.0-rc.x` — 把所有 `@deepseek-ai/dsh*` 固定依赖
+2. `node scripts/bump-dsh.mjs <version>` — 把所有 `@deepseek-ai/dsh*` 固定依赖
    升到同一版本，重新安装并运行测试。
 3. `npm run dist:mac:all && npm run smoke:packaged` — 验证打包后的应用能启动
    并返回 HTTP 200（同时构建 Apple Silicon 与 Intel）。
@@ -186,8 +186,7 @@ DSH Desktop
    冒烟测试并把 DMG、ZIP、`latest-mac.yml` 发布到 GitHub Releases；已安装的
    应用会提示用户重启完成更新。
 
-`check-upstream.yml` 工作流每天检查一次：上游在 npm 发布新的 `0.1.0-rc.*`
-版本时，会自动开一个升级 PR。
+`check-upstream.yml` 工作流每天检查一次：上游在 npm 发布新的官方版本时，会自动开一个升级 PR。
 
 注意：macOS 自动更新要求应用已签名。当前使用 ad-hoc 签名，适合自用或小范围
 分发；公开发布时应切换到 Apple Developer ID 签名并做公证。

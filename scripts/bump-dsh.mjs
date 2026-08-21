@@ -21,7 +21,7 @@ if (!requested) {
   process.exit(1)
 }
 if (!DSH_VERSION_PATTERN.test(requested)) {
-  console.error(`refusing to bump: "${requested}" is not on the 0.1.0-rc.* train`)
+  console.error(`refusing to bump: "${requested}" is not a valid official dsh version`)
   process.exit(1)
 }
 
