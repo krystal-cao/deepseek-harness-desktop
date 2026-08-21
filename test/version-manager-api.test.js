@@ -210,3 +210,16 @@ test('setUiTheme rejects switching when an external theme is active', async () =
   assert.equal(state.uiTheme, 'default')
 })
 
+test('setTranslateCommands requires a boolean', async () => {
+  const { api } = makeApi()
+  await assert.rejects(async () => api.setTranslateCommands('yes'), /无效的命令汉化设置/)
+})
+
+test('setTranslateCommands persists the value', async () => {
+  const { api, state } = makeApi()
+  await api.setTranslateCommands(false)
+  assert.equal(state.translateCommands, false)
+  await api.setTranslateCommands(true)
+  assert.equal(state.translateCommands, true)
+})
+

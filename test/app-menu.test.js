@@ -79,3 +79,29 @@ test('non-macOS hosts the DSH options at the top of the 文件 menu', () => {
     ['设置…', '重启 dsh 服务', '检查更新…', '[separator]', '退出'],
   )
 })
+
+test('macOS menu template supports English language option', () => {
+  const template = buildAppMenuTemplate({
+    platform: 'darwin',
+    appName: 'DSH',
+    language: 'en',
+    onCheckForUpdates: () => {},
+    onRestartService: () => {},
+    onOpenVersionManager: () => {},
+    onOpenGithub: () => {},
+  })
+  const topLevel = template.map((item) => item.label)
+  assert.deepEqual(topLevel, [
+    'DSH',
+    'File',
+    'Edit',
+    'View',
+    'Window',
+    'Help',
+  ])
+  const items = collect(template)
+  for (const label of ['Settings…', 'Restart DSH Service', 'Check for Updates…', 'Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Select All', 'Reload', 'View on GitHub']) {
+    assert.ok(items.some((item) => item.label === label), `missing English label ${label}`)
+  }
+})
+

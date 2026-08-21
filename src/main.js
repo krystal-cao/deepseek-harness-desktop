@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { appendFileSync, existsSync, mkdirSync, watch, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, watch, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -143,12 +143,26 @@ let isRestartingService = false
 let updater
 let resolvedUserPath
 let versionsDir
-let versionState = { selectedVersion: null, dismissedLatest: null, uiTheme: 'default' }
+let versionState = { selectedVersion: null, dismissedLatest: null, uiTheme: 'default', translateCommands: true }
 let catalog = { latest: null, versions: [] }
 let catalogError = null
 let managerWindow
 let currentColorScheme = null
 let currentExternalTheme = null
+let currentLanguage = readInitialHostLanguage()
+
+function readInitialHostLanguage() {
+  try {
+    const dshHome = process.env.DSH_HOME || path.join(homedir(), '.dsh')
+    const settingsPath = path.join(dshHome, 'settings.yaml')
+    if (existsSync(settingsPath)) {
+      const content = readFileSync(settingsPath, 'utf8')
+      const match = /^\s*preference:\s*['"]?(en|zh)['"]?/m.exec(content)
+      if (match) return match[1]
+    }
+  } catch {}
+  return 'zh'
+}
 
 // Mutable busy state shared between the version-manager IPC surface and the
 // auto-follow path: both install versions, so both must respect the same
@@ -208,6 +222,7 @@ function createWindow(serviceUrl) {
   mainWindow.webContents.on('dom-ready', injectShellStyles)
   mainWindow.webContents.on('did-finish-load', () => {
     void syncMainWindowUiTheme()
+    void syncMainWindowTranslateCommands()
   })
 
   mainWindow.on('focus', () => {
@@ -239,7 +254,7 @@ function createWindow(serviceUrl) {
     await mainWindow.loadURL(serviceUrl)
     await waitForBridgeOrUi(mainWindow.webContents)
     if (mainWindow.isDestroyed()) return
-    await syncMainWindowUiTheme()
+    await Promise.all([syncMainWindowUiTheme(), syncMainWindowTranslateCommands()])
     mainWindow.show()
     mainWindow.focus()
   })()
@@ -280,6 +295,7 @@ function createAppMenu() {
   if (process.platform !== 'darwin') return
   Menu.setApplicationMenu(Menu.buildFromTemplate(buildAppMenuTemplate({
     appName: APP_NAME,
+    language: currentLanguage,
     onCheckForUpdates: () => void updater?.checkForUpdates({ manual: true }),
     onRestartService: () => void restartDshService(),
     onOpenVersionManager: () => openVersionManagerWindow(),
@@ -330,6 +346,7 @@ function versionManagerSnapshot() {
     dshPort: versionState.dshPort,
     uiTheme: externalTheme ? 'default' : (versionState.uiTheme === 'claude' ? 'claude' : 'default'),
     externalTheme,
+    translateCommands: versionState.translateCommands !== false,
     installingVersion: versionBusyState.installingVersion,
     installedVersions: installedVersionList(),
     availableVersions: sortDshVersions(catalog.versions.map((item) => item.version)).map((version) => ({
@@ -338,6 +355,7 @@ function versionManagerSnapshot() {
       tags: byVersion.get(version)?.tags ?? [],
     })),
     error: catalogError,
+    language: currentLanguage,
   }
 }
 
@@ -364,6 +382,25 @@ function syncMainWindowUiTheme() {
     .catch((error) => {
       // The webview may not have finished mounting the bridge yet; ignore.
       console.warn('syncMainWindowUiTheme failed:', error instanceof Error ? error.message : error)
+    })
+}
+
+/** Sync the command translation preference to the live DSH Web UI. */
+function syncMainWindowTranslateCommands() {
+  if (!mainWindow || mainWindow.isDestroyed()) return Promise.resolve()
+  const enabled = versionState.translateCommands !== false
+  const serialized = JSON.stringify(enabled)
+  return mainWindow.webContents
+    .executeJavaScript(
+      `(() => {
+        const enabled = ${serialized};
+        window.__DSH_DESKTOP_TRANSLATE_COMMANDS__ = enabled;
+        window.dispatchEvent(new CustomEvent('dsh-desktop-translate-commands-change', { detail: { enabled } }));
+      })()`,
+    )
+    .catch((error) => {
+      // The webview may not have finished mounting the bridge yet; ignore.
+      console.warn('syncMainWindowTranslateCommands failed:', error instanceof Error ? error.message : error)
     })
 }
 
@@ -592,6 +629,12 @@ function registerVersionManagerIpc() {
     assertManagerSender(event)
     const next = api.setUiTheme(value)
     void syncMainWindowUiTheme()
+    return next
+  })
+  ipcMain.handle('dsh-versions:set-translate-commands', (event, value) => {
+    assertManagerSender(event)
+    const next = api.setTranslateCommands(value)
+    void syncMainWindowTranslateCommands()
     return next
   })
 }
@@ -1151,6 +1194,15 @@ async function launch() {
     if (process.platform === 'darwin') return
     if (colorScheme === 'dark' || colorScheme === 'light') {
       mainWindow.setBackgroundColor(colorScheme === 'dark' ? '#151517' : '#ffffff')
+    }
+  })
+  ipcMain.on('dsh-bridge:locale', (_event, payload) => {
+    const language = payload && payload.language === 'en' ? 'en' : 'zh'
+    if (currentLanguage !== language) {
+      console.log('[dsh-bridge] locale', language)
+      currentLanguage = language
+      createAppMenu()
+      pushManagerSnapshot()
     }
   })
   ipcMain.on('dsh-bridge:notify', (_event, payload) => {

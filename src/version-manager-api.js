@@ -130,5 +130,13 @@ export function createVersionManagerApi({
       })
       return snapshot()
     },
+
+    setTranslateCommands: (value) => {
+      if (typeof value !== 'boolean') throw new Error('无效的命令汉化设置')
+      updateState((state) => {
+        state.translateCommands = value
+      })
+      return snapshot()
+    },
   }
 }

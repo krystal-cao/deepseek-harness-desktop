@@ -32,6 +32,7 @@ export function readDshState(userData) {
       npmRegistry: typeof migrated.npmRegistry === 'string' ? migrated.npmRegistry : null,
       dshPort: typeof migrated.dshPort === 'number' && Number.isInteger(migrated.dshPort) && migrated.dshPort >= 1024 && migrated.dshPort <= 65535 ? migrated.dshPort : null,
       uiTheme: migrated.uiTheme === 'claude' ? 'claude' : 'default',
+      translateCommands: migrated.translateCommands !== false,
     }
   } catch {
     return {
@@ -42,6 +43,7 @@ export function readDshState(userData) {
       npmRegistry: null,
       dshPort: null,
       uiTheme: 'default',
+      translateCommands: true,
     }
   }
 }

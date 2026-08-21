@@ -44,6 +44,9 @@ contextBridge.exposeInMainWorld('dshDesktop', {
     state.theme += 1
     ipcRenderer.send('dsh-bridge:theme', snapshot)
   },
+  locale: (payload) => {
+    ipcRenderer.send('dsh-bridge:locale', payload)
+  },
   notify: (payload) => {
     state.notify += 1
     ipcRenderer.send('dsh-bridge:notify', payload)

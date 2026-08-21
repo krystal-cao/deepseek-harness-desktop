@@ -1,6 +1,215 @@
 const api = window.dshVersions
 const pluginsApi = window.dshPlugins
 
+/* ── bilingual dictionary (zh/en) ─────────────────────────── */
+const DICTS = {
+  zh: {
+    // Navigation
+    navGeneral: '通用',
+    navVersions: '版本',
+    navPlugins: '插件',
+
+    // Titles & Subtitles
+    pageGeneralTitle: '通用设置',
+    pageGeneralSubtitle: '自动更新、镜像源与端口配置',
+    pageVersionsTitle: '版本管理',
+    pageVersionsSubtitle: '管理 dsh 的版本',
+    pagePluginsTitle: '插件管理',
+    pagePluginsSubtitle: '发现并管理 dsh 插件',
+
+    // General Panel
+    autoFollowOn: '已开启自动更新',
+    autoFollowOff: '已关闭自动更新',
+    autoFollowDesc: '启动后自动安装并切换到官方最新 RC（完成后自动重启 dsh 服务）',
+
+    translateCommandsOn: '已开启命令说明汉化',
+    translateCommandsOff: '已关闭命令说明汉化',
+    translateCommandsDesc: '将 /compact、/plan、/permission 等内置斜杠命令的说明提示汉化为简体中文',
+
+    uiThemeTitle: '界面主题',
+    uiThemeDesc: '选择 DSH 的配色风格，修改后立即生效',
+    uiThemeDefault: '默认主题',
+    uiThemeClaude: 'Claude Code 主题',
+    themeConflictWarning: (theme) => `已检测到第三方主题（${theme}），内置主题已锁定以避免样式冲突。`,
+
+    npmRegistryTitle: 'npm 镜像地址',
+    npmRegistryDesc: '用于版本目录、插件安装和插件管理，内置镜像失效时可切换备用镜像',
+    mirrorChina: 'npmmirror（国内）',
+    mirrorOfficial: 'npm 官方',
+    mirrorTencent: '腾讯云',
+    mirrorHuawei: '华为云',
+
+    portTitle: 'DSH 启动端口',
+    portDesc: 'DSH 服务监听的本地端口，修改后需重启应用生效。默认 3080。',
+
+    btnSave: '保存',
+    btnResetDefault: '恢复默认',
+    portInvalid: '端口号必须是 1024–65535 之间的整数',
+
+    // Versions Panel
+    installedSectionTitle: '已安装',
+    officialSectionTitle: '官方版本',
+    npmViewAllLink: '前往 npm 查看全部 →',
+    versionsHint: '最新 = npm latest（推荐）；标记 <span class="badge next">next</span> 的为上游预发布候选，可手动安装切换。',
+    badgeActive: '运行中',
+    badgeBundled: '内置',
+    badgeLatest: '最新',
+    btnSwitch: '切换',
+    btnInstall: '安装',
+    btnUninstall: '卸载',
+    btnInstalling: '正在安装…',
+    btnCurrent: '已是当前版本',
+    confirmUninstallTitle: '确定卸载？',
+    confirmCancel: '取消',
+    confirmYes: '确定',
+    showMore: (n) => `查看更多历史版本（共 ${n} 个）↓`,
+    showLess: '收起历史版本 ↑',
+    noVersionsFound: '未找到可用版本',
+
+    // Plugins Panel
+    pluginPlaceholder: '例如 dshmarket、@scope/name 或 github:owner/repo',
+    btnPluginInstall: '安装',
+    pluginsHint: '通过 dsh 的插件机制安装到 web profile，安装或卸载成功后会自动重启 dsh 服务。',
+    installedPluginsSegment: '已安装',
+    btnCheckUpdates: '检查更新',
+    btnCheckingUpdates: '正在检查…',
+    btnUpdateAll: '全部更新',
+    badgeBuiltin: '内置',
+    badgeHasUpdate: '有新版本',
+    btnUpdate: '更新',
+    btnUpdating: '正在更新…',
+    btnUninstalling: '正在卸载…',
+    noPlugins: '暂无已安装的第三方插件',
+    confirmPluginUninstallTitle: '确定卸载此插件？',
+
+    // Status Messages
+    setFailed: '设置失败',
+    saveRegistrySuccess: 'npm 镜像地址已更新',
+    savePortSuccess: (p) => `DSH 端口已修改为 ${p}，重启应用后生效`,
+    savePortResetSuccess: 'DSH 端口已恢复为默认值（3080），重启应用后生效',
+    switchSuccess: (v) => `已切换到 v${v}，服务重启中…`,
+    installSuccess: (v) => `v${v} 安装完成`,
+    uninstallSuccess: (v) => `v${v} 已卸载`,
+    pluginInstallSuccess: (s) => `插件 ${s} 安装成功，服务重启中…`,
+    pluginUninstallSuccess: (p) => `插件 ${p} 已卸载，服务重启中…`,
+    pluginUpdateSuccess: (p) => `插件 ${p} 更新成功，服务重启中…`,
+    pluginsAllUpdatedSuccess: '全部插件已更新至最新版本',
+    pluginsUpToDate: '所有插件均已是最新版本',
+    refreshPluginsTimeout: '刷新插件列表超时',
+  },
+  en: {
+    // Navigation
+    navGeneral: 'General',
+    navVersions: 'Versions',
+    navPlugins: 'Plugins',
+
+    // Titles & Subtitles
+    pageGeneralTitle: 'General Settings',
+    pageGeneralSubtitle: 'Auto-updates, mirror registries, and port configuration',
+    pageVersionsTitle: 'Version Manager',
+    pageVersionsSubtitle: 'Manage DSH runtime versions',
+    pagePluginsTitle: 'Plugin Manager',
+    pagePluginsSubtitle: 'Discover and manage DSH plugins',
+
+    // General Panel
+    autoFollowOn: 'Auto-update enabled',
+    autoFollowOff: 'Auto-update disabled',
+    autoFollowDesc: 'Automatically install and switch to latest official RC on launch (restarts dsh service when done)',
+
+    translateCommandsOn: 'Command localization enabled',
+    translateCommandsOff: 'Command localization disabled',
+    translateCommandsDesc: 'Translate /compact, /plan, /permission slash command descriptions into Chinese',
+
+    uiThemeTitle: 'UI Theme',
+    uiThemeDesc: 'Select DSH appearance; changes apply immediately',
+    uiThemeDefault: 'Default Theme',
+    uiThemeClaude: 'Claude Code Theme',
+    themeConflictWarning: (theme) => `Third-party theme detected (${theme}); built-in themes locked to prevent conflicts.`,
+
+    npmRegistryTitle: 'npm Registry',
+    npmRegistryDesc: 'Used for version catalog, plugin install, and updates; switch if default fails',
+    mirrorChina: 'npmmirror (China)',
+    mirrorOfficial: 'npm Official',
+    mirrorTencent: 'Tencent Cloud',
+    mirrorHuawei: 'Huawei Cloud',
+
+    portTitle: 'DSH Port',
+    portDesc: 'Local port monitored by DSH service; takes effect after app restart. Default: 3080.',
+
+    btnSave: 'Save',
+    btnResetDefault: 'Reset Default',
+    portInvalid: 'Port must be an integer between 1024 and 65535',
+
+    // Versions Panel
+    installedSectionTitle: 'Installed',
+    officialSectionTitle: 'Official Versions',
+    npmViewAllLink: 'View all on npm →',
+    versionsHint: 'latest = npm latest (recommended); <span class="badge next">next</span> indicates upstream pre-release candidates.',
+    badgeActive: 'Active',
+    badgeBundled: 'Bundled',
+    badgeLatest: 'Latest',
+    btnSwitch: 'Switch',
+    btnInstall: 'Install',
+    btnUninstall: 'Uninstall',
+    btnInstalling: 'Installing…',
+    btnCurrent: 'Current',
+    confirmUninstallTitle: 'Uninstall this version?',
+    confirmCancel: 'Cancel',
+    confirmYes: 'Confirm',
+    showMore: (n) => `Show more versions (${n} total) ↓`,
+    showLess: 'Show less ↑',
+    noVersionsFound: 'No available versions found',
+
+    // Plugins Panel
+    pluginPlaceholder: 'e.g. dshmarket, @scope/name, or github:owner/repo',
+    btnPluginInstall: 'Install',
+    pluginsHint: 'Installed into web profile via DSH plugin mechanism; service restarts automatically.',
+    installedPluginsSegment: 'Installed',
+    btnCheckUpdates: 'Check Updates',
+    btnCheckingUpdates: 'Checking…',
+    btnUpdateAll: 'Update All',
+    badgeBuiltin: 'Built-in',
+    badgeHasUpdate: 'Update Available',
+    btnUpdate: 'Update',
+    btnUpdating: 'Updating…',
+    btnUninstalling: 'Uninstalling…',
+    noPlugins: 'No third-party plugins installed',
+    confirmPluginUninstallTitle: 'Uninstall this plugin?',
+
+    // Status Messages
+    setFailed: 'Setting failed',
+    saveRegistrySuccess: 'npm registry updated',
+    savePortSuccess: (p) => `DSH port updated to ${p}; takes effect after app restart`,
+    savePortResetSuccess: 'DSH port reset to default (3080); takes effect after app restart',
+    switchSuccess: (v) => `Switched to v${v}, restarting service…`,
+    installSuccess: (v) => `v${v} installed successfully`,
+    uninstallSuccess: (v) => `v${v} uninstalled`,
+    pluginInstallSuccess: (s) => `Plugin ${s} installed, restarting service…`,
+    pluginUninstallSuccess: (p) => `Plugin ${p} uninstalled, restarting service…`,
+    pluginUpdateSuccess: (p) => `Plugin ${p} updated, restarting service…`,
+    pluginsAllUpdatedSuccess: 'All plugins updated to latest version',
+    pluginsUpToDate: 'All plugins are up to date',
+    refreshPluginsTimeout: 'Timed out refreshing plugin list',
+  },
+}
+
+let activeLang = 'zh'
+
+function t(key, ...args) {
+  const dict = DICTS[activeLang] || DICTS.zh
+  const val = dict[key] ?? DICTS.zh[key]
+  if (typeof val === 'function') return val(...args)
+  return val ?? key
+}
+
+function setLanguage(lang) {
+  activeLang = lang === 'en' ? 'en' : 'zh'
+}
+
+function getLanguage() {
+  return activeLang
+}
+
 const titleEl = document.getElementById('page-title')
 const subtitleEl = document.getElementById('page-subtitle')
 const refreshButton = document.getElementById('refresh')
@@ -8,6 +217,8 @@ const statusEl = document.getElementById('status')
 const sidebarVersionEl = document.getElementById('sidebar-version')
 const autoFollowEl = document.getElementById('auto-follow')
 const autoFollowTitleEl = document.getElementById('auto-follow-title')
+const translateCommandsEl = document.getElementById('translate-commands')
+const translateCommandsTitleEl = document.getElementById('translate-commands-title')
 const uiThemeEls = [...document.querySelectorAll('input[name="ui-theme"]')]
 const themeWarningEl = document.getElementById('theme-conflict-warning')
 const registryInputEl = document.getElementById('registry-input')
@@ -35,10 +246,16 @@ const panels = {
   plugins: document.getElementById('panel-plugins'),
 }
 
-const PAGE_META = {
-  general: { title: '通用设置', subtitle: '自动更新、镜像源与端口配置' },
-  versions: { title: '版本管理', subtitle: '管理 dsh 的版本' },
-  plugins: { title: '插件管理', subtitle: '发现并管理 dsh 插件' },
+function getPageMeta(panel) {
+  switch (panel) {
+    case 'versions':
+      return { title: t('pageVersionsTitle'), subtitle: t('pageVersionsSubtitle') }
+    case 'plugins':
+      return { title: t('pagePluginsTitle'), subtitle: t('pagePluginsSubtitle') }
+    case 'general':
+    default:
+      return { title: t('pageGeneralTitle'), subtitle: t('pageGeneralSubtitle') }
+  }
 }
 
 let snapshot = null
@@ -65,7 +282,7 @@ async function refetchPluginList(fallback) {
   try {
     return await Promise.race([
       pluginsApi.list(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('刷新插件列表超时')), 10_000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error(t('refreshPluginsTimeout'))), 10_000)),
     ])
   } catch {
     return fallback
@@ -102,18 +319,24 @@ function familyMeta(family = []) {
   const total = family.length
   const aligned = family.filter((item) => item.aligned).length
   if (total === 0) return ''
-  if (aligned === total) return `插件族 ${total}/${total} 对齐`
+  const isEn = getLanguage() === 'en'
+  if (aligned === total) {
+    return isEn ? `Plugin family ${total}/${total} aligned` : `插件族 ${total}/${total} 对齐`
+  }
   const missing = family
     .filter((item) => !item.aligned)
     .slice(0, 3)
     .map((item) => item.name.replace('@deepseek-ai/', ''))
   const suffix = total - aligned > 3 ? '…' : ''
-  return `插件族 ${aligned}/${total} 对齐（缺 ${missing.join(', ')}${suffix}）`
+  return isEn
+    ? `Plugin family ${aligned}/${total} aligned (missing ${missing.join(', ')}${suffix})`
+    : `插件族 ${aligned}/${total} 对齐（缺 ${missing.join(', ')}${suffix}）`
 }
 
 function formatDate(publishedAt) {
   if (!publishedAt) return ''
-  return new Date(publishedAt).toLocaleDateString('zh-CN')
+  const locale = getLanguage() === 'en' ? 'en-US' : 'zh-CN'
+  return new Date(publishedAt).toLocaleDateString(locale)
 }
 
 function isLatest(version) {
@@ -124,6 +347,27 @@ function isCurrent(version) {
   return snapshot?.selectedVersion === version
 }
 
+/* ── static i18n synchronization ───────────────────────────── */
+function applyStaticI18n() {
+  updateHeader()
+  for (const node of document.querySelectorAll('[data-i18n]')) {
+    const key = node.dataset.i18n
+    if (key) node.textContent = t(key)
+  }
+  for (const node of document.querySelectorAll('[data-i18n-html]')) {
+    const key = node.dataset.i18nHtml
+    if (key) node.innerHTML = t(key)
+  }
+  for (const node of document.querySelectorAll('[data-i18n-placeholder]')) {
+    const key = node.dataset.i18nPlaceholder
+    if (key) node.placeholder = t(key)
+  }
+  for (const node of document.querySelectorAll('[data-i18n-title]')) {
+    const key = node.dataset.i18nTitle
+    if (key) node.title = t(key)
+  }
+}
+
 /* ── versions ──────────────────────────────────────────────── */
 function renderInstalledVersion(item) {
   const row = el('div', 'version-row')
@@ -131,30 +375,33 @@ function renderInstalledVersion(item) {
   row.append(name)
 
   const meta = el('span', 'version-meta')
-  const source = item.source === 'bundled' ? '应用内置版本' : '已安装到本地'
+  const isEn = getLanguage() === 'en'
+  const source = item.source === 'bundled'
+    ? (isEn ? 'Bundled with app' : '应用内置版本')
+    : (isEn ? 'Installed locally' : '已安装到本地')
   const family = item.family ? familyMeta(item.family) : ''
   meta.textContent = [source, family].filter(Boolean).join(' · ')
   row.append(meta)
 
   const badgesWrap = el('span', 'badges-wrap')
   if (isCurrent(item.version)) {
-    badgesWrap.append(badge('当前运行', 'active-badge'))
+    badgesWrap.append(badge(t('badgeActive'), 'active-badge'))
     row.append(badgesWrap)
     return row
   }
 
   const actions = el('div', 'row-actions')
   actions.append(
-    button('切换', {
+    button(t('btnSwitch'), {
       disabled: busy || activeInstall() !== null,
       onClick: () => selectVersion(item.version),
     }),
   )
   if (localUninstallingVersion === item.version) {
-    actions.append(button('卸载中…', { danger: true, disabled: true }))
+    actions.append(button(t('btnUninstalling'), { danger: true, disabled: true }))
   } else if (item.source === 'installed') {
     actions.append(
-      button(confirmingVersion === item.version ? '确认卸载' : '卸载', {
+      button(confirmingVersion === item.version ? t('confirmYes') : t('btnUninstall'), {
         danger: true,
         disabled: busy || activeInstall() !== null,
         onClick: () => {
@@ -181,14 +428,13 @@ function renderAvailableVersion(item) {
 
   const badgesWrap = el('span', 'badges-wrap')
   if (isLatest(item.version)) {
-    badgesWrap.append(badge('最新', 'green'), badge('推荐', 'blue'))
+    badgesWrap.append(badge(t('badgeLatest'), 'green'))
   }
-  // A version promoted to `latest` keeps its `next` tag on npm; only mark
-  // versions that are next-only (still canary) so rc.7 doesn't show both
-  // "最新/推荐" and "next".
   if (item.tags?.includes('next') && !isLatest(item.version)) {
     const nextBadge = badge('next', 'next')
-    nextBadge.title = '上游 next 标签：预发布候选，可手动安装切换'
+    nextBadge.title = getLanguage() === 'en'
+      ? 'Upstream next tag: pre-release candidate'
+      : '上游 next 标签：预发布候选，可手动安装切换'
     badgesWrap.append(nextBadge)
   }
   if (badgesWrap.childNodes.length > 0) {
@@ -198,27 +444,27 @@ function renderAvailableVersion(item) {
   const actions = el('div', 'row-actions')
   const installed = (snapshot?.installedVersions ?? []).some((entry) => entry.version === item.version)
   const installing = activeInstall()
+  const isEn = getLanguage() === 'en'
   if (isCurrent(item.version)) {
-    // The selected tree may be gone/corrupted even though the selection
-    // string matches; the shell then runs the bundled dsh, so this row must
-    // not pretend the version is active.
     actions.append(
       badge(
-        snapshot?.selectedVersionFallback ? '不可用' : '使用中',
+        snapshot?.selectedVersionFallback
+          ? (isEn ? 'Unavailable' : '不可用')
+          : (isEn ? 'Active' : '使用中'),
         snapshot?.selectedVersionFallback ? 'next' : 'gray',
       ),
     )
   } else if (installing === item.version) {
-    actions.append(button('安装中…', { disabled: true }))
+    actions.append(button(t('btnInstalling'), { disabled: true }))
   } else if (installed) {
     actions.append(
-      button('切换', {
+      button(t('btnSwitch'), {
         disabled: busy || installing !== null,
         onClick: () => selectVersion(item.version),
       }),
     )
   } else {
-    actions.append(button('安装', { disabled: busy || installing !== null, onClick: () => installVersion(item.version) }))
+    actions.append(button(t('btnInstall'), { disabled: busy || installing !== null, onClick: () => installVersion(item.version) }))
   }
   row.append(actions)
   return row
@@ -226,8 +472,17 @@ function renderAvailableVersion(item) {
 
 function render() {
   if (!snapshot) return
+  if (snapshot.language && snapshot.language !== getLanguage()) {
+    setLanguage(snapshot.language)
+  }
+  applyStaticI18n()
+
   autoFollowEl.checked = snapshot.autoFollowLatest ?? true
-  autoFollowTitleEl.textContent = (snapshot.autoFollowLatest ?? true) ? '已开启自动更新' : '已关闭自动更新'
+  autoFollowTitleEl.textContent = (snapshot.autoFollowLatest ?? true) ? t('autoFollowOn') : t('autoFollowOff')
+  if (translateCommandsEl) {
+    translateCommandsEl.checked = snapshot.translateCommands ?? true
+    translateCommandsTitleEl.textContent = (snapshot.translateCommands ?? true) ? t('translateCommandsOn') : t('translateCommandsOff')
+  }
   const externalTheme = snapshot.externalTheme
   if (externalTheme) {
     applyUiTheme('default')
@@ -236,7 +491,7 @@ function render() {
       input.checked = input.value === 'default'
     }
     if (themeWarningEl) {
-      themeWarningEl.textContent = `已检测到第三方主题（${externalTheme}），内置主题已锁定以避免样式冲突。`
+      themeWarningEl.textContent = t('themeConflictWarning', externalTheme)
       themeWarningEl.hidden = false
     }
   } else {
@@ -253,108 +508,67 @@ function render() {
   portInputEl.value = snapshot.dshPort ?? ''
   sidebarVersionEl.textContent = snapshot.selectedVersion ? `v${snapshot.selectedVersion}` : '—'
 
+  renderVersions()
+}
+
+function renderVersions() {
   installedEl.replaceChildren()
-  if (snapshot.selectedVersionFallback) {
-    const warn = el('div', 'banner warn')
-    warn.append(el('span', 'banner-mark', '⚠'))
-    const text = el('span')
-    text.textContent = `所选版本 ${snapshot.selectedVersion} 已不可用（安装文件缺失或损坏），当前实际运行应用内置版本 ${snapshot.bundledVersion ?? '—'}。可在下方重新切换。`
-    warn.append(text)
-    installedEl.append(warn)
-  }
-  const installed = snapshot.installedVersions ?? []
-  if (installed.length === 0) {
-    installedEl.append(el('div', 'empty', '暂无已安装版本（应用内置版本可用）。'))
-  } else {
-    for (const item of installed) installedEl.append(renderInstalledVersion(item))
-  }
+  for (const item of snapshot?.installedVersions ?? []) installedEl.append(renderInstalledVersion(item))
 
   availableEl.replaceChildren()
-  const available = snapshot.availableVersions ?? []
-  if (available.length === 0) {
-    availableEl.append(
-      el(
-        'div',
-        'empty',
-        snapshot.error ? `无法获取官方版本列表：${snapshot.error}` : '官方版本列表为空。',
-      ),
-    )
-  } else {
-    const visible = showAllVersions ? available : available.slice(0, VISIBLE_VERSION_LIMIT)
-    for (const item of visible) availableEl.append(renderAvailableVersion(item))
-    if (available.length > VISIBLE_VERSION_LIMIT) {
-      const toggle = el(
-        'button',
-        'group-toggle-btn',
-        showAllVersions ? '收起旧版本' : `显示全部 ${available.length} 个版本`,
-      )
-      toggle.type = 'button'
-      toggle.addEventListener('click', () => {
-        showAllVersions = !showAllVersions
-        render()
-      })
-      availableEl.append(toggle)
-    }
+  const versions = snapshot?.availableVersions ?? []
+  if (versions.length === 0) {
+    availableEl.append(el('div', 'empty', t('noVersionsFound')))
+    return
   }
-}
 
-function applyUiTheme(value) {
-  const theme = value === 'claude' ? 'claude' : 'default'
-  document.documentElement.dataset.uiTheme = theme
-  for (const input of uiThemeEls) input.checked = input.value === theme
-}
+  const visibleVersions = showAllVersions ? versions : versions.slice(0, VISIBLE_VERSION_LIMIT)
+  for (const item of visibleVersions) availableEl.append(renderAvailableVersion(item))
 
-async function saveUiTheme(value) {
-  const theme = value === 'claude' ? 'claude' : 'default'
-  try {
-    applyUiTheme(theme)
-    snapshot = await api.setUiTheme(theme)
-    render()
-  } catch {
-    try {
-      snapshot = await api.getSnapshot()
-    } catch {}
-    render()
+  const remainingCount = versions.length - VISIBLE_VERSION_LIMIT
+  if (remainingCount > 0) {
+    const toggleRow = el('div', 'toggle-row')
+    const toggleButton = button(
+      showAllVersions
+        ? t('showLess')
+        : t('showMore', remainingCount),
+      {
+        cls: 'ghost toggle-versions-btn',
+        onClick: () => {
+          showAllVersions = !showAllVersions
+          renderVersions()
+        },
+      },
+    )
+    toggleRow.append(toggleButton)
+    availableEl.append(toggleRow)
   }
 }
 
 /* ── plugins ───────────────────────────────────────────────── */
-const KNOWN_ICONS = {
-  'dsh-desktop-host':
-    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg>',
-  dshmarket:
-    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16M4 11l1.5-6h13L20 11M4 11v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9"></path><path d="M9 11v3a3 3 0 0 0 6 0v-3"></path></svg>',
-}
-
-function pluginInitial(name) {
-  const base = name.startsWith('@') ? name.slice(name.indexOf('/') + 1) : name
-  const segment = base.split('-').pop()
-  return segment.charAt(0).toUpperCase()
-}
-
 function renderPluginIcon(name) {
-  const box = el('span', 'plugin-icon')
-  const svg = KNOWN_ICONS[name]
-  if (svg) box.innerHTML = svg
-  else box.textContent = pluginInitial(name)
-  return box
+  const wrap = el('div', 'plugin-icon')
+  const char = (name.replace(/^@[^/]+\//, '')[0] || 'p').toUpperCase()
+  wrap.append(document.createTextNode(char))
+  return wrap
 }
 
 function renderPluginRow(item) {
   const row = el('div', 'plugin-row')
   row.append(renderPluginIcon(item.name))
 
+  const isEn = getLanguage() === 'en'
   const updateInfo = pluginsState.outdated?.[item.name]
   const body = el('div', 'plugin-body')
   const nameLine = el('div', 'plugin-name')
   const titleSpan = el('span', 'plugin-title', item.name)
   nameLine.append(titleSpan)
 
-  const version = el('span', 'version', item.version ? `v${item.version}${item.local ? ' · 本地' : ''}` : '')
+  const version = el('span', 'version', item.version ? `v${item.version}${item.local ? (isEn ? ' · Local' : ' · 本地') : ''}` : '')
   nameLine.append(version)
   if (updateInfo?.latest) {
     const badgeEl = el('span', 'badge blue', `${updateInfo.current ?? '?'} → ${updateInfo.latest}`)
-    badgeEl.title = '检测到新版本，可点击“更新”升级'
+    badgeEl.title = isEn ? 'New version available' : '检测到新版本，可点击“更新”升级'
     nameLine.append(badgeEl)
   }
   body.append(nameLine)
@@ -363,17 +577,17 @@ function renderPluginRow(item) {
 
   const actions = el('div', 'row-actions')
   if (localUninstallingPlugin === item.name) {
-    actions.append(button('卸载中…', { danger: true, disabled: true }))
+    actions.append(button(t('btnUninstalling'), { danger: true, disabled: true }))
   } else if (item.managed) {
     const wrap = el('span', 'btn-wrap')
-    wrap.title = '应用内置核心插件，由桌面宿主统一管理'
-    const builtInBtn = button('内置', { disabled: true })
+    wrap.title = isEn ? 'Built-in core plugin managed by host' : '应用内置核心插件，由桌面宿主统一管理'
+    const builtInBtn = button(t('badgeBuiltin'), { disabled: true })
     wrap.append(builtInBtn)
     actions.append(wrap)
   } else {
     if (updateInfo?.latest) {
       actions.append(
-        button(updatingPlugin === item.name ? '更新中…' : '更新', {
+        button(updatingPlugin === item.name ? t('btnUpdating') : t('btnUpdate'), {
           primary: true,
           disabled: busy || checkingUpdates || updatingPlugin !== null,
           onClick: () => updatePlugin(item.name),
@@ -381,7 +595,7 @@ function renderPluginRow(item) {
       )
     }
     actions.append(
-      button(confirmingPlugin === item.name ? '确认卸载' : '卸载', {
+      button(confirmingPlugin === item.name ? t('confirmYes') : t('btnUninstall'), {
         danger: true,
         disabled: busy || updatingPlugin !== null,
         onClick: () => {
@@ -399,22 +613,21 @@ function renderPluginRow(item) {
 }
 
 function renderPlugins() {
-  // Mutation responses (add/remove/update) carry { plugins, raw, path } but
-  // not `outdated`; without the guard Object.keys(undefined) throws here and
-  // leaves the previous busy render frozen on screen.
   const outdated = pluginsState.outdated ?? {}
   pluginCountEl.textContent = pluginsState.plugins.length
   checkUpdatesButton.disabled = busy || checkingUpdates
+  if (checkUpdatesButton) checkUpdatesButton.textContent = checkingUpdates ? t('btnCheckingUpdates') : t('btnCheckUpdates')
   const outdatedCount = Object.keys(outdated).length
   updateAllButton.hidden = outdatedCount <= 1
   updateAllButton.disabled = busy || checkingUpdates || updatingAll
+  if (updateAllButton) updateAllButton.textContent = t('btnUpdateAll')
   pluginsEl.replaceChildren()
   if (pluginsState.error) {
     pluginsEl.append(el('div', 'empty', pluginsState.error))
     return
   }
   if (pluginsState.plugins.length === 0) {
-    pluginsEl.append(el('div', 'empty', 'web profile 尚未安装第三方插件（内置 base / web-app 不在此列表）。'))
+    pluginsEl.append(el('div', 'empty', t('noPlugins')))
     return
   }
   for (const item of pluginsState.plugins) pluginsEl.append(renderPluginRow(item))
@@ -429,7 +642,7 @@ async function refresh() {
   refreshButton.classList.add('spinning')
   try {
     if (activePanel === 'plugins') {
-      setStatus('正在读取插件列表…')
+      setStatus(getLanguage() === 'en' ? 'Reading plugin list…' : '正在读取插件列表…')
       pluginsState = await pluginsApi.list()
       pluginsState.outdated = {}
       try {
@@ -437,12 +650,12 @@ async function refresh() {
       } catch {}
       setStatus('')
     } else {
-      setStatus('正在刷新…')
+      setStatus(getLanguage() === 'en' ? 'Refreshing…' : '正在刷新…')
       snapshot = await api.refresh()
       setStatus('')
     }
   } catch (error) {
-    setStatus(error?.message ?? '刷新失败', true)
+    setStatus(error?.message ?? (getLanguage() === 'en' ? 'Refresh failed' : '刷新失败'), true)
   } finally {
     busy = false
     refreshButton.disabled = false
@@ -456,13 +669,13 @@ async function installVersion(version) {
   busy = true
   confirmingVersion = null
   localInstallingVersion = version
-  setStatus(`正在安装 DSH ${version}…`)
+  setStatus(getLanguage() === 'en' ? `Installing DSH ${version}…` : `正在安装 DSH ${version}…`)
   render()
   try {
     snapshot = await api.install(version)
-    setStatus('')
+    setStatus(t('installSuccess', version))
   } catch (error) {
-    setStatus(error?.message ?? `安装 ${version} 失败`, true)
+    setStatus(error?.message ?? (getLanguage() === 'en' ? `Failed to install ${version}` : `安装 ${version} 失败`), true)
   } finally {
     busy = false
     localInstallingVersion = null
@@ -473,12 +686,12 @@ async function installVersion(version) {
 async function selectVersion(version) {
   busy = true
   confirmingVersion = null
-  setStatus(`正在切换到 DSH ${version}…`)
+  setStatus(getLanguage() === 'en' ? `Switching to DSH ${version}…` : `正在切换到 DSH ${version}…`)
   try {
     snapshot = await api.select(version)
-    setStatus('')
+    setStatus(t('switchSuccess', version))
   } catch (error) {
-    setStatus(error?.message ?? `切换 ${version} 失败`, true)
+    setStatus(error?.message ?? (getLanguage() === 'en' ? `Failed to switch to ${version}` : `切换 ${version} 失败`), true)
   } finally {
     busy = false
     render()
@@ -489,13 +702,13 @@ async function uninstallVersion(version) {
   busy = true
   confirmingVersion = null
   localUninstallingVersion = version
-  setStatus(`正在卸载 DSH ${version}…`)
+  setStatus(getLanguage() === 'en' ? `Uninstalling DSH ${version}…` : `正在卸载 DSH ${version}…`)
   render()
   try {
     snapshot = await api.uninstall(version)
-    setStatus('')
+    setStatus(t('uninstallSuccess', version))
   } catch (error) {
-    setStatus(error?.message ?? `卸载 ${version} 失败`, true)
+    setStatus(error?.message ?? (getLanguage() === 'en' ? `Failed to uninstall ${version}` : `卸载 ${version} 失败`), true)
   } finally {
     busy = false
     localUninstallingVersion = null
@@ -506,9 +719,9 @@ async function uninstallVersion(version) {
 async function installPluginSpec(spec) {
   busy = true
   confirmingPlugin = null
-  pluginInstallButton.textContent = '安装中…'
+  pluginInstallButton.textContent = t('btnInstalling')
   pluginInstallButton.disabled = true
-  setStatus(`正在安装插件 ${spec}…`)
+  setStatus(getLanguage() === 'en' ? `Installing plugin ${spec}…` : `正在安装插件 ${spec}…`)
   renderPlugins()
   try {
     const result = await pluginsApi.add(spec)
@@ -519,12 +732,12 @@ async function installPluginSpec(spec) {
       snapshot = await api.getSnapshot()
     } catch {}
     render()
-    setStatus(`插件 ${spec} 已安装，dsh 服务已重启。`)
+    setStatus(t('pluginInstallSuccess', spec))
   } catch (error) {
-    setStatus(error?.message ?? `安装 ${spec} 失败`, true)
+    setStatus(error?.message ?? (getLanguage() === 'en' ? `Failed to install ${spec}` : `安装 ${spec} 失败`), true)
   } finally {
     busy = false
-    pluginInstallButton.textContent = '安装'
+    pluginInstallButton.textContent = t('btnPluginInstall')
     pluginInstallButton.disabled = false
     renderPlugins()
   }
@@ -534,7 +747,7 @@ async function removePluginByName(spec) {
   busy = true
   confirmingPlugin = null
   localUninstallingPlugin = spec
-  setStatus(`正在卸载插件 ${spec}…`)
+  setStatus(getLanguage() === 'en' ? `Uninstalling plugin ${spec}…` : `正在卸载插件 ${spec}…`)
   renderPlugins()
   try {
     const result = await pluginsApi.remove(spec)
@@ -544,9 +757,9 @@ async function removePluginByName(spec) {
       snapshot = await api.getSnapshot()
     } catch {}
     render()
-    setStatus(`插件 ${spec} 已卸载，dsh 服务已重启。`)
+    setStatus(t('pluginUninstallSuccess', spec))
   } catch (error) {
-    setStatus(error?.message ?? `卸载 ${spec} 失败`, true)
+    setStatus(error?.message ?? (getLanguage() === 'en' ? `Failed to uninstall ${spec}` : `卸载 ${spec} 失败`), true)
   } finally {
     busy = false
     localUninstallingPlugin = null
@@ -558,13 +771,17 @@ async function checkUpdates() {
   if (busy || checkingUpdates) return
   checkingUpdates = true
   confirmingPlugin = null
-  setStatus('正在检查插件更新…')
+  setStatus(getLanguage() === 'en' ? 'Checking for plugin updates…' : '正在检查插件更新…')
   try {
     pluginsState.outdated = await pluginsApi.outdated()
     const count = Object.keys(pluginsState.outdated).length
-    setStatus(count > 0 ? `发现 ${count} 个插件有可用更新` : '所有插件均已是最新')
+    setStatus(
+      count > 0
+        ? (getLanguage() === 'en' ? `Found ${count} plugins with available updates` : `发现 ${count} 个插件有可用更新`)
+        : t('pluginsUpToDate'),
+    )
   } catch (error) {
-    setStatus(error?.message ?? '检查插件更新失败', true)
+    setStatus(error?.message ?? (getLanguage() === 'en' ? 'Failed to check updates' : '检查插件更新失败'), true)
   } finally {
     checkingUpdates = false
     renderPlugins()
@@ -575,7 +792,7 @@ async function updatePlugin(name) {
   busy = true
   confirmingPlugin = null
   updatingPlugin = name
-  setStatus(`正在更新 ${name}…`)
+  setStatus(getLanguage() === 'en' ? `Updating ${name}…` : `正在更新 ${name}…`)
   renderPlugins()
   try {
     const result = await pluginsApi.update(name)
@@ -586,9 +803,9 @@ async function updatePlugin(name) {
     } catch {
       pluginsState.outdated = {}
     }
-    setStatus(`插件 ${name} 已更新，dsh 服务已重启。`)
+    setStatus(t('pluginUpdateSuccess', name))
   } catch (error) {
-    setStatus(error?.message ?? `更新 ${name} 失败`, true)
+    setStatus(error?.message ?? (getLanguage() === 'en' ? `Failed to update ${name}` : `更新 ${name} 失败`), true)
   } finally {
     busy = false
     updatingPlugin = null
@@ -603,29 +820,30 @@ async function updateAllPlugins() {
   confirmingPlugin = null
   updatingAll = true
   const errors = []
-  setStatus(`正在更新插件（0/${names.length}）…`)
+  const isEn = getLanguage() === 'en'
+  setStatus(isEn ? `Updating plugins (0/${names.length})…` : `正在更新插件（0/${names.length}）…`)
   renderPlugins()
   try {
     for (let i = 0; i < names.length; i += 1) {
       const name = names[i]
-      setStatus(`正在更新插件 ${name}（${i + 1}/${names.length}）…`)
+      setStatus(isEn ? `Updating plugin ${name} (${i + 1}/${names.length})…` : `正在更新插件 ${name}（${i + 1}/${names.length}）…`)
       try {
         const result = await pluginsApi.update(name)
         if (result?.error) throw new Error(result.error)
       } catch (error) {
-        errors.push(`${name}：${error?.message ?? '更新失败'}`)
+        errors.push(`${name}：${error?.message ?? (isEn ? 'Update failed' : '更新失败')}`)
       }
     }
     try {
       pluginsState = await pluginsApi.list()
       pluginsState.outdated = await pluginsApi.outdated()
     } catch {
-      // Keep the current list; the update results are still reported below.
+      // Keep the current list
     }
     setStatus(
       errors.length === 0
-        ? `已更新 ${names.length} 个插件。`
-        : `更新完成，${errors.length} 个失败：${errors.join('；')}`,
+        ? t('pluginsAllUpdatedSuccess')
+        : (isEn ? `Update complete, ${errors.length} failed: ${errors.join('; ')}` : `更新完成，${errors.length} 个失败：${errors.join('；')}`),
       errors.length > 0,
     )
   } finally {
@@ -638,10 +856,10 @@ async function updateAllPlugins() {
 async function saveRegistry(value) {
   try {
     snapshot = await api.setNpmRegistry(value)
-    setStatus('镜像地址已保存，正在用新镜像刷新版本目录…')
+    setStatus(t('saveRegistrySuccess'))
     await refresh()
   } catch (error) {
-    setStatus(error?.message ?? '保存镜像地址失败', true)
+    setStatus(error?.message ?? t('setFailed'), true)
     registryInputEl.value = snapshot?.npmRegistry ?? ''
   }
 }
@@ -650,14 +868,13 @@ async function savePort(value) {
   try {
     snapshot = await api.setDshPort(value)
     if (value !== null && value !== 3080 && snapshot?.dshPort !== value) {
-      // User cancelled the prompt dialog
       portInputEl.value = snapshot?.dshPort ?? ''
       return
     }
-    setStatus(value === null ? '已恢复默认端口 3080，重启应用后生效。' : `端口已设置为 ${value}，重启应用后生效。`)
+    setStatus(value === null ? t('savePortResetSuccess') : t('savePortSuccess', value))
     render()
   } catch (error) {
-    setStatus(error?.message ?? '保存端口失败', true)
+    setStatus(error?.message ?? t('setFailed'), true)
     portInputEl.value = snapshot?.dshPort ?? ''
   }
 }
@@ -666,12 +883,18 @@ function setPanel(panel) {
   activePanel = panel
   for (const nav of navButtons) nav.classList.toggle('active', nav.dataset.panel === panel)
   for (const [name, node] of Object.entries(panels)) node.hidden = name !== panel
-  titleEl.textContent = PAGE_META[panel].title
-  subtitleEl.textContent = PAGE_META[panel].subtitle
-  // The 通用 page persists its settings immediately; it has nothing to refresh.
+  updateHeader()
   refreshButton.hidden = panel === 'general'
   setStatus('')
-  if (panel === 'general') render()
+  if (panel === 'general' || panel === 'versions') render()
+  if (panel === 'plugins') renderPlugins()
+}
+
+function updateHeader() {
+  const meta = getPageMeta(activePanel)
+  titleEl.textContent = meta.title
+  subtitleEl.textContent = meta.subtitle
+  refreshButton.hidden = activePanel === 'general'
 }
 
 /* ── events ────────────────────────────────────────────────── */
@@ -695,10 +918,21 @@ autoFollowEl.addEventListener('change', async () => {
     snapshot = await api.setAutoFollow(autoFollowEl.checked)
     render()
   } catch (error) {
-    setStatus(error?.message ?? '设置失败', true)
+    setStatus(error?.message ?? t('setFailed'), true)
     autoFollowEl.checked = !autoFollowEl.checked
   }
 })
+if (translateCommandsEl) {
+  translateCommandsEl.addEventListener('change', async () => {
+    try {
+      snapshot = await api.setTranslateCommands(translateCommandsEl.checked)
+      render()
+    } catch (error) {
+      setStatus(error?.message ?? t('setFailed'), true)
+      translateCommandsEl.checked = !translateCommandsEl.checked
+    }
+  })
+}
 registrySaveEl.addEventListener('click', () => {
   const value = registryInputEl.value.trim()
   void saveRegistry(value === '' ? null : value)
@@ -715,7 +949,7 @@ portSaveEl.addEventListener('click', () => {
   }
   const num = Number(raw)
   if (!Number.isInteger(num) || num < 1024 || num > 65535) {
-    setStatus('端口号必须是 1024–65535 之间的整数', true)
+    setStatus(t('portInvalid'), true)
     return
   }
   void savePort(num)
@@ -725,7 +959,7 @@ portResetEl.addEventListener('click', () => {
   void savePort(null)
 })
 
-/* ── registry combobox (custom dropdown; native datalist is unstyleable) ── */
+/* ── registry combobox ─────────────────────────────────────── */
 function setRegistryMenu(open) {
   registryMenuEl.hidden = !open
   registryComboEl.classList.toggle('open', open)
@@ -768,28 +1002,50 @@ api.onProgress((progress) => {
 api.onSnapshot((next) => {
   snapshot = next
   render()
+  if (activePanel === 'plugins') renderPlugins()
 })
 
-function applyTheme(theme) {
-  const scheme = theme?.colorScheme
-  document.documentElement.dataset.theme = scheme === 'dark' ? 'dark' : 'light'
+function applyUiTheme(theme) {
+  const root = document.documentElement
+  if (theme === 'claude') {
+    root.setAttribute('data-ui-theme', 'claude')
+  } else {
+    root.removeAttribute('data-ui-theme')
+  }
 }
 
-api.getTheme()
-  .then((theme) => applyTheme(theme))
-  .catch(() => {})
-api.onTheme((theme) => applyTheme(theme))
-
-// The window opens on the 通用 panel; setPanel also toggles the refresh
-// button's visibility (hidden on 通用), so it must run once at startup and
-// not only on nav clicks.
-setPanel(activePanel)
-
-api.getSnapshot()
-  .then((next) => {
-    snapshot = next
+async function saveUiTheme(theme) {
+  try {
+    snapshot = await api.setUiTheme(theme)
     render()
-    if (!next.latestVersion && !next.availableVersions?.length) return refresh()
-    return undefined
-  })
-  .catch((error) => setStatus(error?.message ?? '无法读取版本信息', true))
+  } catch (error) {
+    setStatus(error?.message ?? t('setFailed'), true)
+    render()
+  }
+}
+
+function applyTheme(theme) {
+  const root = document.documentElement
+  if (theme === 'dark') {
+    root.classList.add('dark')
+    root.classList.remove('light')
+  } else {
+    root.classList.add('light')
+    root.classList.remove('dark')
+  }
+}
+
+api.onTheme?.((theme) => {
+  if (theme === 'dark' || theme === 'light') applyTheme(theme)
+})
+
+async function init() {
+  try {
+    snapshot = await api.getSnapshot()
+    render()
+  } catch (error) {
+    setStatus(error?.message ?? (getLanguage() === 'en' ? 'Initialization failed' : '初始化失败'), true)
+  }
+}
+
+void init()

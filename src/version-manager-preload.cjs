@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('dshVersions', {
   setNpmRegistry: (value) => ipcRenderer.invoke('dsh-versions:set-npm-registry', value),
   setDshPort: (value) => ipcRenderer.invoke('dsh-versions:set-port', value),
   setUiTheme: (value) => ipcRenderer.invoke('dsh-versions:set-ui-theme', value),
+  setTranslateCommands: (value) => ipcRenderer.invoke('dsh-versions:set-translate-commands', value),
   onSnapshot: (listener) => {
     const handler = (_event, snapshot) => listener(snapshot)
     ipcRenderer.on('dsh-versions:snapshot', handler)

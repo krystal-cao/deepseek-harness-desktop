@@ -18,7 +18,7 @@
     "client": {
       "platform": "web",
       "immediately": true,
-      "inject": ["theme", "sessions"]
+      "inject": ["theme", "sessions", "commandUi", "locale"]
     }
   }
 }

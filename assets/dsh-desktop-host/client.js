@@ -209,11 +209,44 @@ window.__ModuleLoader__.load({
   factory: function (require) {
     var module = { exports: {} }
     module.exports = {
-      inject: ["theme", "sessions"],
+      inject: ["theme", "sessions", "commandUi", "locale"],
       apply: function (ctx) {
         var host = window.dshDesktop
         if (!host) return undefined
         host.ready()
+
+        // --- Locale bridge ---
+        var offLocale = null
+        var offLocaleSub = null
+        try {
+          var reportLocale = function (loc) {
+            var language = "zh"
+            if (typeof loc === "string") {
+              language = loc === "en" ? "en" : "zh"
+            } else if (loc && typeof loc.active === "string") {
+              language = loc.active === "en" ? "en" : "zh"
+            } else if (ctx.locale && typeof ctx.locale.getLocale === "function") {
+              var snap = ctx.locale.getLocale()
+              if (snap && snap.active) language = snap.active === "en" ? "en" : "zh"
+            }
+            if (host && typeof host.locale === "function") {
+              host.locale({ language: language })
+            }
+          }
+          if (ctx.locale) {
+            reportLocale(typeof ctx.locale.getLocale === "function" ? ctx.locale.getLocale() : null)
+            if (typeof ctx.locale.subscribe === "function") {
+              offLocaleSub = ctx.locale.subscribe(function (snap) {
+                reportLocale(snap)
+              })
+            }
+          }
+          offLocale = ctx.on("locale/change", function (newLocale) {
+            reportLocale(newLocale)
+          })
+        } catch (error) {
+          // Best-effort locale bridge.
+        }
 
         // --- Theme bridge ---
         var lastExternalReported = null
@@ -358,8 +391,65 @@ window.__ModuleLoader__.load({
           }
         } catch (error) {
           if (host.debug) host.debug("sessions-subscribe-error " + (error && error.message ? error.message : String(error)))
-          // Task-completion reporting is optional; the rest of the bridge keeps
-          // working even if the sessions store is unreachable.
+        }
+
+        // --- Slash command translation bridge ---
+        var offCommandUi = null
+        var offTranslateCommandsListener = null
+        var CHINESE_COMMAND_DESCRIPTIONS = {
+          compact: "压缩较早的历史会话记录",
+          export: "将当前会话日志下载为 ZIP 压缩包",
+          feedback: "记录针对当前会话的反馈",
+          goal: "设置或查看长期任务的目标",
+          permission: "切换权限预设（沙箱模式 + 审批策略）",
+          plan: "进入或退出计划模式",
+        }
+        function isTranslateCommandsEnabled() {
+          return window.__DSH_DESKTOP_TRANSLATE_COMMANDS__ !== false
+        }
+        function wrapCommandUi(commandUi) {
+          if (!commandUi || typeof commandUi.candidates !== "function") return null
+          if (commandUi.__dshDesktopWrapped__) return null
+          commandUi.__dshDesktopWrapped__ = true
+          var origCandidates = commandUi.candidates.bind(commandUi)
+          commandUi.candidates = async function (session, req) {
+            var rows = await origCandidates(session, req)
+            if (!isTranslateCommandsEnabled() || !Array.isArray(rows)) return rows
+            return rows.map(function (row) {
+              var zh = row && row.name ? CHINESE_COMMAND_DESCRIPTIONS[row.name] : null
+              return zh ? Object.assign({}, row, { description: zh }) : row
+            })
+          }
+          return function unwrap() {
+            commandUi.candidates = origCandidates
+            delete commandUi.__dshDesktopWrapped__
+          }
+        }
+
+        try {
+          if (ctx.commandUi) {
+            offCommandUi = wrapCommandUi(ctx.commandUi)
+          } else if (typeof ctx.inject === "function") {
+            ctx.inject(["commandUi"], function (scope) {
+              var cmd = scope.commandUi || (typeof scope.get === "function" ? scope.get("commandUi") : null)
+              offCommandUi = wrapCommandUi(cmd)
+            })
+          }
+          var onTranslateCommandsChange = function (event) {
+            if (event && event.detail && typeof event.detail.enabled === "boolean") {
+              window.__DSH_DESKTOP_TRANSLATE_COMMANDS__ = event.detail.enabled
+            }
+            var cmd = ctx.commandUi || (typeof ctx.get === "function" ? ctx.get("commandUi") : null)
+            if (cmd && cmd.directory && typeof cmd.directory.invalidateAll === "function") {
+              cmd.directory.invalidateAll()
+            }
+          }
+          window.addEventListener("dsh-desktop-translate-commands-change", onTranslateCommandsChange)
+          offTranslateCommandsListener = function () {
+            window.removeEventListener("dsh-desktop-translate-commands-change", onTranslateCommandsChange)
+          }
+        } catch (error) {
+          // Best-effort command translation bridge.
         }
 
         return function dispose() {
@@ -369,6 +459,16 @@ window.__ModuleLoader__.load({
             } catch (error) {
               // The fiber may already be tearing down; nothing to clean up.
             }
+          }
+          if (offLocale) {
+            try {
+              offLocale()
+            } catch (error) {}
+          }
+          if (offLocaleSub) {
+            try {
+              offLocaleSub()
+            } catch (error) {}
           }
           if (onUiThemeChange) {
             try {
@@ -390,6 +490,16 @@ window.__ModuleLoader__.load({
             } catch (error) {
               // Best-effort removal of the hero glow color override.
             }
+          }
+          if (offCommandUi) {
+            try {
+              offCommandUi()
+            } catch (error) {}
+          }
+          if (offTranslateCommandsListener) {
+            try {
+              offTranslateCommandsListener()
+            } catch (error) {}
           }
           if (offSessions) {
             try {

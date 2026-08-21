@@ -27,7 +27,7 @@
               <circle cx="12" cy="12" r="3"></circle>
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
-            <span>通用</span>
+            <span data-i18n="navGeneral">通用</span>
           </button>
           <button type="button" class="nav-item" id="nav-versions" data-panel="versions">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -35,7 +35,7 @@
               <path d="M3.27 6.96L12 12.01l8.73-5.05"></path>
               <path d="M12 22.08V12"></path>
             </svg>
-            <span>版本</span>
+            <span data-i18n="navVersions">版本</span>
           </button>
           <button type="button" class="nav-item" id="nav-plugins" data-panel="plugins">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -46,7 +46,7 @@
               <path d="M6 13h4a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H6"></path>
               <path d="M6 13a2 2 0 1 1-2 2"></path>
             </svg>
-            <span>插件</span>
+            <span data-i18n="navPlugins">插件</span>
           </button>
         </nav>
         <div class="sidebar-footer">
@@ -73,7 +73,7 @@
             <div class="card settings-card">
               <div class="card-body">
                 <div class="card-title" id="auto-follow-title">已开启自动更新</div>
-                <div class="card-desc">启动后自动安装并切换到官方最新 RC（完成后自动重启 dsh 服务）</div>
+                <div class="card-desc" data-i18n="autoFollowDesc">启动后自动安装并切换到官方最新 RC（完成后自动重启 dsh 服务）</div>
               </div>
               <label class="switch">
                 <input id="auto-follow" type="checkbox">
@@ -81,25 +81,36 @@
               </label>
             </div>
 
+            <div class="card settings-card">
+              <div class="card-body">
+                <div class="card-title" id="translate-commands-title">已开启命令说明汉化</div>
+                <div class="card-desc" data-i18n="translateCommandsDesc">将 /compact、/plan、/permission 等内置斜杠命令的说明提示汉化为简体中文</div>
+              </div>
+              <label class="switch">
+                <input id="translate-commands" type="checkbox">
+                <span class="slider"></span>
+              </label>
+            </div>
+
             <div class="card">
-              <div class="card-title">界面主题</div>
-              <div class="card-desc">选择 DSH 的配色风格，修改后立即生效</div>
+              <div class="card-title" data-i18n="uiThemeTitle">界面主题</div>
+              <div class="card-desc" data-i18n="uiThemeDesc">选择 DSH 的配色风格，修改后立即生效</div>
               <div class="theme-options" role="radiogroup" aria-label="界面主题">
                 <label class="theme-option">
                   <input type="radio" name="ui-theme" value="default" checked>
-                  <span class="theme-option-label">默认主题</span>
+                  <span class="theme-option-label" data-i18n="uiThemeDefault">默认主题</span>
                 </label>
                 <label class="theme-option">
                   <input type="radio" name="ui-theme" value="claude">
-                  <span class="theme-option-label">Claude Code 主题</span>
+                  <span class="theme-option-label" data-i18n="uiThemeClaude">Claude Code 主题</span>
                 </label>
               </div>
               <div id="theme-conflict-warning" class="theme-conflict-warning" hidden></div>
             </div>
 
             <div class="card">
-              <div class="card-title">npm 镜像地址</div>
-              <div class="card-desc">用于版本目录、插件安装和插件管理，内置镜像失效时可切换备用镜像</div>
+              <div class="card-title" data-i18n="npmRegistryTitle">npm 镜像地址</div>
+              <div class="card-desc" data-i18n="npmRegistryDesc">用于版本目录、插件安装和插件管理，内置镜像失效时可切换备用镜像</div>
               <div class="row">
                 <div class="combobox" id="registry-combo">
                   <input
@@ -118,30 +129,30 @@
                   <div class="combobox-menu" id="registry-menu" role="listbox" hidden>
                     <button type="button" class="combobox-option" role="option" data-value="https://registry.npmmirror.com/">
                       <span class="combobox-option-value">https://registry.npmmirror.com/</span>
-                      <span class="combobox-option-label">npmmirror（国内）</span>
+                      <span class="combobox-option-label" data-i18n="mirrorChina">npmmirror（国内）</span>
                     </button>
                     <button type="button" class="combobox-option" role="option" data-value="https://registry.npmjs.org/">
                       <span class="combobox-option-value">https://registry.npmjs.org/</span>
-                      <span class="combobox-option-label">npm 官方</span>
+                      <span class="combobox-option-label" data-i18n="mirrorOfficial">npm 官方</span>
                     </button>
                     <button type="button" class="combobox-option" role="option" data-value="https://mirrors.cloud.tencent.com/npm/">
                       <span class="combobox-option-value">https://mirrors.cloud.tencent.com/npm/</span>
-                      <span class="combobox-option-label">腾讯云</span>
+                      <span class="combobox-option-label" data-i18n="mirrorTencent">腾讯云</span>
                     </button>
                     <button type="button" class="combobox-option" role="option" data-value="https://mirrors.huaweicloud.com/repository/npm/">
                       <span class="combobox-option-value">https://mirrors.huaweicloud.com/repository/npm/</span>
-                      <span class="combobox-option-label">华为云</span>
+                      <span class="combobox-option-label" data-i18n="mirrorHuawei">华为云</span>
                     </button>
                   </div>
                 </div>
-                <button type="button" id="registry-save" class="button primary">保存</button>
-                <button type="button" id="registry-reset" class="button ghost">恢复默认</button>
+                <button type="button" id="registry-save" class="button primary" data-i18n="btnSave">保存</button>
+                <button type="button" id="registry-reset" class="button ghost" data-i18n="btnResetDefault">恢复默认</button>
               </div>
             </div>
 
             <div class="card">
-              <div class="card-title">DSH 启动端口</div>
-              <div class="card-desc">DSH 服务监听的本地端口，修改后需重启应用生效。默认 3080。</div>
+              <div class="card-title" data-i18n="portTitle">DSH 启动端口</div>
+              <div class="card-desc" data-i18n="portDesc">DSH 服务监听的本地端口，修改后需重启应用生效。默认 3080。</div>
               <div class="row">
                 <input
                   id="port-input"
@@ -153,56 +164,57 @@
                   placeholder="3080"
                   autocomplete="off"
                 >
-                <button type="button" id="port-save" class="button primary">保存</button>
-                <button type="button" id="port-reset" class="button ghost">恢复默认</button>
+                <button type="button" id="port-save" class="button primary" data-i18n="btnSave">保存</button>
+                <button type="button" id="port-reset" class="button ghost" data-i18n="btnResetDefault">恢复默认</button>
               </div>
             </div>
           </section>
 
           <section id="panel-versions" hidden>
-          <h2 class="section-title">已安装</h2>
-          <div id="installed" class="group-box"></div>
+            <h2 class="section-title" data-i18n="installedSectionTitle">已安装</h2>
+            <div id="installed" class="group-box"></div>
 
-          <div class="section-head">
-            <h2 class="section-title">官方版本</h2>
-            <a id="npm-link" class="link" href="https://www.npmjs.com/package/@deepseek-ai/dsh" target="_blank">
-              前往 npm 查看全部 →
-            </a>
-          </div>
-          <p class="hint">最新 = npm latest（推荐）；标记 <span class="badge next">next</span> 的为上游预发布候选，可手动安装切换。</p>
-          <div id="available" class="group-box"></div>
+            <div class="section-head">
+              <h2 class="section-title" data-i18n="officialSectionTitle">官方版本</h2>
+              <a id="npm-link" class="link" href="https://www.npmjs.com/package/@deepseek-ai/dsh" target="_blank" data-i18n="npmViewAllLink">
+                前往 npm 查看全部 →
+              </a>
+            </div>
+            <p class="hint" data-i18n-html="versionsHint">最新 = npm latest（推荐）；标记 <span class="badge next">next</span> 的为上游预发布候选，可手动安装切换。</p>
+            <div id="available" class="group-box"></div>
           </section>
 
           <section id="panel-plugins" hidden>
-          <form id="plugin-form" class="install-row">
-            <span class="search-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="7"></circle>
-                <path d="M21 21l-4.3-4.3"></path>
-              </svg>
-            </span>
-            <input
-              id="plugin-spec"
-              class="input"
-              type="text"
-              placeholder="例如 dshmarket、@scope/name 或 github:owner/repo"
-              autocomplete="off"
-              spellcheck="false"
-            >
-            <button type="submit" class="button primary" id="plugin-install-button">安装</button>
-          </form>
-          <p class="hint">通过 dsh 的插件机制安装到 web profile，安装或卸载成功后会自动重启 dsh 服务。</p>
+            <form id="plugin-form" class="install-row">
+              <span class="search-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="7"></circle>
+                  <path d="M21 21l-4.3-4.3"></path>
+                </svg>
+              </span>
+              <input
+                id="plugin-spec"
+                class="input"
+                type="text"
+                data-i18n-placeholder="pluginPlaceholder"
+                placeholder="例如 dshmarket、@scope/name 或 github:owner/repo"
+                autocomplete="off"
+                spellcheck="false"
+              >
+              <button type="submit" class="button primary" id="plugin-install-button" data-i18n="btnPluginInstall">安装</button>
+            </form>
+            <p class="hint" data-i18n="pluginsHint">通过 dsh 的插件机制安装到 web profile，安装或卸载成功后会自动重启 dsh 服务。</p>
 
-          <div class="plugins-toolbar">
-            <div class="segmented">
-              <span class="segment active">已安装 <b id="plugin-count">0</b></span>
+            <div class="plugins-toolbar">
+              <div class="segmented">
+                <span class="segment active"><span data-i18n="installedPluginsSegment">已安装</span> <b id="plugin-count">0</b></span>
+              </div>
+              <div class="plugins-toolbar-actions">
+                <button type="button" id="update-all" class="button primary" data-i18n="btnUpdateAll" hidden>全部更新</button>
+                <button type="button" id="check-updates" class="button" data-i18n="btnCheckUpdates">检查更新</button>
+              </div>
             </div>
-            <div class="plugins-toolbar-actions">
-              <button type="button" id="update-all" class="button primary" hidden>全部更新</button>
-              <button type="button" id="check-updates" class="button">检查更新</button>
-            </div>
-          </div>
-          <div id="plugins" class="group-box"></div>
+            <div id="plugins" class="group-box"></div>
           </section>
         </main>
       </div>
