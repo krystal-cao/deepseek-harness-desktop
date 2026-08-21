@@ -59,8 +59,8 @@ if (process.argv.includes('--write') && update) {
   writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`)
   console.log(`wrote ${changed.length} pins to ${target}`)
   const npmMajor = Number(execFileSync('npm', ['-v'], { encoding: 'utf8' }).trim().split('.')[0])
-  const installArgs = ['install', '--package-lock-only', '--ignore-scripts']
-  if (npmMajor >= 12) installArgs.push('--allow-git=all')
+  const installArgs = ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund']
+  if (npmMajor >= 11) installArgs.push('--allow-git=all')
   execFileSync('npm', installArgs, {
     cwd: root,
     stdio: 'inherit',

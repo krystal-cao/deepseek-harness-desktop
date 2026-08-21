@@ -35,8 +35,8 @@ if (changed.length === 0) {
 writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`)
 
 const npmMajor = Number(execFileSync('npm', ['-v'], { encoding: 'utf8' }).trim().split('.')[0])
-const installArgs = ['install']
-if (npmMajor >= 12) installArgs.push('--allow-git=all')
+const installArgs = ['install', '--no-audit', '--no-fund']
+if (npmMajor >= 11) installArgs.push('--allow-git=all')
 const execEnv = { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_SSH_COMMAND: 'ssh -o BatchMode=yes' }
 execFileSync('npm', installArgs, { cwd: root, stdio: 'inherit', env: execEnv })
 const synced = syncAllowScriptsVersions(pkg, root)
