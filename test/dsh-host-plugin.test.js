@@ -73,4 +73,7 @@ test('client bundle registers a factory with the module loader', () => {
   assert.match(client, /dsh-desktop-translate-commands-change/)
   assert.match(client, /isTranslateCommandsEnabled/)
   assert.match(client, /commandUi\.candidates/)
+  assert.match(client, /Object\.getPrototypeOf\(commandUi\)/)
+  assert.match(client, /Object\.defineProperty\(proto, "candidates"/)
+  assert.match(client, /Cordis traceable proxies/)
 })

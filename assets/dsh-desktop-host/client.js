@@ -409,20 +409,30 @@ window.__ModuleLoader__.load({
         }
         function wrapCommandUi(commandUi) {
           if (!commandUi || typeof commandUi.candidates !== "function") return null
-          if (commandUi.__dshDesktopWrapped__) return null
-          commandUi.__dshDesktopWrapped__ = true
-          var origCandidates = commandUi.candidates.bind(commandUi)
-          commandUi.candidates = async function (session, req) {
-            var rows = await origCandidates(session, req)
+          // DSH exposes services through Cordis traceable proxies. Assigning
+          // `commandUi.candidates` on that proxy only writes to a shadow
+          // object; the slash source still calls the original service
+          // instance. Patch the prototype instead so the live instance used
+          // by the source sees the wrapper, then restore it on disposal.
+          var proto = Object.getPrototypeOf(commandUi)
+          var descriptor = proto && Object.getOwnPropertyDescriptor(proto, "candidates")
+          if (!descriptor || typeof descriptor.value !== "function") return null
+          var origCandidates = descriptor.value
+          if (origCandidates.__dshDesktopWrapped__) return null
+          var wrappedCandidates = async function (session, req) {
+            var rows = await origCandidates.call(this, session, req)
             if (!isTranslateCommandsEnabled() || !Array.isArray(rows)) return rows
             return rows.map(function (row) {
               var zh = row && row.name ? CHINESE_COMMAND_DESCRIPTIONS[row.name] : null
               return zh ? Object.assign({}, row, { description: zh }) : row
             })
           }
+          Object.defineProperty(wrappedCandidates, "__dshDesktopWrapped__", { value: true })
+          Object.defineProperty(proto, "candidates", Object.assign({}, descriptor, { value: wrappedCandidates }))
           return function unwrap() {
-            commandUi.candidates = origCandidates
-            delete commandUi.__dshDesktopWrapped__
+            if (proto.candidates === wrappedCandidates) {
+              Object.defineProperty(proto, "candidates", descriptor)
+            }
           }
         }
 
