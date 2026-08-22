@@ -4,10 +4,7 @@
   "description": "An unofficial desktop wrapper for DSH (DeepSeek Harness).",
   "type": "module",
   "main": "src/main.js",
-  "author": {
-    "name": "Krystal Cao",
-    "email": "jerry.caocc@liunian.org"
-  },
+  "author": "Krystal Cao <jerry.caocc@liunian.org>",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -19,6 +16,8 @@
   },
   "scripts": {
     "start": "electron .",
+    "start:swift": "open dist/swift/DSH.app",
+    "build:swift": "bash swift-shell/build-app.sh",
     "test": "node --test test/*.test.js",
     "check:upstream": "node scripts/check-upstream.mjs",
     "bump:dsh": "node scripts/bump-dsh.mjs",
@@ -143,5 +142,9 @@
     "koffi": true,
     "node-pty": true,
     "protobufjs": true
-  }
+  },
+  "directories": {
+    "test": "test"
+  },
+  "keywords": []
 }

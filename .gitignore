@@ -5,7 +5,9 @@ output/
 *.log
 .DS_Store
 assets/bin/
+assets/node/
 .codex/
 CONVERSATION_HANDOVER.md
 HANDOVER.md
 .dsh-vision-toolkit/
+.build/
