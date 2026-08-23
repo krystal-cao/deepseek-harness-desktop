@@ -22,15 +22,24 @@ public final class CustomDragView: NSView {
         true
     }
 
+    public override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
     public override func hitTest(_ point: NSPoint) -> NSView? {
-        // AppKit supplies the hit-test point in the superview's coordinate
-        // space for this positioned overlay. Convert it before checking the
-        // overlay's own bounds, otherwise every click is treated as outside
-        // the 70pt drag strip and falls through to WKWebView.
-        let localPoint = superview.map { convert(point, from: $0) } ?? point
-        guard bounds.contains(localPoint) else {
+        // AppKit can call hitTest with either the receiver's local point or
+        // its superview's point depending on whether the hosting view is
+        // flipped. Normalize both forms before deciding whether this overlay
+        // should intercept the event.
+        let localPoint: NSPoint
+        if bounds.contains(point) {
+            localPoint = point
+        } else if let superview, frame.contains(point) {
+            localPoint = convert(point, from: superview)
+        } else {
             return nil
         }
+
         // Pass through traffic lights region (< 88px)
         if localPoint.x < 88 {
             return nil

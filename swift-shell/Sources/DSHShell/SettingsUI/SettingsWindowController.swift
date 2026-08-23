@@ -1,8 +1,9 @@
 import AppKit
 import SwiftUI
 
-public final class SettingsWindowController: NSWindowController {
+public final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     public static let shared = SettingsWindowController()
+    private static let dragRegionHeight: CGFloat = 120
     private var titleObserver: NSObjectProtocol?
     private var dragOverlay: CustomDragView?
 
@@ -27,19 +28,13 @@ public final class SettingsWindowController: NSWindowController {
         }
 
         super.init(window: win)
+        win.delegate = self
         if let contentView = win.contentView {
             let drag = CustomDragView(frame: .zero)
-            drag.translatesAutoresizingMaskIntoConstraints = false
+            drag.autoresizingMask = [.width, .minYMargin]
             contentView.addSubview(drag, positioned: .above, relativeTo: nil)
-            NSLayoutConstraint.activate([
-                drag.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-                drag.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-                drag.topAnchor.constraint(equalTo: contentView.topAnchor),
-                // The settings header includes the titlebar and the floating
-                // detail header. Keep the whole visual header draggable.
-                drag.heightAnchor.constraint(equalToConstant: 120)
-            ])
             dragOverlay = drag
+            layoutDragOverlay()
         }
         titleObserver = NotificationCenter.default.addObserver(
             forName: .dshSettingsPanelDidChange,
@@ -71,6 +66,7 @@ public final class SettingsWindowController: NSWindowController {
         }
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        layoutDragOverlay()
         // SwiftUI may select the first TextField when the settings window
         // becomes key. Settings should open as a browsing surface instead of
         // immediately entering port-edit mode.
@@ -82,5 +78,24 @@ public final class SettingsWindowController: NSWindowController {
 
     public func updateTitle(for index: Int) {
         window?.title = SettingsPanel(rawValue: index)?.title ?? "设置"
+    }
+
+    public func windowDidResize(_ notification: Notification) {
+        layoutDragOverlay()
+    }
+
+    public func windowDidBecomeKey(_ notification: Notification) {
+        layoutDragOverlay()
+    }
+
+    private func layoutDragOverlay() {
+        guard let contentView = window?.contentView, let dragOverlay else { return }
+        let height = min(Self.dragRegionHeight, contentView.bounds.height)
+        dragOverlay.frame = NSRect(
+            x: 0,
+            y: contentView.bounds.height - height,
+            width: contentView.bounds.width,
+            height: height
+        )
     }
 }
