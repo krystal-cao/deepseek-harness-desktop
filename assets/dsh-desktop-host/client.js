@@ -224,7 +224,10 @@ window.__ModuleLoader__.load({
           var body = typeof document !== "undefined" ? document.body : null
           var text = body && typeof body.textContent === "string" ? body.textContent.trim() : ""
           var loading = text.indexOf("Loading plugins") !== -1 || text.indexOf("加载插件") !== -1
-          if (loading || text.length <= 120) {
+          var hasAppShell = !!(document.querySelector(
+            '[class*="sidebarCol"], [class*="railIn"], [class*="centerCol"]'
+          ))
+          if (loading || text.length <= 120 || !hasAppShell) {
             bridgeReadyTimer = window.setTimeout(reportBridgeReady, 50)
             return
           }

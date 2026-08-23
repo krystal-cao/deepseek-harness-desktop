@@ -2,7 +2,7 @@ import AppKit
 
 /// A transparent drag region overlay placed along the top of the window.
 /// It intercepts mouse drags and calls window.performDrag(with: event) while allowing
-/// all clicks below 40px and interactive top regions (x < 88 and x > width - 120) to pass directly to WKWebView.
+/// traffic-light and top-right interactive regions to pass directly to WKWebView.
 public final class CustomDragView: NSView {
     public override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -13,6 +13,10 @@ public final class CustomDragView: NSView {
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
+    }
+
+    public override var mouseDownCanMoveWindow: Bool {
+        true
     }
 
     public override func hitTest(_ point: NSPoint) -> NSView? {

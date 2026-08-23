@@ -54,9 +54,13 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
       const text = body && typeof body.textContent === 'string'
         ? body.textContent.trim()
         : '';
+      const hasAppShell = Boolean(document.querySelector(
+        '[class*="sidebarCol"], [class*="railIn"], [class*="centerCol"]'
+      ));
       return {
         loading: text.includes('Loading plugins') || text.includes('加载插件'),
-        length: text.length
+        length: text.length,
+        hasAppShell
       };
     })();
     """
@@ -77,6 +81,7 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
         win.backgroundColor = .clear
         win.hasShadow = true
         win.isReleasedWhenClosed = false
+        win.isMovableByWindowBackground = true
 
         super.init(window: win)
         win.delegate = self
@@ -155,15 +160,17 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
         let drag = CustomDragView(frame: .zero)
         drag.translatesAutoresizingMaskIntoConstraints = false
         self.dragOverlay = drag
-        vibrancy.addSubview(drag, positioned: .above, relativeTo: wv)
+        win.contentView = vibrancy
+        // Install the drag layer after assigning the content view. AppKit can
+        // reorder subviews during the contentView assignment; adding it last
+        // guarantees it remains above WKWebView and receives mouse drags.
+        vibrancy.addSubview(drag, positioned: .above, relativeTo: nil)
         NSLayoutConstraint.activate([
             drag.leadingAnchor.constraint(equalTo: vibrancy.leadingAnchor),
             drag.trailingAnchor.constraint(equalTo: vibrancy.trailingAnchor),
             drag.topAnchor.constraint(equalTo: vibrancy.topAnchor),
-            drag.heightAnchor.constraint(equalToConstant: 40)
+            drag.heightAnchor.constraint(equalToConstant: 70)
         ])
-
-        win.contentView = vibrancy
     }
 
     // MARK: - App Launch & Initialization
@@ -254,12 +261,13 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
                     let state = result as? [String: Any]
                     let loading = (state?["loading"] as? NSNumber)?.boolValue ?? true
                     let length = (state?["length"] as? NSNumber)?.intValue ?? 0
-                    if !loading && length > 120 {
+                    let hasAppShell = (state?["hasAppShell"] as? NSNumber)?.boolValue ?? false
+                    if !loading && length > 120 && hasAppShell {
                         self.revealWindow()
                         return
                     }
                     if Date() >= deadline {
-                        if loading || length == 0 {
+                        if loading || length == 0 || !hasAppShell {
                             self.showErrorAlert("DSH 页面加载超时，请重启 DSH 服务后重试。")
                         } else {
                             self.revealWindow()

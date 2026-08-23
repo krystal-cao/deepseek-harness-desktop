@@ -38,6 +38,7 @@ test('client bundle registers a factory with the module loader', () => {
   assert.match(client, /var reportBridgeReady = function \(\)/)
   assert.match(client, /text\.indexOf\("Loading plugins"\)/)
   assert.match(client, /text\.length <= 120/)
+  assert.match(client, /class\*="sidebarCol"/)
   assert.match(client, /reportBridgeReady\(\)\n\n        return function dispose\(\)/)
   assert.match(client, /host\.ready\(\)/)
   assert.match(client, /host\.theme\(/)
