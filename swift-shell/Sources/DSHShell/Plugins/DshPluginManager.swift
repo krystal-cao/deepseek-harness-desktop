@@ -327,7 +327,7 @@ public final class DshPluginManager {
                         lines[index] = updatedLine
                         changed = true
                     }
-                } else if let marker = line.range(of: "version: file:") {
+                } else if let marker = line.range(of: "version: file:") ?? line.range(of: "version: link:") {
                     let updatedLine = String(line[..<marker.upperBound]) + relativeHostPath
                     if updatedLine != line {
                         lines[index] = updatedLine
