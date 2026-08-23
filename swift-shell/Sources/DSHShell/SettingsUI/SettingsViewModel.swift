@@ -20,6 +20,7 @@ public final class SettingsViewModel: ObservableObject {
     @Published public var npmRegistry: String = DshVersionManager.defaultRegistry
     @Published public var dshPort: Int = 3080
     @Published public var uiTheme: String = "default"
+    @Published public private(set) var externalTheme: String?
     @Published public var translateCommands: Bool = true
 
     @Published public var installedPlugins: [DshPluginItem] = []
@@ -63,9 +64,26 @@ public final class SettingsViewModel: ObservableObject {
         self.npmRegistry = state.npmRegistry ?? DshVersionManager.defaultRegistry
         self.dshPort = state.dshPort ?? 3080
         self.uiTheme = state.uiTheme
+        self.externalTheme = DshPluginManager.shared.detectExternalTheme()
         self.translateCommands = state.translateCommands
         self.installedVersions = DshVersionManager.shared.listInstalledVersions()
         self.installedPlugins = DshPluginManager.shared.listPlugins(outdatedMap: outdatedPluginsMap)
+    }
+
+    /// Refresh the profile-based theme state after plugin changes or when the
+    /// general settings page becomes visible.
+    public func refreshExternalTheme() {
+        let detected = DshPluginManager.shared.detectExternalTheme()
+        guard externalTheme != detected else { return }
+        externalTheme = detected
+        MainWindowController.shared.syncUiTheme()
+    }
+
+    /// The bridge can report the active theme, but the package manifest is the
+    /// stable source used by Electron for settings availability. Re-read it so
+    /// a stale bridge snapshot cannot keep the native control locked.
+    public func refreshExternalThemeFromBridge() {
+        refreshExternalTheme()
     }
 
     public func refreshCatalog() async {
@@ -85,6 +103,7 @@ public final class SettingsViewModel: ObservableObject {
 
     public func refreshPlugins() {
         self.installedPlugins = DshPluginManager.shared.listPlugins(outdatedMap: outdatedPluginsMap)
+        refreshExternalTheme()
     }
 
     public func refreshPluginList() async {

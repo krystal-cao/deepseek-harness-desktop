@@ -367,7 +367,8 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
     // MARK: - Styling & Theme Injection
 
     public func syncUiTheme() {
-        let theme = DshStateManager.shared.current.uiTheme
+        let externalTheme = DshPluginManager.shared.detectExternalTheme()
+        let theme = externalTheme == nil ? DshStateManager.shared.current.uiTheme : "default"
         let serialized = (theme == "claude") ? "\"claude\"" : "\"default\""
         let script = """
         (() => {
@@ -444,7 +445,14 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
         syncTranslateCommands()
     }
 
-    public func bridgeDidReceiveTheme(colorScheme: String?, externalTheme: String?) {}
+    public func bridgeDidReceiveTheme(colorScheme: String?, externalTheme: String?) {
+        // The manifest is the authoritative source for whether the native
+        // theme control is available. Re-read it when the bridge publishes a
+        // theme snapshot so the settings page follows plugin changes quickly.
+        Task { @MainActor in
+            SettingsViewModel.shared.refreshExternalThemeFromBridge()
+        }
+    }
     public func bridgeDidReceiveLocale(language: String) {}
 }
 

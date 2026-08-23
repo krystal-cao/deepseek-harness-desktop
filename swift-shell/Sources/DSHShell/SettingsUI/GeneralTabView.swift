@@ -20,6 +20,13 @@ public struct GeneralTabView: View {
 
     public init() {}
 
+    private var themeFooter: String {
+        if let externalTheme = viewModel.externalTheme {
+            return "已检测到第三方主题（" + externalTheme + "），内置主题已锁定以避免样式冲突。"
+        }
+        return "主题切换会同步到正在运行的 DSH 页面。"
+    }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             SettingsSection(
@@ -71,14 +78,15 @@ public struct GeneralTabView: View {
                 }
             }
 
-            SettingsSection("外观", footer: "主题切换会同步到正在运行的 DSH 页面。") {
+            SettingsSection("外观", footer: themeFooter) {
                 SettingsRow(
                     title: "界面主题",
                     description: "选择 DSH 的配色风格。"
                 ) {
                     Picker("", selection: Binding(
-                        get: { viewModel.uiTheme },
+                        get: { viewModel.externalTheme == nil ? viewModel.uiTheme : "default" },
                         set: {
+                            guard viewModel.externalTheme == nil else { return }
                             viewModel.uiTheme = $0
                             viewModel.saveGeneralSettings()
                         }
@@ -89,6 +97,7 @@ public struct GeneralTabView: View {
                     .pickerStyle(.segmented)
                     .controlSize(.small)
                     .frame(width: 190, alignment: .trailing)
+                    .disabled(viewModel.externalTheme != nil)
                 }
             }
 
@@ -162,6 +171,7 @@ public struct GeneralTabView: View {
         }
         .onAppear {
             localState.syncFromSettings(viewModel)
+            viewModel.refreshExternalTheme()
             focusedField = nil
             DispatchQueue.main.async {
                 focusedField = nil

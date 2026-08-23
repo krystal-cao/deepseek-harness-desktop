@@ -64,6 +64,39 @@ public final class DshPluginManager {
         }
     }
 
+    /// Match Electron's external-theme detection for the native settings UI.
+    ///
+    /// Themes are declared either as direct profile dependencies or as profile
+    /// bundles. DSH's own packages and the shell bridge are deliberately
+    /// excluded because they are part of the built-in profile, not user themes.
+    public func detectExternalTheme() -> String? {
+        let packageURL = Self.webProfileDirectory.appendingPathComponent("package.json")
+        guard let data = try? Data(contentsOf: packageURL),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+
+        var names: [String] = []
+        if let dependencies = root["dependencies"] as? [String: Any] {
+            names.append(contentsOf: dependencies.keys.sorted())
+        }
+        if let dsh = root["dsh"] as? [String: Any],
+           let profile = dsh["profile"] as? [String: Any],
+           let bundles = profile["bundles"] as? [String] {
+            names.append(contentsOf: bundles)
+        }
+
+        var seen = Set<String>()
+        for name in names where seen.insert(name).inserted {
+            if name.hasPrefix("@deepseek-ai/") { continue }
+            if name == Self.desktopHostPluginName || name == "dsh-desktop-claude" { continue }
+            if name.range(of: "theme|skin", options: [.regularExpression, .caseInsensitive]) != nil {
+                return name
+            }
+        }
+        return nil
+    }
+
     /// Check npm registry for outdated plugins using pnpm outdated --json.
     public func checkOutdatedPlugins() async throws -> [String: String] {
         guard let pnpm = NodeRuntime.shared.resolvePnpmBinary(),
