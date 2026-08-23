@@ -12,9 +12,13 @@ public final class NotificationManager: NSObject, UNUserNotificationCenterDelega
 
     /// Request notification authorization.
     public func requestAuthorization() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-            if let error = error {
-                print("[NotificationManager] Authorization error:", error)
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .notDetermined else { return }
+            center.requestAuthorization(options: [.alert, .sound, .badge]) { _, error in
+                if let error = error {
+                    print("[NotificationManager] Authorization error:", error)
+                }
             }
         }
     }
@@ -57,8 +61,12 @@ public final class NotificationManager: NSObject, UNUserNotificationCenterDelega
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        NSApp.activate(ignoringOtherApps: true)
-        completionHandler()
+        DispatchQueue.main.async {
+            // Match Electron's click behavior: bring the actual DSH window
+            // back when it was hidden behind the Dock or the red light.
+            MainWindowController.shared.showMainWindow()
+            completionHandler()
+        }
     }
 
     public func userNotificationCenter(

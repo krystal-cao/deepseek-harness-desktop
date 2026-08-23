@@ -68,7 +68,7 @@ public final class DshBridgeHandler: NSObject, WKScriptMessageHandler {
             let payload = body["payload"] as? [String: Any]
             let title = payload?["title"] as? String
             let cwd = payload?["cwd"] as? String
-            if !NSApp.isActive || !(NSApp.keyWindow?.isKeyWindow ?? false) {
+            if !MainWindowController.shared.isFocusedForNotifications {
                 NotificationManager.shared.showTaskDoneNotification(title: title, cwd: cwd)
             }
 

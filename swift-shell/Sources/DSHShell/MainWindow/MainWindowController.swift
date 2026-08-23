@@ -244,6 +244,14 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    /// Whether the main DSH window is the window the user is currently using.
+    /// Settings/About can be key windows while the main window remains
+    /// visible, so notification suppression must inspect this window directly.
+    public var isFocusedForNotifications: Bool {
+        guard let win = window else { return false }
+        return NSApp.isActive && win.isVisible && !win.isMiniaturized && win.isKeyWindow
+    }
+
     public func reloadDsh() {
         guard let currentUrl = webView?.url else {
             startAndLoadDsh()
