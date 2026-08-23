@@ -413,6 +413,22 @@ public final class DshPluginManager {
         try? updated.write(to: packageURL, options: .atomic)
     }
 
+    /// Whether the web profile has already been initialized enough for pnpm
+    /// to add a local bridge bundle without recreating a partial manifest.
+    /// A completely new profile is intentionally left for the first DSH boot
+    /// so DSH can write its canonical package metadata first.
+    public func hasInitializedWebProfileManifest() -> Bool {
+        let packageURL = Self.webProfileDirectory.appendingPathComponent("package.json")
+        guard let data = try? Data(contentsOf: packageURL),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let dsh = root["dsh"] as? [String: Any],
+              let profile = dsh["profile"] as? [String: Any],
+              let bundles = profile["bundles"] as? [String] else {
+            return false
+        }
+        return !bundles.isEmpty
+    }
+
     /// Ensure the built-in desktop host bridge plugin is installed and valid
     /// in the web profile. Returns true when the running DSH service must be
     /// restarted to load a changed profile bundle list.

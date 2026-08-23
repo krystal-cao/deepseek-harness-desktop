@@ -3,11 +3,13 @@ import SwiftUI
 
 public final class SettingsWindowController: NSWindowController {
     public static let shared = SettingsWindowController()
+    private var titleObserver: NSObjectProtocol?
+    private var dragOverlay: CustomDragView?
 
     private init() {
         let hostingController = NSHostingController(rootView: SettingsView())
         let win = NSWindow(contentViewController: hostingController)
-        win.title = "设置"
+        win.title = "通用设置"
         win.titleVisibility = .hidden
         win.titlebarAppearsTransparent = true
         win.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
@@ -25,6 +27,32 @@ public final class SettingsWindowController: NSWindowController {
         }
 
         super.init(window: win)
+        if let contentView = win.contentView {
+            let drag = CustomDragView(frame: .zero)
+            drag.translatesAutoresizingMaskIntoConstraints = false
+            contentView.addSubview(drag, positioned: .above, relativeTo: nil)
+            NSLayoutConstraint.activate([
+                drag.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+                drag.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+                drag.topAnchor.constraint(equalTo: contentView.topAnchor),
+                drag.heightAnchor.constraint(equalToConstant: 70)
+            ])
+            dragOverlay = drag
+        }
+        titleObserver = NotificationCenter.default.addObserver(
+            forName: .dshSettingsPanelDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let panel = notification.object as? SettingsPanel else { return }
+            self?.updateTitle(for: panel.rawValue)
+        }
+    }
+
+    deinit {
+        if let titleObserver {
+            NotificationCenter.default.removeObserver(titleObserver)
+        }
     }
 
     required init?(coder: NSCoder) {
@@ -33,6 +61,7 @@ public final class SettingsWindowController: NSWindowController {
 
     public func show() {
         SettingsViewModel.shared.loadFromState()
+        updateTitle(for: SettingsViewModel.shared.selectedCategoryIndex)
         Task {
             await SettingsViewModel.shared.refreshCatalog()
             await SettingsViewModel.shared.followLatestIfEnabled()
@@ -40,5 +69,9 @@ public final class SettingsWindowController: NSWindowController {
         }
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    public func updateTitle(for index: Int) {
+        window?.title = SettingsPanel(rawValue: index)?.title ?? "设置"
     }
 }

@@ -16,18 +16,15 @@ public struct PluginsTabView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 16) {
             SettingsSection("安装插件", footer: "插件会安装到 web profile；成功后 DSH 服务会自动重启。") {
                 HStack(spacing: 9) {
-                    Image(systemName: "puzzlepiece.extension")
-                        .foregroundStyle(.secondary)
-
                     TextField("npm 包名、@scope/name 或 github:owner/repo", text: Binding(
                         get: { localState.newPluginSpec },
                         set: { localState.newPluginSpec = $0 }
                     ))
                     .textFieldStyle(.plain)
-                    .font(.system(size: 12))
+                    .font(.system(size: 11))
 
                     Button("安装") {
                         let spec = localState.newPluginSpec.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -58,8 +55,8 @@ public struct PluginsTabView: View {
             SettingsSection("已安装插件", footer: "内置桥接插件由 DSH Desktop 维护，不能卸载。") {
                 VStack(spacing: 0) {
                     HStack {
-                        Label("\(viewModel.installedPlugins.count) 个插件", systemImage: "checkmark.circle")
-                            .font(.system(size: 12, weight: .medium))
+                        Text("\(viewModel.installedPlugins.count) 个插件")
+                        .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(.secondary)
                         Spacer()
                         if outdatedCount > 0 {
@@ -92,8 +89,6 @@ public struct PluginsTabView: View {
 
                     if viewModel.installedPlugins.isEmpty {
                         HStack(spacing: 9) {
-                            Image(systemName: "puzzlepiece.extension")
-                                .foregroundStyle(.secondary)
                             Text("暂无安装的扩展插件")
                                 .font(.system(size: 12))
                                 .foregroundStyle(.secondary)
@@ -119,28 +114,22 @@ public struct PluginsTabView: View {
     @ViewBuilder
     private func pluginRow(for plugin: DshPluginItem) -> some View {
         HStack(spacing: 11) {
-            Image(systemName: plugin.isManaged ? "desktopcomputer" : "puzzlepiece.extension")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(plugin.isManaged ? .blue : .purple)
-                .frame(width: 27, height: 27)
-                .background((plugin.isManaged ? Color.blue : Color.purple).opacity(0.12), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(plugin.name)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 11, weight: .semibold))
                         .lineLimit(1)
                     Text(formatPluginVersion(plugin))
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.system(size: 9, design: .monospaced))
                         .foregroundStyle(.secondary)
                     if let latest = plugin.latestVersion, plugin.hasUpdate {
                         Text("可更新至 \(latest)")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.system(size: 8.5, weight: .semibold))
                             .foregroundStyle(.green)
                     }
                 }
                 Text(pluginDescription(for: plugin.name))
-                    .font(.system(size: 10.5))
+                    .font(.system(size: 9.5))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }

@@ -131,10 +131,18 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
 
         vibrancy.addSubview(wv)
 
-        // 3. Top Drag Overlay (height 40px)
-        let drag = CustomDragView(frame: NSRect(x: 0, y: bounds.height - 40, width: bounds.width, height: 40))
+        // 3. Top Drag Overlay. Pin it to the content view's top edge so the
+        // drag region remains correct when the window is resized.
+        let drag = CustomDragView(frame: .zero)
+        drag.translatesAutoresizingMaskIntoConstraints = false
         self.dragOverlay = drag
-        vibrancy.addSubview(drag)
+        vibrancy.addSubview(drag, positioned: .above, relativeTo: wv)
+        NSLayoutConstraint.activate([
+            drag.leadingAnchor.constraint(equalTo: vibrancy.leadingAnchor),
+            drag.trailingAnchor.constraint(equalTo: vibrancy.trailingAnchor),
+            drag.topAnchor.constraint(equalTo: vibrancy.topAnchor),
+            drag.heightAnchor.constraint(equalToConstant: 40)
+        ])
 
         win.contentView = vibrancy
     }
@@ -176,12 +184,28 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
         // profile. Repair that malformed state from older Swift builds, then
         // boot once so the runtime can create its canonical profile manifest.
         DshPluginManager.shared.repairWebProfileManifestIfNeeded()
+        // An initialized profile may still contain a stale local bridge path
+        // (for example, after an old development build was removed). Repair
+        // it before DSH reads the bundle roster; otherwise dsh-app-boot exits
+        // before the post-start installation path can run.
+        let hostPreparedBeforeStart: Bool
+        if DshPluginManager.shared.hasInitializedWebProfileManifest() {
+            hostPreparedBeforeStart = await DshPluginManager.shared.ensureDesktopHostPlugin()
+        } else {
+            // On a truly new profile, let DSH create its canonical manifest
+            // first. Installing pnpm dependencies before that point would
+            // recreate the partial-manifest first-launch bug.
+            hostPreparedBeforeStart = false
+        }
         var url = try await DshService.shared.start()
 
         // Installing the bridge changes the profile composition, so restart
         // once to mount it. Subsequent launches take the single-start path.
-        if await DshPluginManager.shared.ensureDesktopHostPlugin() {
-            url = try await DshService.shared.start()
+        if !hostPreparedBeforeStart {
+            let hostInstalledAfterStart = await DshPluginManager.shared.ensureDesktopHostPlugin()
+            if hostInstalledAfterStart {
+                url = try await DshService.shared.start()
+            }
         }
         self.webView?.load(URLRequest(url: url))
         return url

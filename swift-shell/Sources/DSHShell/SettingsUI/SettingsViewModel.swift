@@ -2,9 +2,14 @@ import Foundation
 import SwiftUI
 import Combine
 
+public extension Notification.Name {
+    static let dshSettingsPanelDidChange = Notification.Name("dsh.settingsPanelDidChange")
+}
+
 @MainActor
 public final class SettingsViewModel: ObservableObject {
     public static let shared = SettingsViewModel()
+    private static let selectedPanelDefaultsKey = "dsh.settings.selectedPanel"
 
     @Published public var availableVersions: [DshVersionItem] = []
     @Published public var installedVersions: [String] = []
@@ -38,7 +43,17 @@ public final class SettingsViewModel: ObservableObject {
     private var isFollowingLatest = false
 
     private init() {
+        if let savedPanel = UserDefaults.standard.object(forKey: Self.selectedPanelDefaultsKey) as? Int,
+           SettingsPanel(rawValue: savedPanel) != nil {
+            self.selectedCategoryIndex = savedPanel
+        }
         loadFromState()
+    }
+
+    public func rememberSelectedPanel(_ panel: SettingsPanel) {
+        selectedCategoryIndex = panel.rawValue
+        UserDefaults.standard.set(panel.rawValue, forKey: Self.selectedPanelDefaultsKey)
+        NotificationCenter.default.post(name: .dshSettingsPanelDidChange, object: panel)
     }
 
     public func loadFromState() {

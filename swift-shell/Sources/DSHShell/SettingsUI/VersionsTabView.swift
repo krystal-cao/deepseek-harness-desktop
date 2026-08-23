@@ -7,26 +7,22 @@ public struct VersionsTabView: View {
     public init() {}
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 16) {
             SettingsSection("当前版本", footer: "切换版本会重启 DSH 服务；当前使用的版本不能直接卸载。") {
                 if let active = viewModel.selectedVersion {
                     HStack(spacing: 12) {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(.green)
-
                         VStack(alignment: .leading, spacing: 2) {
                             Text(active)
-                                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                                .font(.system(size: 12, weight: .semibold, design: .monospaced))
                             Text("当前用于启动 DSH 服务")
-                                .font(.system(size: 11))
+                                .font(.system(size: 10))
                                 .foregroundStyle(.secondary)
                         }
 
                         Spacer()
 
                         Text("运行中")
-                            .font(.system(size: 10.5, weight: .semibold))
+                            .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(.green)
                             .padding(.horizontal, 9)
                             .padding(.vertical, 5)
@@ -35,8 +31,6 @@ public struct VersionsTabView: View {
                     .padding(14)
                 } else {
                     HStack(spacing: 10) {
-                        Image(systemName: "shippingbox")
-                            .foregroundStyle(.secondary)
                         Text("未检测到已安装版本")
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
@@ -161,7 +155,7 @@ public struct VersionsTabView: View {
             }
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 9)
+        .padding(.vertical, 7)
     }
 
     private func versionBadge(_ label: String, color: Color) -> some View {

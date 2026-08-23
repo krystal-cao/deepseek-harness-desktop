@@ -121,25 +121,24 @@ struct SettingsSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             Text(title.uppercased())
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .padding(.leading, 4)
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(.primary)
+                .padding(.leading, 5)
 
             VStack(spacing: 0) {
                 content()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(nsColor: .controlBackgroundColor).opacity(0.78))
-            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .background(Color.primary.opacity(0.045))
+            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .stroke(Color.primary.opacity(0.10), lineWidth: 0.8)
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .stroke(Color.primary.opacity(0.075), lineWidth: 0.7)
             )
-            .shadow(color: .black.opacity(0.035), radius: 12, y: 4)
 
             if let footer {
                 Text(footer)
-                    .font(.system(size: 10.5))
+                    .font(.system(size: 9.5))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
             }
@@ -148,21 +147,15 @@ struct SettingsSection<Content: View>: View {
 }
 
 struct SettingsRow<Accessory: View>: View {
-    let icon: String
-    let tint: Color
     let title: String
     let description: String?
     @ViewBuilder let accessory: () -> Accessory
 
     init(
-        icon: String,
-        tint: Color = .accentColor,
         title: String,
         description: String? = nil,
         @ViewBuilder accessory: @escaping () -> Accessory
     ) {
-        self.icon = icon
-        self.tint = tint
         self.title = title
         self.description = description
         self.accessory = accessory
@@ -170,20 +163,14 @@ struct SettingsRow<Accessory: View>: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 27, height: 27)
-                .background(tint.opacity(0.13), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.primary)
 
                 if let description {
                     Text(description)
-                        .font(.system(size: 11))
+                        .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
@@ -193,14 +180,12 @@ struct SettingsRow<Accessory: View>: View {
             accessory()
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, description == nil ? 10 : 12)
+        .padding(.vertical, description == nil ? 8 : 10)
     }
 }
 
 struct SettingsDivider: View {
-    var body: some View {
-        Divider().padding(.leading, 53)
-    }
+    var body: some View { Divider().padding(.leading, 16) }
 }
 
 public struct SettingsView: View {
@@ -211,7 +196,7 @@ public struct SettingsView: View {
     private var selection: Binding<SettingsPanel?> {
         Binding(
             get: { SettingsPanel(rawValue: viewModel.selectedCategoryIndex) },
-            set: { viewModel.selectedCategoryIndex = $0?.rawValue ?? SettingsPanel.general.rawValue }
+            set: { viewModel.rememberSelectedPanel($0 ?? .general) }
         )
     }
 
@@ -260,9 +245,9 @@ public struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, 17)
                 .padding(.top, 40)
-                .padding(.bottom, 18)
+                .padding(.bottom, 15)
 
                 List(selection: selection) {
                     Section("设置") {
@@ -270,17 +255,16 @@ public struct SettingsView: View {
                             Label {
                                 Text(panel.navTitle)
                             } icon: {
-                                Image(systemName: panel.icon)
-                                    .foregroundStyle(panel.tint)
+                                sidebarIcon(for: panel)
                             }
-                            .listItemTint(panel.tint)
+                            .font(.system(size: 13))
                             .tag(panel)
                         }
                     }
                 }
                 .listStyle(.sidebar)
                 .scrollContentBackground(.hidden)
-                .environment(\.defaultMinListRowHeight, 36)
+                .environment(\.defaultMinListRowHeight, 34)
 
                 Spacer(minLength: 10)
 
@@ -300,67 +284,104 @@ public struct SettingsView: View {
         .ignoresSafeArea(.container, edges: .top)
     }
 
-    private var detail: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(currentPanel.title)
-                        .font(.system(size: 21, weight: .bold))
-                        .foregroundStyle(.primary)
-                    Text(currentPanel.subtitle)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+    private func sidebarIcon(for panel: SettingsPanel) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            panel.tint.opacity(0.90),
+                            panel.tint.opacity(0.76)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .stroke(Color.white.opacity(0.24), lineWidth: 0.5)
                 }
 
-                Spacer()
-
-                if currentPanel == .versions {
-                    toolbarButton(
-                        systemName: "arrow.clockwise",
-                        help: "刷新版本目录",
-                        isSpinning: viewModel.isLoadingCatalog
-                    ) {
-                        Task { await viewModel.refreshCatalog() }
-                    }
-                } else if currentPanel == .plugins {
-                    toolbarButton(
-                        systemName: "arrow.clockwise",
-                        help: "刷新插件列表",
-                        isSpinning: viewModel.isRefreshingPlugins
-                    ) {
-                        Task { await viewModel.refreshPluginList() }
-                    }
-                }
-            }
-            .padding(.horizontal, 30)
-            .padding(.top, 24)
-            .padding(.bottom, 20)
-
-            Divider().opacity(0.45)
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    switch currentPanel {
-                    case .general:
-                        GeneralTabView()
-                    case .versions:
-                        VersionsTabView()
-                    case .plugins:
-                        PluginsTabView()
-                    }
-                }
-                .frame(maxWidth: 720, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.horizontal, 30)
-                .padding(.top, 26)
-                .padding(.bottom, 34)
-            }
-            .scrollIndicators(.automatic)
+            Image(systemName: panel.icon)
+                .symbolRenderingMode(.hierarchical)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.94))
         }
-        .background(Color(nsColor: .underPageBackgroundColor))
-        // NavigationSplitView can reintroduce the titlebar safe-area inset on
-        // its detail column. The settings content is deliberately full-size.
+        .frame(width: 20, height: 20)
+        .shadow(color: .black.opacity(0.13), radius: 1.1, y: 0.8)
+    }
+
+    private var detail: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                switch currentPanel {
+                case .general:
+                    GeneralTabView()
+                case .versions:
+                    VersionsTabView()
+                case .plugins:
+                    PluginsTabView()
+                }
+            }
+            .frame(maxWidth: 720, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.horizontal, 24)
+            // Keep the first section below the floating header while allowing
+            // later content to scroll behind its glass layer.
+            .padding(.top, 74)
+            .padding(.bottom, 34)
+        }
+        .scrollIndicators(.automatic)
+        .overlay(alignment: .top) {
+            detailHeader
+                .zIndex(1)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
         .ignoresSafeArea(.container, edges: .top)
+    }
+
+    private var detailHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(currentPanel.title)
+                    .font(.system(size: 19, weight: .bold))
+                    .foregroundStyle(.primary)
+                Text(currentPanel.subtitle)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            if currentPanel == .versions {
+                toolbarButton(
+                    systemName: "arrow.clockwise",
+                    help: "刷新版本目录",
+                    isSpinning: viewModel.isLoadingCatalog
+                ) {
+                    Task { await viewModel.refreshCatalog() }
+                }
+            } else if currentPanel == .plugins {
+                toolbarButton(
+                    systemName: "arrow.clockwise",
+                    help: "刷新插件列表",
+                    isSpinning: viewModel.isRefreshingPlugins
+                ) {
+                    Task { await viewModel.refreshPluginList() }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 24)
+        .padding(.top, 18)
+        .padding(.bottom, 13)
+        .frame(height: 70, alignment: .center)
+        .background(
+            VisualEffectView(material: .headerView, blendingMode: .withinWindow)
+        )
+        .overlay(alignment: .bottom) {
+            Divider().opacity(0.45)
+        }
     }
 
     private var currentPanel: SettingsPanel {
@@ -384,6 +405,7 @@ public struct SettingsView: View {
         .controlSize(.small)
         .contentShape(Rectangle())
         .disabled(isSpinning)
+        .accessibilityLabel(Text(help))
         .help(help)
     }
 
