@@ -27,6 +27,10 @@ public final class DshPluginManager {
     public static let shared = DshPluginManager()
 
     public static let desktopHostPluginName = "dsh-desktop-host"
+    private static let standardWebProfileBundles = [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app"
+    ]
 
     public static var webProfileDirectory: URL {
         let dshHome = ProcessInfo.processInfo.environment["DSH_HOME"] ?? (NSHomeDirectory() as NSString).appendingPathComponent(".dsh")
@@ -257,21 +261,58 @@ public final class DshPluginManager {
         return String(value[..<end])
     }
 
-    /// Ensure the built-in desktop host bridge plugin is installed and valid in the web profile.
-    public func ensureDesktopHostPlugin() async {
+    /// Repair the profile manifest created by an older Swift shell.
+    ///
+    /// The old first-launch path ran `pnpm add` before DSH had initialized the
+    /// web profile. pnpm then created a package.json containing only
+    /// `dependencies`, which made DSH boot an empty profile forever. Keep the
+    /// user's installed plugin dependencies and restore only the missing DSH
+    /// profile section so the normal DSH initializer can continue.
+    public func repairWebProfileManifestIfNeeded() {
+        let packageURL = Self.webProfileDirectory.appendingPathComponent("package.json")
+        guard let data = try? Data(contentsOf: packageURL),
+              var root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return
+        }
+
+        var dsh = root["dsh"] as? [String: Any] ?? [:]
+        var profile = dsh["profile"] as? [String: Any] ?? [:]
+        if let bundles = profile["bundles"] as? [String], !bundles.isEmpty {
+            return
+        }
+
+        profile["bundles"] = Self.standardWebProfileBundles
+        dsh["profile"] = profile
+        root["dsh"] = dsh
+
+        guard let updated = try? JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .sortedKeys]) else {
+            return
+        }
+        try? updated.write(to: packageURL, options: .atomic)
+    }
+
+    /// Ensure the built-in desktop host bridge plugin is installed and valid
+    /// in the web profile. Returns true when the running DSH service must be
+    /// restarted to load a changed profile bundle list.
+    public func ensureDesktopHostPlugin() async -> Bool {
         guard let hostBundle = NodeRuntime.shared.resolveDesktopHostBundlePath(),
               let pnpm = NodeRuntime.shared.resolvePnpmBinary(),
               let node = NodeRuntime.shared.resolveNodeBinary() else {
-            return
+            return false
         }
 
         let profileDir = Self.webProfileDirectory
         try? FileManager.default.createDirectory(at: profileDir, withIntermediateDirectories: true)
+        let hostSpec = "file:\(hostBundle)"
 
         let plugins = listPlugins()
         if let existing = plugins.first(where: { $0.name == Self.desktopHostPluginName }) {
-            if existing.version == "file:\(hostBundle)" {
-                return // Already up to date
+            if existing.version == hostSpec {
+                if profileContainsBundle(Self.desktopHostPluginName) {
+                    return false // Already installed and mounted.
+                }
+                try? updateProfileBundle(Self.desktopHostPluginName, removing: false)
+                return true
             }
         }
 
@@ -284,7 +325,23 @@ public final class DshPluginManager {
         env["DSH_NODE_BIN"] = node
         proc.environment = env
 
-        try? proc.run()
+        guard (try? proc.run()) != nil else { return false }
         proc.waitUntilExit()
+        guard proc.terminationStatus == 0 else { return false }
+
+        try? updateProfileBundle(Self.desktopHostPluginName, removing: false)
+        return true
+    }
+
+    private func profileContainsBundle(_ name: String) -> Bool {
+        let packageURL = Self.webProfileDirectory.appendingPathComponent("package.json")
+        guard let data = try? Data(contentsOf: packageURL),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let dsh = root["dsh"] as? [String: Any],
+              let profile = dsh["profile"] as? [String: Any],
+              let bundles = profile["bundles"] as? [String] else {
+            return false
+        }
+        return bundles.contains(name)
     }
 }

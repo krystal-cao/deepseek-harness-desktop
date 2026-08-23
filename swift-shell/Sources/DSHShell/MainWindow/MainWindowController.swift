@@ -170,8 +170,19 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
     /// settings version switch uses this throwing form so it can restore the
     /// previous selection if the new runtime fails to boot.
     public func restartDshService() async throws -> URL {
-        await DshPluginManager.shared.ensureDesktopHostPlugin()
-        let url = try await DshService.shared.start()
+        // DSH must initialize the web profile before pnpm touches it. On a
+        // fresh install, running `pnpm add` first creates a package.json with
+        // no dsh.profile.bundles and leaves DSH waiting forever on an empty
+        // profile. Repair that malformed state from older Swift builds, then
+        // boot once so the runtime can create its canonical profile manifest.
+        DshPluginManager.shared.repairWebProfileManifestIfNeeded()
+        var url = try await DshService.shared.start()
+
+        // Installing the bridge changes the profile composition, so restart
+        // once to mount it. Subsequent launches take the single-start path.
+        if await DshPluginManager.shared.ensureDesktopHostPlugin() {
+            url = try await DshService.shared.start()
+        }
         self.webView?.load(URLRequest(url: url))
         return url
     }
