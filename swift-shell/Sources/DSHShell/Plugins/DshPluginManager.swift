@@ -71,6 +71,10 @@ public final class DshPluginManager {
             throw NSError(domain: "DshPluginManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 Node 或 pnpm"])
         }
 
+        if let hostBundle = NodeRuntime.shared.resolveDesktopHostBundlePath() {
+            _ = repairDesktopHostDependency(hostBundle)
+        }
+
         let profileDir = Self.webProfileDirectory
         guard FileManager.default.fileExists(atPath: profileDir.appendingPathComponent("package.json").path) else {
             return [:]
@@ -115,6 +119,10 @@ public final class DshPluginManager {
             throw NSError(domain: "DshPluginManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 Node 或 pnpm"])
         }
 
+        if let hostBundle = NodeRuntime.shared.resolveDesktopHostBundlePath() {
+            _ = repairDesktopHostDependency(hostBundle)
+        }
+
         let profileDir = Self.webProfileDirectory
         try FileManager.default.createDirectory(at: profileDir, withIntermediateDirectories: true)
 
@@ -145,6 +153,13 @@ public final class DshPluginManager {
             throw NSError(domain: "DshPluginManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 Node 或 pnpm"])
         }
 
+        // pnpm validates every direct dependency before updating one plugin.
+        // Heal a stale Electron-era file: dependency first, otherwise any
+        // plugin update is rejected before pnpm reaches the requested name.
+        if let hostBundle = NodeRuntime.shared.resolveDesktopHostBundlePath() {
+            _ = repairDesktopHostDependency(hostBundle)
+        }
+
         let profileDir = Self.webProfileDirectory
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: pnpm)
@@ -155,11 +170,16 @@ public final class DshPluginManager {
         env["DSH_NODE_BIN"] = node
         proc.environment = env
 
+        let stdout = Pipe()
+        let stderr = Pipe()
+        proc.standardOutput = stdout
+        proc.standardError = stderr
         try proc.run()
         proc.waitUntilExit()
 
         guard proc.terminationStatus == 0 else {
-            throw NSError(domain: "DshPluginManager", code: -3, userInfo: [NSLocalizedDescriptionKey: "更新插件 \(name) 失败"])
+            let detail = processOutput(stdout: stdout, stderr: stderr)
+            throw NSError(domain: "DshPluginManager", code: -3, userInfo: [NSLocalizedDescriptionKey: "更新插件 \(name) 失败（退出码 \(proc.terminationStatus)）\(detail)"])
         }
     }
 
@@ -168,6 +188,10 @@ public final class DshPluginManager {
         guard let pnpm = NodeRuntime.shared.resolvePnpmBinary(),
               let node = NodeRuntime.shared.resolveNodeBinary() else {
             throw NSError(domain: "DshPluginManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 Node 或 pnpm"])
+        }
+
+        if let hostBundle = NodeRuntime.shared.resolveDesktopHostBundlePath() {
+            _ = repairDesktopHostDependency(hostBundle)
         }
 
         let profileDir = Self.webProfileDirectory
@@ -196,6 +220,10 @@ public final class DshPluginManager {
         guard let pnpm = NodeRuntime.shared.resolvePnpmBinary(),
               let node = NodeRuntime.shared.resolveNodeBinary() else {
             throw NSError(domain: "DshPluginManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "缺少 Node 或 pnpm"])
+        }
+
+        if let hostBundle = NodeRuntime.shared.resolveDesktopHostBundlePath() {
+            _ = repairDesktopHostDependency(hostBundle)
         }
 
         let profileDir = Self.webProfileDirectory
@@ -261,6 +289,100 @@ public final class DshPluginManager {
         return String(value[..<end])
     }
 
+    /// Keep the local bridge dependency and pnpm lockfile aligned with the
+    /// currently running shell. Older Electron builds stored the bridge under
+    /// app.asar.unpacked; Swift packages store it directly under Resources.
+    @discardableResult
+    private func repairDesktopHostDependency(_ hostBundle: String) -> Bool {
+        let profileDir = Self.webProfileDirectory
+        let packageURL = profileDir.appendingPathComponent("package.json")
+        let lockURL = profileDir.appendingPathComponent("pnpm-lock.yaml")
+        let hostSpec = "file:\(hostBundle)"
+        let relativeHostPath = relativePath(from: profileDir, to: URL(fileURLWithPath: hostBundle))
+        var changed = false
+
+        if let data = try? Data(contentsOf: packageURL),
+           var root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           var dependencies = root["dependencies"] as? [String: String],
+           dependencies[Self.desktopHostPluginName] != hostSpec {
+            dependencies[Self.desktopHostPluginName] = hostSpec
+            root["dependencies"] = dependencies
+            if let updated = try? JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .sortedKeys]) {
+                try? updated.write(to: packageURL, options: .atomic)
+                changed = true
+            }
+        }
+
+        // Keep the lockfile in sync as well. It stores the absolute importer
+        // specifier but relative package/snapshot references, and an old
+        // Electron lockfile can otherwise keep pnpm resolving the dead path.
+        if let lockData = try? Data(contentsOf: lockURL),
+           var lock = String(data: lockData, encoding: .utf8) {
+            var lines = lock.components(separatedBy: "\n")
+            for index in lines.indices where lines[index].contains("dsh-desktop-host") {
+                let line = lines[index]
+                if let marker = line.range(of: "specifier:") {
+                    let updatedLine = String(line[..<marker.upperBound]) + " " + hostSpec
+                    if updatedLine != line {
+                        lines[index] = updatedLine
+                        changed = true
+                    }
+                } else if let marker = line.range(of: "version: file:") {
+                    let updatedLine = String(line[..<marker.upperBound]) + relativeHostPath
+                    if updatedLine != line {
+                        lines[index] = updatedLine
+                        changed = true
+                    }
+                } else if let marker = line.range(of: "resolution: {directory: "),
+                          let end = line.range(of: ", type: directory}", range: marker.upperBound..<line.endIndex) {
+                    let updatedLine = String(line[..<marker.upperBound]) + relativeHostPath + String(line[end.lowerBound...])
+                    if updatedLine != line {
+                        lines[index] = updatedLine
+                        changed = true
+                    }
+                } else if let marker = line.range(of: "@file:"),
+                          let end = line.lastIndex(of: ":"), end > marker.upperBound {
+                    let updatedLine = String(line[..<marker.upperBound]) + relativeHostPath + String(line[end...])
+                    if updatedLine != line {
+                        lines[index] = updatedLine
+                        changed = true
+                    }
+                }
+            }
+            lock = lines.joined(separator: "\n")
+            if let updated = lock.data(using: .utf8) {
+                try? updated.write(to: lockURL, options: .atomic)
+            }
+        }
+
+        return changed
+    }
+
+    private func relativePath(from base: URL, to target: URL) -> String {
+        let baseComponents = base.standardizedFileURL.pathComponents
+        let targetComponents = target.standardizedFileURL.pathComponents
+        var common = 0
+        while common < baseComponents.count,
+              common < targetComponents.count,
+              baseComponents[common] == targetComponents[common] {
+            common += 1
+        }
+
+        let parentSteps = Array(repeating: "..", count: max(0, baseComponents.count - common))
+        let targetSteps = Array(targetComponents.dropFirst(common))
+        return (parentSteps + targetSteps).joined(separator: "/")
+    }
+
+    private func processOutput(stdout: Pipe, stderr: Pipe) -> String {
+        let out = String(data: stdout.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let err = String(data: stderr.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        let detail = [out, err]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+        return detail.isEmpty ? "" : "：\n\(detail)"
+    }
+
     /// Repair the profile manifest created by an older Swift shell.
     ///
     /// The old first-launch path ran `pnpm add` before DSH had initialized the
@@ -304,10 +426,11 @@ public final class DshPluginManager {
         let profileDir = Self.webProfileDirectory
         try? FileManager.default.createDirectory(at: profileDir, withIntermediateDirectories: true)
         let hostSpec = "file:\(hostBundle)"
+        let dependencyWasRepaired = repairDesktopHostDependency(hostBundle)
 
         let plugins = listPlugins()
         if let existing = plugins.first(where: { $0.name == Self.desktopHostPluginName }) {
-            if existing.version == hostSpec {
+            if existing.version == hostSpec && !dependencyWasRepaired {
                 if profileContainsBundle(Self.desktopHostPluginName) {
                     return false // Already installed and mounted.
                 }
