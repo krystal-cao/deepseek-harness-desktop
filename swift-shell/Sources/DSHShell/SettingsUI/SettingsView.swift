@@ -147,6 +147,8 @@ struct SettingsSection<Content: View>: View {
 }
 
 struct SettingsRow<Accessory: View>: View {
+    private let accessoryColumnWidth: CGFloat = 220
+
     let title: String
     let description: String?
     @ViewBuilder let accessory: () -> Accessory
@@ -177,7 +179,12 @@ struct SettingsRow<Accessory: View>: View {
             }
 
             Spacer(minLength: 12)
-            accessory()
+
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                accessory()
+            }
+            .frame(width: accessoryColumnWidth)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, description == nil ? 8 : 10)

@@ -104,7 +104,7 @@ public struct GeneralTabView: View {
                     }
                     .pickerStyle(.menu)
                     .controlSize(.small)
-                    .frame(width: 168)
+                    .frame(width: 168, alignment: .trailing)
                 }
             }
 
@@ -116,7 +116,7 @@ public struct GeneralTabView: View {
                     title: "DSH 启动端口",
                     description: "DSH 服务监听的本地端口，默认使用 3080。"
                 ) {
-                    HStack(spacing: 7) {
+                    HStack(spacing: 8) {
                         TextField("端口", text: Binding(
                             get: { localState.tempPort },
                             set: { localState.tempPort = $0 }
@@ -131,6 +131,7 @@ public struct GeneralTabView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
+                        .frame(width: 54)
 
                         Button("恢复默认") {
                             localState.tempPort = "3080"
@@ -142,7 +143,7 @@ public struct GeneralTabView: View {
                         .buttonStyle(.borderless)
                         .controlSize(.small)
                         .foregroundStyle(.secondary)
-                        .frame(width: 64)
+                        .frame(width: 72)
                         .disabled(localState.tempPort == "3080")
                     }
                 }

@@ -3,7 +3,9 @@ import SwiftUI
 
 public final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     public static let shared = SettingsWindowController()
-    private static let dragRegionHeight: CGFloat = 120
+    // Match the native titlebar height. The content header starts below this
+    // strip and must remain interactive instead of becoming draggable.
+    private static let dragRegionHeight: CGFloat = 70
     private var titleObserver: NSObjectProtocol?
     private var dragOverlay: CustomDragView?
 
