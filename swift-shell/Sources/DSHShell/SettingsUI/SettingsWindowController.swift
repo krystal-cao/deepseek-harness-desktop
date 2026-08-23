@@ -35,7 +35,9 @@ public final class SettingsWindowController: NSWindowController {
                 drag.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
                 drag.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
                 drag.topAnchor.constraint(equalTo: contentView.topAnchor),
-                drag.heightAnchor.constraint(equalToConstant: 70)
+                // The settings header includes the titlebar and the floating
+                // detail header. Keep the whole visual header draggable.
+                drag.heightAnchor.constraint(equalToConstant: 120)
             ])
             dragOverlay = drag
         }
@@ -69,6 +71,13 @@ public final class SettingsWindowController: NSWindowController {
         }
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        // SwiftUI may select the first TextField when the settings window
+        // becomes key. Settings should open as a browsing surface instead of
+        // immediately entering port-edit mode.
+        window?.makeFirstResponder(nil)
+        DispatchQueue.main.async { [weak self] in
+            self?.window?.makeFirstResponder(nil)
+        }
     }
 
     public func updateTitle(for index: Int) {

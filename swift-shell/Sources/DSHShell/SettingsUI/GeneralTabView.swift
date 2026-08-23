@@ -11,7 +11,12 @@ final class GeneralTabViewModel: ObservableObject {
 
 public struct GeneralTabView: View {
     @ObservedObject var viewModel = SettingsViewModel.shared
-    @ObservedObject private var localState = GeneralTabViewModel()
+    @StateObject private var localState = GeneralTabViewModel()
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable {
+        case port
+    }
 
     public init() {}
 
@@ -116,6 +121,7 @@ public struct GeneralTabView: View {
                             get: { localState.tempPort },
                             set: { localState.tempPort = $0 }
                         ))
+                        .focused($focusedField, equals: .port)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 12, design: .monospaced))
                         .frame(width: 70)
@@ -126,24 +132,34 @@ public struct GeneralTabView: View {
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
 
-                        if localState.tempPort != "3080" {
-                            Button("恢复默认") {
-                                localState.tempPort = "3080"
-                                let changed = viewModel.dshPort != 3080
-                                viewModel.dshPort = 3080
-                                viewModel.saveGeneralSettings()
-                                if changed { viewModel.restartDshService() }
-                            }
-                            .buttonStyle(.borderless)
-                            .controlSize(.small)
-                            .foregroundStyle(.secondary)
+                        Button("恢复默认") {
+                            localState.tempPort = "3080"
+                            let changed = viewModel.dshPort != 3080
+                            viewModel.dshPort = 3080
+                            viewModel.saveGeneralSettings()
+                            if changed { viewModel.restartDshService() }
                         }
+                        .buttonStyle(.borderless)
+                        .controlSize(.small)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 64)
+                        .disabled(localState.tempPort == "3080")
                     }
                 }
             }
         }
         .onAppear {
             localState.syncFromSettings(viewModel)
+            focusedField = nil
+            DispatchQueue.main.async {
+                focusedField = nil
+            }
+        }
+        .onChange(of: viewModel.dshPort) { _, newPort in
+            let value = String(newPort)
+            if localState.tempPort != value {
+                localState.tempPort = value
+            }
         }
     }
 
@@ -155,6 +171,7 @@ public struct GeneralTabView: View {
 
         let changed = port != viewModel.dshPort
         viewModel.dshPort = port
+        localState.tempPort = String(port)
         viewModel.saveGeneralSettings()
         if changed { viewModel.restartDshService() }
     }
