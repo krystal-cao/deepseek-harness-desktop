@@ -30,16 +30,21 @@ public struct GeneralTabView: View {
                     title: viewModel.autoFollowLatest ? "自动更新已开启" : "自动更新已关闭",
                     description: "启动后自动安装并切换到官方最新 RC，完成后重启 DSH 服务。"
                 ) {
-                    Toggle("", isOn: Binding(
-                        get: { viewModel.autoFollowLatest },
-                        set: {
-                            viewModel.autoFollowLatest = $0
-                            viewModel.saveGeneralSettings()
-                        }
-                    ))
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        Toggle("", isOn: Binding(
+                            get: { viewModel.autoFollowLatest },
+                            set: {
+                                viewModel.autoFollowLatest = $0
+                                viewModel.saveGeneralSettings()
+                            }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                        .fixedSize()
+                    }
+                    .frame(width: 220, alignment: .trailing)
                 }
 
                 SettingsDivider()
@@ -48,16 +53,21 @@ public struct GeneralTabView: View {
                     title: viewModel.translateCommands ? "命令说明汉化已开启" : "命令说明汉化已关闭",
                     description: "将 /compact、/plan、/permission 等内置斜杠命令的说明提示显示为简体中文。"
                 ) {
-                    Toggle("", isOn: Binding(
-                        get: { viewModel.translateCommands },
-                        set: {
-                            viewModel.translateCommands = $0
-                            viewModel.saveGeneralSettings()
-                        }
-                    ))
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        Toggle("", isOn: Binding(
+                            get: { viewModel.translateCommands },
+                            set: {
+                                viewModel.translateCommands = $0
+                                viewModel.saveGeneralSettings()
+                            }
+                        ))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                        .fixedSize()
+                    }
+                    .frame(width: 220, alignment: .trailing)
                 }
             }
 
@@ -78,7 +88,7 @@ public struct GeneralTabView: View {
                     }
                     .pickerStyle(.segmented)
                     .controlSize(.small)
-                    .frame(width: 190)
+                    .frame(width: 190, alignment: .trailing)
                 }
             }
 
@@ -127,6 +137,7 @@ public struct GeneralTabView: View {
                         .frame(width: 70)
 
                         Button("保存") {
+                            clearPortFocus()
                             savePort()
                         }
                         .buttonStyle(.borderedProminent)
@@ -134,6 +145,7 @@ public struct GeneralTabView: View {
                         .frame(width: 54)
 
                         Button("恢复默认") {
+                            clearPortFocus()
                             localState.tempPort = "3080"
                             let changed = viewModel.dshPort != 3080
                             viewModel.dshPort = 3080
@@ -143,7 +155,6 @@ public struct GeneralTabView: View {
                         .buttonStyle(.borderless)
                         .controlSize(.small)
                         .foregroundStyle(.secondary)
-                        .frame(width: 72)
                         .disabled(localState.tempPort == "3080")
                     }
                 }
@@ -175,5 +186,12 @@ public struct GeneralTabView: View {
         localState.tempPort = String(port)
         viewModel.saveGeneralSettings()
         if changed { viewModel.restartDshService() }
+    }
+
+    private func clearPortFocus() {
+        focusedField = nil
+        DispatchQueue.main.async {
+            focusedField = nil
+        }
     }
 }
