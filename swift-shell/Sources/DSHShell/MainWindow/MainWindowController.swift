@@ -10,6 +10,7 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
     private var dragOverlay: CustomDragView?
     private var bridgeHandler = DshBridgeHandler()
     private var onboardingHostingView: NSView?
+    private var webUIReadinessGeneration = 0
 
     private static let titlebarCSS = """
     [class*="sidebarCol"] {
@@ -47,6 +48,19 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
     }
     """
 
+    private static let webUIReadyScript = """
+    (() => {
+      const body = document.body;
+      const text = body && typeof body.textContent === 'string'
+        ? body.textContent.trim()
+        : '';
+      return {
+        loading: text.includes('Loading plugins') || text.includes('加载插件'),
+        length: text.length
+      };
+    })();
+    """
+
     private init() {
         let win = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1440, height: 960),
@@ -71,6 +85,11 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
             closeButton.action = #selector(hideMainWindow)
         }
         setupContentView(in: win)
+        // NSWindow can become visible as soon as the application activates.
+        // Keep the main window explicitly hidden until the DSH page has
+        // finished rendering; otherwise the user sees a blank/boot screen
+        // while the runtime and bridge plugin are still starting.
+        win.orderOut(nil)
     }
 
     required init?(coder: NSCoder) {
@@ -207,8 +226,52 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
                 url = try await DshService.shared.start()
             }
         }
+        webUIReadinessGeneration &+= 1
         self.webView?.load(URLRequest(url: url))
         return url
+    }
+
+    /// Reveal the native window only after DSH has replaced its plugin boot
+    /// screen with real UI. The bridge activation callback is intentionally
+    /// not used as the sole signal: Cordis can activate the desktop-host
+    /// plugin before the page has finished rendering.
+    private func waitForWebUIReady(timeout: TimeInterval = 30) {
+        webUIReadinessGeneration &+= 1
+        let generation = webUIReadinessGeneration
+        let deadline = Date().addingTimeInterval(timeout)
+
+        var check: (() -> Void)!
+        check = { [weak self] in
+            guard let self,
+                  self.webUIReadinessGeneration == generation,
+                  let webView = self.webView else { return }
+
+            webView.evaluateJavaScript(Self.webUIReadyScript) { [weak self] result, _ in
+                DispatchQueue.main.async {
+                    guard let self,
+                          self.webUIReadinessGeneration == generation else { return }
+
+                    let state = result as? [String: Any]
+                    let loading = (state?["loading"] as? NSNumber)?.boolValue ?? true
+                    let length = (state?["length"] as? NSNumber)?.intValue ?? 0
+                    if !loading && length > 120 {
+                        self.revealWindow()
+                        return
+                    }
+                    if Date() >= deadline {
+                        if loading || length == 0 {
+                            self.showErrorAlert("DSH 页面加载超时，请重启 DSH 服务后重试。")
+                        } else {
+                            self.revealWindow()
+                        }
+                        return
+                    }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: check)
+                }
+            }
+        }
+        check()
     }
 
     public func revealWindow() {
@@ -342,7 +405,7 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         syncUiTheme()
         syncTranslateCommands()
-        revealWindow()
+        waitForWebUIReady()
     }
 
     public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -368,10 +431,9 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
     // MARK: - DshBridgeDelegate
 
     public func bridgeDidReceiveReady() {
-        print("[MainWindowController] DSH Web plugins ready")
+        print("[MainWindowController] DSH Web UI ready signal received")
         syncUiTheme()
         syncTranslateCommands()
-        revealWindow()
     }
 
     public func bridgeDidReceiveTheme(colorScheme: String?, externalTheme: String?) {}

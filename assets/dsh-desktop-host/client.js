@@ -213,7 +213,25 @@ window.__ModuleLoader__.load({
       apply: function (ctx) {
         var host = window.dshDesktop
         if (!host) return undefined
-        host.ready()
+        // `apply` runs while Cordis is still composing the web application.
+        // Reporting readiness here races the app's own boot screen and makes
+        // native shells reveal a transient "Loading plugins" page. Wait for
+        // the rendered UI to replace that screen before notifying the shell.
+        var bridgeReadyReported = false
+        var bridgeReadyTimer = null
+        var reportBridgeReady = function () {
+          if (bridgeReadyReported || !host || typeof host.ready !== "function") return
+          var body = typeof document !== "undefined" ? document.body : null
+          var text = body && typeof body.textContent === "string" ? body.textContent.trim() : ""
+          var loading = text.indexOf("Loading plugins") !== -1 || text.indexOf("加载插件") !== -1
+          if (loading || text.length <= 120) {
+            bridgeReadyTimer = window.setTimeout(reportBridgeReady, 50)
+            return
+          }
+          bridgeReadyReported = true
+          bridgeReadyTimer = null
+          host.ready()
+        }
 
         // --- Locale bridge ---
         var offLocale = null
@@ -462,7 +480,16 @@ window.__ModuleLoader__.load({
           // Best-effort command translation bridge.
         }
 
+        // All bridge subscriptions are installed before readiness is reported.
+        // The native shell still performs its own readiness check as a
+        // fallback, but this signal now means the actual web UI is visible.
+        reportBridgeReady()
+
         return function dispose() {
+          if (bridgeReadyTimer) {
+            window.clearTimeout(bridgeReadyTimer)
+            bridgeReadyTimer = null
+          }
           if (offTheme) {
             try {
               offTheme()
