@@ -2,15 +2,118 @@ import AppKit
 import WebKit
 import SwiftUI
 
-public final class MainWindowController: NSWindowController, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate, DshBridgeDelegate {
+private final class DownloadStatusBanner: NSVisualEffectView {
+    private let spinner = NSProgressIndicator()
+    private let statusLabel = NSTextField(labelWithString: "")
+    private let pathLabel = NSTextField(labelWithString: "")
+    private let revealButton = NSButton(title: "在访达中显示", target: nil, action: nil)
+    private let closeButton = NSButton(title: "关闭", target: nil, action: nil)
+
+    var onReveal: (() -> Void)?
+    var onClose: (() -> Void)?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+
+        material = .popover
+        blendingMode = .withinWindow
+        state = .active
+        wantsLayer = true
+        layer?.cornerRadius = 12
+        layer?.masksToBounds = true
+
+        spinner.style = .spinning
+        spinner.controlSize = .small
+        spinner.startAnimation(nil)
+
+        statusLabel.font = .systemFont(ofSize: 14, weight: .semibold)
+        pathLabel.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        pathLabel.textColor = .secondaryLabelColor
+        pathLabel.lineBreakMode = .byTruncatingMiddle
+        pathLabel.maximumNumberOfLines = 1
+
+        revealButton.bezelStyle = .rounded
+        revealButton.controlSize = .small
+        revealButton.target = self
+        revealButton.action = #selector(revealDownload)
+
+        closeButton.bezelStyle = .rounded
+        closeButton.controlSize = .small
+        closeButton.target = self
+        closeButton.action = #selector(closeBanner)
+
+        let textStack = NSStackView(views: [statusLabel, pathLabel])
+        textStack.orientation = .vertical
+        textStack.alignment = .leading
+        textStack.spacing = 3
+
+        let stack = NSStackView(views: [spinner, textStack, revealButton, closeButton])
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.orientation = .horizontal
+        stack.alignment = .centerY
+        stack.spacing = 12
+        addSubview(stack)
+
+        textStack.setHuggingPriority(.defaultLow, for: .horizontal)
+        textStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        revealButton.setContentHuggingPriority(.required, for: .horizontal)
+        closeButton.setContentHuggingPriority(.required, for: .horizontal)
+
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 13),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -13),
+            spinner.widthAnchor.constraint(equalToConstant: 16),
+            spinner.heightAnchor.constraint(equalToConstant: 16)
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func update(destination: URL, completed: Bool) {
+        statusLabel.stringValue = completed ? "下载完成" : "正在下载"
+        let fullPath = destination.path
+        let homePath = FileManager.default.homeDirectoryForCurrentUser.path
+        pathLabel.stringValue = fullPath.hasPrefix(homePath + "/")
+            ? "~" + String(fullPath.dropFirst(homePath.count))
+            : fullPath
+        pathLabel.toolTip = fullPath
+
+        spinner.isHidden = completed
+        if completed {
+            spinner.stopAnimation(nil)
+        } else {
+            spinner.startAnimation(nil)
+        }
+        revealButton.isHidden = !completed
+    }
+
+    @objc private func revealDownload() {
+        onReveal?()
+    }
+
+    @objc private func closeBanner() {
+        onClose?()
+    }
+}
+
+public final class MainWindowController: NSWindowController, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, DshBridgeDelegate {
     public static let shared = MainWindowController()
 
     private var webView: WKWebView?
     private var vibrancyView: NSVisualEffectView?
-    private var dragOverlay: CustomDragView?
     private var bridgeHandler = DshBridgeHandler()
     private var onboardingHostingView: NSView?
     private var webUIReadinessGeneration = 0
+    private var windowDragMouseDownEvent: NSEvent?
+    private var isUsingNativeWindowDrag = false
+    private var windowDragStartOrigin: NSPoint?
+    private var windowDragStartMouseLocation: NSPoint?
+    private var downloadDestinations: [ObjectIdentifier: URL] = [:]
+    private var downloadStatusBanner: DownloadStatusBanner?
 
     private static let titlebarCSS = """
     [class*="sidebarCol"] {
@@ -40,12 +143,175 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
       margin-left: auto !important;
       margin-right: auto !important;
     }
+    html.dsh-native-window-drag,
+    html.dsh-native-window-drag * {
+      cursor: default !important;
+      -webkit-user-select: none !important;
+      user-select: none !important;
+    }
+    .dsh-native-window-drag-hover,
+    .dsh-native-window-drag-hover * {
+      cursor: default !important;
+    }
     """
 
     private static let hideLoadingCSS = """
     #dsh-plugin-loading-overlay, [class*="pluginLoading"] {
       display: none !important;
     }
+    """
+
+    /// Keep WebKit in charge of hit testing across the entire titlebar. A
+    /// native overlay used to swallow every click in the top 70 points. This
+    /// script starts a native window drag only after the pointer moves beyond
+    /// a small threshold from non-interactive titlebar content.
+    private static let windowDragScript = """
+    (() => {
+      if (window.__DSH_NATIVE_WINDOW_DRAG_INSTALLED__) return;
+      window.__DSH_NATIVE_WINDOW_DRAG_INSTALLED__ = true;
+
+      const titlebarHeight = 70;
+      const dragThreshold = 4;
+      const interactiveSelector = [
+        'a[href]',
+        'button',
+        'input',
+        'select',
+        'textarea',
+        'summary',
+        '[role="button"]',
+        '[role="tab"]',
+        '[role="menuitem"]',
+        '[role="switch"]',
+        '[contenteditable]:not([contenteditable="false"])',
+        '[tabindex]:not([tabindex="-1"])'
+      ].join(',');
+      let candidate = null;
+      let dragging = false;
+      let suppressClick = false;
+      let suppressTitlebarSelection = false;
+      let hoverElement = null;
+
+      const post = (type) => {
+        window.webkit?.messageHandlers?.dshDesktop?.postMessage({ type });
+      };
+      const isInteractive = (target) => {
+        if (!(target instanceof Element)) return false;
+        if (target.closest(interactiveSelector)) return true;
+
+        let current = target;
+        while (current && current !== document.documentElement) {
+          const cursor = window.getComputedStyle(current).cursor;
+          if (cursor && cursor !== 'auto' && cursor !== 'default') return true;
+          current = current.parentElement;
+        }
+        return false;
+      };
+      const isTextEditingTarget = (target) => {
+        if (!(target instanceof Element)) return false;
+        return Boolean(target.closest(
+          'input, textarea, [contenteditable]:not([contenteditable="false"])'
+        ));
+      };
+      const setDragSurfaceActive = (active) => {
+        document.documentElement.classList.toggle('dsh-native-window-drag', active);
+      };
+      const clearHoverElement = () => {
+        hoverElement?.classList.remove('dsh-native-window-drag-hover');
+        hoverElement = null;
+      };
+      const updateTitlebarHover = (event) => {
+        // Remove the old override before checking computed cursor styles so a
+        // custom pointer-cursor control can still be recognized as interactive.
+        clearHoverElement();
+        if (candidate || event.clientY > titlebarHeight || isInteractive(event.target)) return;
+        if (!(event.target instanceof Element)) return;
+        hoverElement = event.target;
+        hoverElement.classList.add('dsh-native-window-drag-hover');
+      };
+      const reset = () => {
+        candidate = null;
+        dragging = false;
+        setDragSurfaceActive(false);
+      };
+      window.__DSH_NATIVE_WINDOW_DRAG_CLEANUP__ = reset;
+
+      document.addEventListener('mousedown', (event) => {
+        // A prevented mouseup may not be followed by a click event in every
+        // WebKit version, so never carry click suppression into a new gesture.
+        suppressClick = false;
+        clearHoverElement();
+        suppressTitlebarSelection = event.clientY <= titlebarHeight && !isTextEditingTarget(event.target);
+        setDragSurfaceActive(false);
+        if (event.button !== 0 || event.clientY > titlebarHeight || isInteractive(event.target)) {
+          candidate = null;
+          return;
+        }
+        // Stop WebKit from beginning a text selection or showing an I-beam
+        // before the movement threshold promotes this gesture to a window drag.
+        event.preventDefault();
+        candidate = { x: event.screenX, y: event.screenY };
+        setDragSurfaceActive(true);
+        post('windowDragPrepare');
+      }, { capture: true, passive: false });
+
+      document.addEventListener('mousemove', (event) => {
+        updateTitlebarHover(event);
+        if (!candidate) return;
+        if (!dragging) {
+          const distance = Math.hypot(event.screenX - candidate.x, event.screenY - candidate.y);
+          if (distance < dragThreshold) return;
+          dragging = true;
+          suppressClick = true;
+          post('windowDragStart');
+        }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        post('windowDragMove');
+      }, { capture: true, passive: false });
+
+      document.addEventListener('mouseup', (event) => {
+        suppressTitlebarSelection = false;
+        if (!candidate) return;
+        if (dragging) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          post('windowDragEnd');
+        }
+        reset();
+        updateTitlebarHover(event);
+      }, { capture: true, passive: false });
+
+      document.addEventListener('click', (event) => {
+        if (!suppressClick) return;
+        suppressClick = false;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }, true);
+
+      document.addEventListener('selectstart', (event) => {
+        if (!suppressTitlebarSelection) return;
+        event.preventDefault();
+      }, { capture: true, passive: false });
+
+      document.addEventListener('dblclick', (event) => {
+        clearHoverElement();
+        if (event.button !== 0 || event.clientY > titlebarHeight || isInteractive(event.target)) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        window.getSelection?.()?.removeAllRanges();
+        post('windowTitlebarDoubleClick');
+      }, true);
+
+      window.addEventListener('blur', () => {
+        if (dragging) post('windowDragEnd');
+        suppressClick = false;
+        suppressTitlebarSelection = false;
+        clearHoverElement();
+        reset();
+      });
+      document.addEventListener('mouseleave', clearHoverElement, true);
+    })();
     """
 
     private static let webUIReadyScript = """
@@ -128,6 +394,13 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
         )
         userContent.addUserScript(bridgeScript)
 
+        let windowDragUserScript = WKUserScript(
+            source: Self.windowDragScript,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        userContent.addUserScript(windowDragUserScript)
+
         // Pre-inject CSS styles at document start
         let styleScript = """
         (function() {
@@ -154,23 +427,7 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
         self.webView = wv
 
         vibrancy.addSubview(wv)
-
-        // 3. Top Drag Overlay. Pin it to the content view's top edge so the
-        // drag region remains correct when the window is resized.
-        let drag = CustomDragView(frame: .zero)
-        drag.translatesAutoresizingMaskIntoConstraints = false
-        self.dragOverlay = drag
         win.contentView = vibrancy
-        // Install the drag layer after assigning the content view. AppKit can
-        // reorder subviews during the contentView assignment; adding it last
-        // guarantees it remains above WKWebView and receives mouse drags.
-        vibrancy.addSubview(drag, positioned: .above, relativeTo: nil)
-        NSLayoutConstraint.activate([
-            drag.leadingAnchor.constraint(equalTo: vibrancy.leadingAnchor),
-            drag.trailingAnchor.constraint(equalTo: vibrancy.trailingAnchor),
-            drag.topAnchor.constraint(equalTo: vibrancy.topAnchor),
-            drag.heightAnchor.constraint(equalToConstant: 70)
-        ])
     }
 
     // MARK: - App Launch & Initialization
@@ -394,6 +651,20 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
 
     // MARK: - WKNavigationDelegate
 
+    private func isLocalWebURL(_ url: URL) -> Bool {
+        url.host == "127.0.0.1" || url.host == "localhost"
+    }
+
+    private func isExpectedNavigationInterruption(_ error: Error) -> Bool {
+        let error = error as NSError
+        if error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
+            return true
+        }
+        // WebKit uses its legacy policy-change error when a frame navigation
+        // is intentionally converted into a WKDownload.
+        return error.domain == "WebKitErrorDomain" && error.code == 102
+    }
+
     public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.url else {
@@ -401,7 +672,9 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
             return
         }
 
-        if url.host == "127.0.0.1" || url.host == "localhost" {
+        if isLocalWebURL(url) && navigationAction.shouldPerformDownload {
+            decisionHandler(.download)
+        } else if isLocalWebURL(url) {
             decisionHandler(.allow)
         } else {
             if navigationAction.navigationType == .linkActivated {
@@ -411,6 +684,34 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
         }
     }
 
+    public func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse,
+                        decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+        guard let url = navigationResponse.response.url,
+              isLocalWebURL(url) else {
+            decisionHandler(.cancel)
+            return
+        }
+
+        let contentDisposition = (navigationResponse.response as? HTTPURLResponse)?
+            .value(forHTTPHeaderField: "Content-Disposition")?
+            .lowercased()
+        if contentDisposition?.contains("attachment") == true || !navigationResponse.canShowMIMEType {
+            decisionHandler(.download)
+        } else {
+            decisionHandler(.allow)
+        }
+    }
+
+    public func webView(_ webView: WKWebView, navigationAction: WKNavigationAction,
+                        didBecome download: WKDownload) {
+        download.delegate = self
+    }
+
+    public func webView(_ webView: WKWebView, navigationResponse: WKNavigationResponse,
+                        didBecome download: WKDownload) {
+        download.delegate = self
+    }
+
     public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         syncUiTheme()
         syncTranslateCommands()
@@ -418,13 +719,154 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
     }
 
     public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        if isExpectedNavigationInterruption(error) {
+            print("[MainWindowController] Ignored expected navigation interruption:", error.localizedDescription)
+            return
+        }
         revealWindow()
         showErrorAlert("页面加载失败：\(error.localizedDescription)")
     }
 
     public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        if isExpectedNavigationInterruption(error) {
+            print("[MainWindowController] Ignored expected provisional navigation interruption:", error.localizedDescription)
+            return
+        }
         revealWindow()
         showErrorAlert("页面加载失败：\(error.localizedDescription)")
+    }
+
+    // MARK: - WKDownloadDelegate
+
+    private func downloadSelectionDefaults(suggestedFilename: String) throws -> (directory: URL, filename: String) {
+        let fileManager = FileManager.default
+        guard let downloadsDirectory = fileManager.urls(for: .downloadsDirectory, in: .userDomainMask).first else {
+            throw NSError(
+                domain: "DSHDownload",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "无法找到用户下载目录。"]
+            )
+        }
+        try fileManager.createDirectory(at: downloadsDirectory, withIntermediateDirectories: true)
+
+        let lastPathComponent = (suggestedFilename as NSString).lastPathComponent
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let filename = lastPathComponent.isEmpty || lastPathComponent == "." || lastPathComponent == ".."
+            ? "download"
+            : lastPathComponent
+        return (downloadsDirectory, filename)
+    }
+
+    private func showDownloadError(_ message: String) {
+        dismissDownloadStatus()
+        guard let window else { return }
+        let alert = NSAlert()
+        alert.messageText = "下载失败"
+        alert.informativeText = message
+        alert.addButton(withTitle: "好的")
+        alert.beginSheetModal(for: window)
+    }
+
+    private func showDownloadStatus(destination: URL, completed: Bool) {
+        guard let vibrancyView else { return }
+
+        let banner: DownloadStatusBanner
+        if let existing = downloadStatusBanner {
+            banner = existing
+        } else {
+            banner = DownloadStatusBanner(frame: .zero)
+            banner.translatesAutoresizingMaskIntoConstraints = false
+            vibrancyView.addSubview(banner, positioned: .above, relativeTo: nil)
+            NSLayoutConstraint.activate([
+                banner.trailingAnchor.constraint(equalTo: vibrancyView.trailingAnchor, constant: -20),
+                banner.bottomAnchor.constraint(equalTo: vibrancyView.bottomAnchor, constant: -20),
+                banner.widthAnchor.constraint(equalToConstant: 500)
+            ])
+            downloadStatusBanner = banner
+        }
+
+        banner.onReveal = {
+            NSWorkspace.shared.activateFileViewerSelecting([destination])
+        }
+        banner.onClose = { [weak self, weak banner] in
+            guard let self, self.downloadStatusBanner === banner else { return }
+            self.dismissDownloadStatus()
+        }
+        banner.update(destination: destination, completed: completed)
+    }
+
+    private func dismissDownloadStatus() {
+        downloadStatusBanner?.removeFromSuperview()
+        downloadStatusBanner = nil
+    }
+
+    public func download(_ download: WKDownload, decideDestinationUsing response: URLResponse,
+                         suggestedFilename: String, completionHandler: @escaping (URL?) -> Void) {
+        do {
+            let defaults = try downloadSelectionDefaults(suggestedFilename: suggestedFilename)
+            guard let window else {
+                throw NSError(
+                    domain: "DSHDownload",
+                    code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "主窗口当前不可用。"]
+                )
+            }
+
+            let panel = NSSavePanel()
+            panel.title = "保存 Session 导出"
+            panel.message = "选择 Session ZIP 文件的保存位置。"
+            panel.prompt = "保存"
+            panel.directoryURL = defaults.directory
+            panel.nameFieldStringValue = defaults.filename
+            panel.canCreateDirectories = true
+            panel.isExtensionHidden = false
+
+            panel.beginSheetModal(for: window) { [weak self] response in
+                guard let self else {
+                    completionHandler(nil)
+                    return
+                }
+                guard response == .OK, let destination = panel.url else {
+                    completionHandler(nil)
+                    return
+                }
+
+                do {
+                    // NSSavePanel has already asked the user to confirm an
+                    // overwrite. WKDownload requires that its destination
+                    // does not exist when the transfer begins.
+                    if FileManager.default.fileExists(atPath: destination.path) {
+                        try FileManager.default.removeItem(at: destination)
+                    }
+                    self.downloadDestinations[ObjectIdentifier(download)] = destination
+                    self.showDownloadStatus(destination: destination, completed: false)
+                    completionHandler(destination)
+                } catch {
+                    completionHandler(nil)
+                    self.showDownloadError(error.localizedDescription)
+                }
+            }
+        } catch {
+            completionHandler(nil)
+            showDownloadError(error.localizedDescription)
+        }
+    }
+
+    public func downloadDidFinish(_ download: WKDownload) {
+        if let destination = downloadDestinations.removeValue(forKey: ObjectIdentifier(download)) {
+            print("[MainWindowController] Download completed:", destination.path)
+            showDownloadStatus(destination: destination, completed: true)
+        }
+    }
+
+    public func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
+        downloadDestinations.removeValue(forKey: ObjectIdentifier(download))
+        if isExpectedNavigationInterruption(error) {
+            print("[MainWindowController] Download cancelled")
+            return
+        }
+        print("[MainWindowController] Download failed:", error.localizedDescription)
+        showDownloadError(error.localizedDescription)
     }
 
     // MARK: - WKUIDelegate
@@ -454,6 +896,72 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
         }
     }
     public func bridgeDidReceiveLocale(language: String) {}
+
+    public func bridgeDidPrepareWindowDrag() {
+        isUsingNativeWindowDrag = false
+        windowDragStartOrigin = nil
+        windowDragStartMouseLocation = nil
+
+        guard let event = NSApp.currentEvent,
+              event.type == .leftMouseDown else {
+            windowDragMouseDownEvent = nil
+            return
+        }
+        windowDragMouseDownEvent = event
+    }
+
+    public func bridgeDidStartWindowDrag() {
+        guard let window else { return }
+        if let mouseDownEvent = windowDragMouseDownEvent {
+            windowDragMouseDownEvent = nil
+            isUsingNativeWindowDrag = true
+            window.performDrag(with: mouseDownEvent)
+            webView?.evaluateJavaScript("window.__DSH_NATIVE_WINDOW_DRAG_CLEANUP__?.()", completionHandler: nil)
+            return
+        }
+
+        windowDragStartOrigin = window.frame.origin
+        windowDragStartMouseLocation = NSEvent.mouseLocation
+    }
+
+    public func bridgeDidMoveWindowDrag() {
+        guard !isUsingNativeWindowDrag else { return }
+        guard let window,
+              let startOrigin = windowDragStartOrigin,
+              let startMouseLocation = windowDragStartMouseLocation else { return }
+        let currentMouseLocation = NSEvent.mouseLocation
+        window.setFrameOrigin(NSPoint(
+            x: startOrigin.x + currentMouseLocation.x - startMouseLocation.x,
+            y: startOrigin.y + currentMouseLocation.y - startMouseLocation.y
+        ))
+    }
+
+    public func bridgeDidEndWindowDrag() {
+        windowDragMouseDownEvent = nil
+        isUsingNativeWindowDrag = false
+        windowDragStartOrigin = nil
+        windowDragStartMouseLocation = nil
+    }
+
+    public func bridgeDidDoubleClickWindowTitlebar() {
+        bridgeDidEndWindowDrag()
+        guard let window else { return }
+
+        let globalDefaults = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)
+        let configuredAction = (globalDefaults?["AppleActionOnDoubleClick"] as? String)?.lowercased()
+        let legacyMiniaturize = (globalDefaults?["AppleMiniaturizeOnDoubleClick"] as? NSNumber)?.boolValue ?? false
+
+        if configuredAction == "none" {
+            return
+        }
+        if configuredAction == "minimize" || (configuredAction == nil && legacyMiniaturize) {
+            window.performMiniaturize(nil)
+        } else {
+            // AppKit toggles between the standard zoomed frame and the
+            // previous frame, restoring the user's former centered position.
+            window.performZoom(nil)
+        }
+    }
 }
 
 // MARK: - Onboarding View Model & View

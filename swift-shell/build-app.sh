@@ -45,7 +45,6 @@ SWIFT_SOURCES=(
 	"${SCRIPT_DIR}/Sources/DSHShell/Notification/NotificationManager.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/Bridge/DshBridgeHandler.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/About/AboutWindowController.swift"
-	"${SCRIPT_DIR}/Sources/DSHShell/MainWindow/CustomDragView.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/MainWindow/MainWindowController.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/SettingsUI/SettingsViewModel.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/SettingsUI/VersionsTabView.swift"

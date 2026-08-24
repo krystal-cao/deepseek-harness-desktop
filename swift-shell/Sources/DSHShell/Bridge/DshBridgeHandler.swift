@@ -6,6 +6,11 @@ public protocol DshBridgeDelegate: AnyObject {
     func bridgeDidReceiveReady()
     func bridgeDidReceiveTheme(colorScheme: String?, externalTheme: String?)
     func bridgeDidReceiveLocale(language: String)
+    func bridgeDidPrepareWindowDrag()
+    func bridgeDidStartWindowDrag()
+    func bridgeDidMoveWindowDrag()
+    func bridgeDidEndWindowDrag()
+    func bridgeDidDoubleClickWindowTitlebar()
 }
 
 public final class DshBridgeHandler: NSObject, WKScriptMessageHandler {
@@ -71,6 +76,26 @@ public final class DshBridgeHandler: NSObject, WKScriptMessageHandler {
             if !MainWindowController.shared.isFocusedForNotifications {
                 NotificationManager.shared.showTaskDoneNotification(title: title, cwd: cwd)
             }
+
+        case "windowDragPrepare":
+            guard message.frameInfo.isMainFrame else { return }
+            delegate?.bridgeDidPrepareWindowDrag()
+
+        case "windowDragStart":
+            guard message.frameInfo.isMainFrame else { return }
+            delegate?.bridgeDidStartWindowDrag()
+
+        case "windowDragMove":
+            guard message.frameInfo.isMainFrame else { return }
+            delegate?.bridgeDidMoveWindowDrag()
+
+        case "windowDragEnd":
+            guard message.frameInfo.isMainFrame else { return }
+            delegate?.bridgeDidEndWindowDrag()
+
+        case "windowTitlebarDoubleClick":
+            guard message.frameInfo.isMainFrame else { return }
+            delegate?.bridgeDidDoubleClickWindowTitlebar()
 
         case "debug":
             if let msg = body["payload"] {
