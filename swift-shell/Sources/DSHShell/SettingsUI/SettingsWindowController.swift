@@ -3,41 +3,32 @@ import SwiftUI
 
 public final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     public static let shared = SettingsWindowController()
-    // Match the native titlebar height. The content header starts below this
-    // strip and must remain interactive instead of becoming draggable.
-    private static let dragRegionHeight: CGFloat = 70
     private var titleObserver: NSObjectProtocol?
-    private var dragOverlay: CustomDragView?
 
     private init() {
         let hostingController = NSHostingController(rootView: SettingsView())
         let win = NSWindow(contentViewController: hostingController)
         win.title = "通用设置"
         win.titleVisibility = .hidden
-        win.titlebarAppearsTransparent = true
+        win.titlebarAppearsTransparent = false
         win.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-        win.setContentSize(NSSize(width: 900, height: 620))
-        win.minSize = NSSize(width: 820, height: 560)
+        win.setContentSize(NSSize(width: 920, height: 620))
+        win.minSize = NSSize(width: 860, height: 560)
         win.center()
         win.isReleasedWhenClosed = false
-        win.isOpaque = false
-        win.backgroundColor = .clear
+        win.isOpaque = true
+        win.backgroundColor = .windowBackgroundColor
         win.hasShadow = true
-        win.isMovableByWindowBackground = true
+        // Let AppKit own the titlebar hit testing. A full-width custom drag
+        // layer used to sit above the SwiftUI settings header on macOS 26 and
+        // made the top controls feel unresponsive.
+        win.isMovableByWindowBackground = false
         if #available(macOS 11.0, *) {
-            win.toolbarStyle = .unifiedCompact
-            win.titlebarSeparatorStyle = .none
+            win.toolbarStyle = .unified
         }
 
         super.init(window: win)
         win.delegate = self
-        if let contentView = win.contentView {
-            let drag = CustomDragView(frame: .zero)
-            drag.autoresizingMask = [.width, .minYMargin]
-            contentView.addSubview(drag, positioned: .above, relativeTo: nil)
-            dragOverlay = drag
-            layoutDragOverlay()
-        }
         titleObserver = NotificationCenter.default.addObserver(
             forName: .dshSettingsPanelDidChange,
             object: nil,
@@ -68,7 +59,6 @@ public final class SettingsWindowController: NSWindowController, NSWindowDelegat
         }
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        layoutDragOverlay()
         // SwiftUI may select the first TextField when the settings window
         // becomes key. Settings should open as a browsing surface instead of
         // immediately entering port-edit mode.
@@ -82,22 +72,4 @@ public final class SettingsWindowController: NSWindowController, NSWindowDelegat
         window?.title = SettingsPanel(rawValue: index)?.title ?? "设置"
     }
 
-    public func windowDidResize(_ notification: Notification) {
-        layoutDragOverlay()
-    }
-
-    public func windowDidBecomeKey(_ notification: Notification) {
-        layoutDragOverlay()
-    }
-
-    private func layoutDragOverlay() {
-        guard let contentView = window?.contentView, let dragOverlay else { return }
-        let height = min(Self.dragRegionHeight, contentView.bounds.height)
-        dragOverlay.frame = NSRect(
-            x: 0,
-            y: contentView.bounds.height - height,
-            width: contentView.bounds.width,
-            height: height
-        )
-    }
 }

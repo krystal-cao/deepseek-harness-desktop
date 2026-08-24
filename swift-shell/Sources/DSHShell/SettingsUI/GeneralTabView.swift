@@ -10,6 +10,20 @@ final class GeneralTabViewModel: ObservableObject {
 }
 
 public struct GeneralTabView: View {
+    private struct RegistryOption: Identifiable {
+        let title: String
+        let url: String
+
+        var id: String { url }
+    }
+
+    private static let registryOptions = [
+        RegistryOption(title: "官方 npm", url: DshVersionManager.defaultRegistry),
+        RegistryOption(title: "淘宝镜像", url: DshVersionManager.mirrorRegistry),
+        RegistryOption(title: "腾讯云镜像", url: "https://mirrors.cloud.tencent.com/npm"),
+        RegistryOption(title: "华为云镜像", url: "https://mirrors.huaweicloud.com/repository/npm")
+    ]
+
     @ObservedObject var viewModel = SettingsViewModel.shared
     @StateObject private var localState = GeneralTabViewModel()
     @FocusState private var focusedField: Field?
@@ -25,6 +39,21 @@ public struct GeneralTabView: View {
             return "已检测到第三方主题（" + externalTheme + "），内置主题已锁定以避免样式冲突。"
         }
         return "主题切换会同步到正在运行的 DSH 页面。"
+    }
+
+    private var currentRegistry: String {
+        let normalized = normalizeRegistry(viewModel.npmRegistry)
+        return normalized.isEmpty ? DshVersionManager.defaultRegistry : normalized
+    }
+
+    private var npmRegistrySelection: Binding<String> {
+        Binding(
+            get: { currentRegistry },
+            set: {
+                viewModel.npmRegistry = normalizeRegistry($0)
+                viewModel.saveGeneralSettings()
+            }
+        )
     }
 
     public var body: some View {
@@ -48,7 +77,7 @@ public struct GeneralTabView: View {
                         ))
                         .labelsHidden()
                         .toggleStyle(.switch)
-                        .controlSize(.mini)
+                        .controlSize(.small)
                         .fixedSize()
                     }
                     .frame(width: 220, alignment: .trailing)
@@ -71,7 +100,7 @@ public struct GeneralTabView: View {
                         ))
                         .labelsHidden()
                         .toggleStyle(.switch)
-                        .controlSize(.mini)
+                        .controlSize(.small)
                         .fixedSize()
                     }
                     .frame(width: 220, alignment: .trailing)
@@ -109,17 +138,13 @@ public struct GeneralTabView: View {
                     title: "npm 镜像地址",
                     description: "网络较慢或官方源不可用时，可以切换到备用镜像。"
                 ) {
-                    Picker("", selection: Binding(
-                        get: { viewModel.npmRegistry },
-                        set: {
-                            viewModel.npmRegistry = $0
-                            viewModel.saveGeneralSettings()
+                    Picker("", selection: npmRegistrySelection) {
+                        ForEach(Self.registryOptions) { option in
+                            Text(option.title).tag(option.url)
                         }
-                    )) {
-                        Text("官方 npm").tag("https://registry.npmjs.org/")
-                        Text("淘宝镜像").tag("https://registry.npmmirror.com/")
-                        Text("腾讯云镜像").tag("https://mirrors.cloud.tencent.com/npm/")
-                        Text("华为云镜像").tag("https://mirrors.huaweicloud.com/repository/npm/")
+                        if !Self.registryOptions.contains(where: { $0.url == currentRegistry }) {
+                            Text("自定义镜像").tag(currentRegistry)
+                        }
                     }
                     .pickerStyle(.menu)
                     .controlSize(.small)
@@ -177,7 +202,7 @@ public struct GeneralTabView: View {
                 focusedField = nil
             }
         }
-        .onChange(of: viewModel.dshPort) { _, newPort in
+        .onChange(of: viewModel.dshPort) { newPort in
             let value = String(newPort)
             if localState.tempPort != value {
                 localState.tempPort = value
@@ -203,5 +228,13 @@ public struct GeneralTabView: View {
         DispatchQueue.main.async {
             focusedField = nil
         }
+    }
+
+    private func normalizeRegistry(_ value: String) -> String {
+        var normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        while normalized.hasSuffix("/") {
+            normalized.removeLast()
+        }
+        return normalized
     }
 }
