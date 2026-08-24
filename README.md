@@ -36,6 +36,8 @@ DSH Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。�
 
 [查看介绍并下载 v0.3.5 Swift 原生版](https://github.com/krystal-cao/deepseek-harness-desktop/releases/tag/v0.3.5-swift)
 
+本地执行 `npm run dist:swift` 会先构建 Apple Silicon 与 Intel 两个版本，再分别生成对应的 DMG；产物保存在 `dist/swift/`。
+
 全部当前和历史安装包可在 [GitHub Releases](https://github.com/krystal-cao/deepseek-harness-desktop/releases) 查看。
 
 ---
