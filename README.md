@@ -30,6 +30,12 @@ DSH Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。�
 | macOS | Apple Silicon | DMG / ZIP | [下载](https://github.com/krystal-cao/deepseek-harness-desktop/releases/latest) |
 | macOS | Intel | DMG / ZIP | [下载](https://github.com/krystal-cao/deepseek-harness-desktop/releases/latest) |
 
+### Swift 原生 macOS 壳（预发布）
+
+另提供基于 AppKit、SwiftUI 和 WKWebView 的 Swift 原生版本，安装包按 Apple Silicon 与 Intel 分架构发布。应用只内置 Node.js 和 pnpm，首次启动时会从 npm 下载 DSH 运行时；目前不支持应用本体自动更新。
+
+[查看介绍并下载 v0.3.5 Swift 原生版](https://github.com/krystal-cao/deepseek-harness-desktop/releases/tag/v0.3.5-swift)
+
 全部当前和历史安装包可在 [GitHub Releases](https://github.com/krystal-cao/deepseek-harness-desktop/releases) 查看。
 
 ---
