@@ -16,8 +16,10 @@
   },
   "scripts": {
     "start": "electron .",
-    "start:swift": "open dist/swift/DSH.app",
+    "start:swift": "open \"dist/swift/$(uname -m)/DSH.app\"",
     "build:swift": "bash swift-shell/build-app.sh",
+    "build:swift:arm64": "DSH_BUILD_ARCH=arm64 bash swift-shell/build-app.sh",
+    "build:swift:x86_64": "DSH_BUILD_ARCH=x86_64 bash swift-shell/build-app.sh",
     "test": "node --test test/*.test.js",
     "check:upstream": "node scripts/check-upstream.mjs",
     "bump:dsh": "node scripts/bump-dsh.mjs",
