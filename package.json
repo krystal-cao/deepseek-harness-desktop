@@ -30,8 +30,11 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "dist:mac": "npm run dist:mac:arm64",
+    "predist:mac:arm64": "node scripts/prepare-macos-package-dependencies.mjs",
     "dist:mac:arm64": "electron-builder --mac dmg zip --arm64 --publish never",
+    "predist:mac:all": "node scripts/prepare-macos-package-dependencies.mjs",
     "dist:mac:all": "electron-builder --mac dmg zip --arm64 --x64 --publish never",
+    "predist:mac:x64": "node scripts/prepare-macos-package-dependencies.mjs",
     "dist:mac:x64": "electron-builder --mac dmg zip --x64 --publish never"
   },
   "dependencies": {
@@ -144,9 +147,6 @@
     "koffi": true,
     "node-pty": true,
     "protobufjs": true
-  },
-  "directories": {
-    "test": "test"
   },
   "keywords": []
 }
