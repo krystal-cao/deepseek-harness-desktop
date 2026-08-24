@@ -575,24 +575,25 @@ public final class DshVersionManager {
     /// Natural SemVer version sorting (highest version first).
     public func sortVersions(_ versions: [String]) -> [String] {
         return versions.sorted { a, b in
-            let partsA = a.components(separatedBy: CharacterSet(charactersIn: ".-+"))
-            let partsB = b.components(separatedBy: CharacterSet(charactersIn: ".-+"))
-            for i in 0..<max(partsA.count, partsB.count) {
-                let segA = i < partsA.count ? partsA[i] : ""
-                let segB = i < partsB.count ? partsB[i] : ""
-                let intA = Int(segA)
-                let intB = Int(segB)
-                if let ia = intA, let ib = intB {
-                    if ia != ib { return ia > ib }
-                } else {
-                    if segA != segB { return segA > segB }
-                }
+            let parsedA = DshSemanticVersion(a)
+            let parsedB = DshSemanticVersion(b)
+            switch (parsedA, parsedB) {
+            case let (left?, right?):
+                if left != right { return left > right }
+                return a > b
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            case (nil, nil):
+                return a > b
             }
-            return a > b
         }
     }
 
     public func isVersionNewer(_ lhs: String, than rhs: String) -> Bool {
-        lhs != rhs && sortVersions([lhs, rhs]).first == lhs
+        guard let left = DshSemanticVersion(lhs),
+              let right = DshSemanticVersion(rhs) else { return false }
+        return left > right
     }
 }
