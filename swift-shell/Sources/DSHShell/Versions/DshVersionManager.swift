@@ -29,6 +29,15 @@ public struct InstallProgress: Equatable {
     public let detail: String?
 }
 
+private struct DshFamilyManifest: Decodable {
+    let packages: [String]
+}
+
+private struct DshFamilyAlignment {
+    let available: [String]
+    let missing: [String]
+}
+
 public final class DshVersionManager {
     public static let shared = DshVersionManager()
 
@@ -192,6 +201,97 @@ public final class DshVersionManager {
         return (latest: latestTag, versions: items)
     }
 
+    private func loadDshFamilyPackages() throws -> [String] {
+        guard let assetsDirectory = NodeRuntime.shared.resolveAssetsDirectory() else {
+            throw NSError(
+                domain: "DshVersionManager",
+                code: -13,
+                userInfo: [NSLocalizedDescriptionKey: "找不到 DSH 插件族清单所在的资源目录"]
+            )
+        }
+
+        let manifestURL = URL(fileURLWithPath: assetsDirectory)
+            .appendingPathComponent("dsh-family.json")
+        guard let data = try? Data(contentsOf: manifestURL),
+              let manifest = try? JSONDecoder().decode(DshFamilyManifest.self, from: data) else {
+            throw NSError(
+                domain: "DshVersionManager",
+                code: -13,
+                userInfo: [NSLocalizedDescriptionKey: "无法读取 DSH 插件族清单"]
+            )
+        }
+
+        let packages = manifest.packages.sorted()
+        guard !packages.isEmpty,
+              Set(packages).count == packages.count,
+              packages.allSatisfy({ $0.hasPrefix("@deepseek-ai/dsh-") }) else {
+            throw NSError(
+                domain: "DshVersionManager",
+                code: -13,
+                userInfo: [NSLocalizedDescriptionKey: "DSH 插件族清单格式无效"]
+            )
+        }
+        return packages
+    }
+
+    private func resolveAlignedFamily(version: String, registry: String) async throws -> DshFamilyAlignment {
+        let packages = try loadDshFamilyPackages()
+        var registryBase = registry.trimmingCharacters(in: .whitespacesAndNewlines)
+        while registryBase.hasSuffix("/") { registryBase.removeLast() }
+
+        let results = await withTaskGroup(of: (String, Bool).self) { group in
+            for package in packages {
+                group.addTask {
+                    guard let url = URL(string: "\(registryBase)/\(package)") else {
+                        return (package, false)
+                    }
+                    var request = URLRequest(url: url)
+                    request.timeoutInterval = 10.0
+                    request.setValue("application/vnd.npm.install-v1+json", forHTTPHeaderField: "Accept")
+                    do {
+                        let (data, response) = try await URLSession.shared.data(for: request)
+                        guard let httpResponse = response as? HTTPURLResponse,
+                              (200...299).contains(httpResponse.statusCode),
+                              let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                              let versions = root["versions"] as? [String: Any] else {
+                            return (package, false)
+                        }
+                        return (package, versions[version] != nil)
+                    } catch {
+                        return (package, false)
+                    }
+                }
+            }
+
+            var values: [(String, Bool)] = []
+            for await result in group { values.append(result) }
+            return values
+        }
+
+        return DshFamilyAlignment(
+            available: results.filter(\.1).map(\.0).sorted(),
+            missing: results.filter { !$0.1 }.map(\.0).sorted()
+        )
+    }
+
+    private func misalignedFamilyPackages(
+        in installRoot: URL,
+        version: String,
+        packages: [String]
+    ) -> [String] {
+        packages.filter { package in
+            let manifestURL = installRoot
+                .appendingPathComponent("node_modules", isDirectory: true)
+                .appendingPathComponent(package, isDirectory: true)
+                .appendingPathComponent("package.json")
+            guard let data = try? Data(contentsOf: manifestURL),
+                  let manifest = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                return true
+            }
+            return manifest["name"] as? String != package || manifest["version"] as? String != version
+        }
+    }
+
     /// Install a specific version using bundled pnpm into an atomic directory.
     public func installVersion(
         version: String,
@@ -236,23 +336,33 @@ public final class DshVersionManager {
             }
         }
 
-        onProgress(InstallProgress(version: version, phase: "正在从 npm 下载 DSH \(version)...", detail: "Registry: \(reg)"))
+        onProgress(InstallProgress(version: version, phase: "正在检查 DSH 插件族...", detail: "目标版本：\(version)"))
+        let alignedFamily = try await resolveAlignedFamily(version: version, registry: reg)
+        let familyTotal = alignedFamily.available.count + alignedFamily.missing.count
+        onProgress(InstallProgress(
+            version: version,
+            phase: "正在从 npm 下载 DSH \(version)...",
+            detail: "插件族 \(alignedFamily.available.count)/\(familyTotal) 可对齐 · Registry: \(reg)"
+        ))
 
         // pnpm 11 blocks dependency build scripts by default. Fetch the tree
         // without scripts first, then approve only the scripts present in the
         // downloaded tree and rebuild them. This is the same two-stage flow as
         // the web version and avoids failing halfway through an RC install.
-        let packageJSON = """
-        {
-          "name": "deepseek-harness-desktop-managed-dsh",
-          "version": "0.0.0",
-          "private": true,
-          "dependencies": {
-            "@deepseek-ai/dsh": "\(version)"
-          }
-        }
-        """
-        try writeText(packageJSON + "\n", to: stagingDir.appendingPathComponent("package.json"))
+        var dependencies = ["@deepseek-ai/dsh": version]
+        for package in alignedFamily.available { dependencies[package] = version }
+        let packageObject: [String: Any] = [
+            "name": "deepseek-harness-desktop-managed-dsh",
+            "version": "0.0.0",
+            "private": true,
+            "dependencies": dependencies
+        ]
+        var packageData = try JSONSerialization.data(
+            withJSONObject: packageObject,
+            options: [.prettyPrinted, .sortedKeys]
+        )
+        packageData.append(0x0A)
+        try packageData.write(to: stagingDir.appendingPathComponent("package.json"), options: .atomic)
         try writeText(
             "registry=\(reg)\nprefer-offline=true\naudit=false\nminimum-release-age=0\n",
             to: stagingDir.appendingPathComponent(".npmrc")
@@ -302,6 +412,21 @@ public final class DshVersionManager {
             throw NSError(domain: "DshVersionManager", code: -6, userInfo: [NSLocalizedDescriptionKey: "安装产物中未找到 bin.js 入口"])
         }
 
+        let misalignedPackages = misalignedFamilyPackages(
+            in: stagingDir,
+            version: version,
+            packages: alignedFamily.available
+        )
+        guard misalignedPackages.isEmpty else {
+            throw NSError(
+                domain: "DshVersionManager",
+                code: -14,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "DSH 插件族版本校验失败：\(misalignedPackages.joined(separator: ", "))"
+                ]
+            )
+        }
+
         onProgress(InstallProgress(version: version, phase: "正在准备环境...", detail: "移动到版本目录"))
 
         // Atomically replace target directory
@@ -317,7 +442,11 @@ public final class DshVersionManager {
             }
         }
 
-        onProgress(InstallProgress(version: version, phase: "安装完成", detail: nil))
+        onProgress(InstallProgress(
+            version: version,
+            phase: "安装完成",
+            detail: "插件族已对齐 \(alignedFamily.available.count) 个，\(alignedFamily.missing.count) 个版本尚未发布"
+        ))
         return !hadRunnableVersion
     }
 

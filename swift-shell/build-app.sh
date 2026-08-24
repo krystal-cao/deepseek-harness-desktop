@@ -60,9 +60,14 @@ APP_VERSION="$(plutil -extract version raw "${REPO_DIR}/package.json")"
 DIST_DIR="${REPO_DIR}/dist/swift"
 APP_ICON_SOURCE="${REPO_DIR}/assets/icon.icns"
 APP_ICON_NAME="DSH.icns"
+DSH_FAMILY_MANIFEST_SOURCE="${REPO_DIR}/assets/dsh-family.json"
 
 if [ ! -s "${APP_ICON_SOURCE}" ]; then
 	echo "Application icon is missing or empty: ${APP_ICON_SOURCE}" >&2
+	exit 1
+fi
+if [ ! -s "${DSH_FAMILY_MANIFEST_SOURCE}" ]; then
+	echo "DSH family manifest is missing or empty: ${DSH_FAMILY_MANIFEST_SOURCE}" >&2
 	exit 1
 fi
 
@@ -126,6 +131,11 @@ for BUILD_ARCH in "${BUILD_ARCHES[@]}"; do
 	cp "${APP_ICON_SOURCE}" "${APP_ICON_DESTINATION}"
 	if ! cmp -s "${APP_ICON_SOURCE}" "${APP_ICON_DESTINATION}"; then
 		echo "Application icon was not copied correctly" >&2
+		exit 1
+	fi
+	cp "${DSH_FAMILY_MANIFEST_SOURCE}" "${RESOURCES_DIR}/assets/dsh-family.json"
+	if ! cmp -s "${DSH_FAMILY_MANIFEST_SOURCE}" "${RESOURCES_DIR}/assets/dsh-family.json"; then
+		echo "DSH family manifest was not copied correctly" >&2
 		exit 1
 	fi
 	if [ -d "${REPO_DIR}/assets/bin" ]; then
