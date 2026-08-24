@@ -85,14 +85,11 @@ public final class DshService: @unchecked Sendable {
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: nodePath)
-        proc.arguments = [
-            "--expose-internals",
-            entry,
-            "--profile", "web",
-            "--host", "127.0.0.1",
-            "--port", String(actualPort),
-            "--no-open"
-        ]
+        proc.arguments = Self.buildArguments(
+            entry: entry,
+            port: actualPort,
+            version: Self.resolveDshVersion(forEntry: entry)
+        )
         proc.standardInput = FileHandle.nullDevice
 
         let stdoutPipe = Pipe()
@@ -112,6 +109,37 @@ public final class DshService: @unchecked Sendable {
 
         let waiter = ProcessWaiter(proc: proc, stdoutPipe: stdoutPipe, stderrPipe: stderrPipe)
         return try await waiter.wait()
+    }
+
+    public static func buildArguments(entry: String, port: Int, version: String?) -> [String] {
+        var arguments = [
+            "--expose-internals",
+            entry,
+            "--profile", "web",
+            "--host", "127.0.0.1",
+            "--port", String(port)
+        ]
+        if let version,
+           let semanticVersion = DshSemanticVersion(version),
+           semanticVersion.supportsNoOpen {
+            arguments.append("--no-open")
+        }
+        return arguments
+    }
+
+    private static func resolveDshVersion(forEntry entry: String) -> String? {
+        var directory = URL(fileURLWithPath: entry).deletingLastPathComponent()
+        for _ in 0..<5 {
+            let manifestURL = directory.appendingPathComponent("package.json")
+            if let data = try? Data(contentsOf: manifestURL),
+               let manifest = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               manifest["name"] as? String == "@deepseek-ai/dsh",
+               let version = manifest["version"] as? String {
+                return version
+            }
+            directory.deleteLastPathComponent()
+        }
+        return nil
     }
 
     public func stop() {

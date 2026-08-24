@@ -38,6 +38,7 @@ SWIFT_SOURCES=(
 	"${SCRIPT_DIR}/Sources/DSHShell/AppDelegate.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/State/DshState.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/Service/NodeRuntime.swift"
+	"${SCRIPT_DIR}/Sources/DSHShell/Versions/DshSemanticVersion.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/Service/DshService.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/Versions/DshVersionManager.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/Plugins/DshPluginManager.swift"
