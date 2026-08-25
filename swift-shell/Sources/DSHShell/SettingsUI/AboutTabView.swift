@@ -46,8 +46,7 @@ public struct AboutTabView: View {
     }
 
     private var appIcon: NSImage {
-        NSApplication.shared.applicationIconImage
-            ?? NSImage(systemSymbolName: "shippingbox.fill", accessibilityDescription: "DSH")!
+        ApplicationIcon.image
     }
 
     public var body: some View {

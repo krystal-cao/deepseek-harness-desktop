@@ -36,6 +36,7 @@ export MACOSX_DEPLOYMENT_TARGET="${DEPLOYMENT_TARGET}"
 SWIFT_SOURCES=(
 	"${SCRIPT_DIR}/Sources/DSHShell/main.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/AppDelegate.swift"
+	"${SCRIPT_DIR}/Sources/DSHShell/ApplicationIcon.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/State/DshState.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/Service/NodeRuntime.swift"
 	"${SCRIPT_DIR}/Sources/DSHShell/Versions/DshSemanticVersion.swift"
