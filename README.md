@@ -36,6 +36,14 @@ DSH Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。�
 
 [查看介绍并下载 v0.3.5 Swift 原生版](https://github.com/krystal-cao/deepseek-harness-desktop/releases/tag/v0.3.5-swift)
 
+本地执行 `npm run dist:swift` 会先构建 Apple Silicon 与 Intel 两个版本，再分别生成对应的 DMG；产物保存在 `dist/swift/`。
+
+Swift 工程本身不需要 `npm install` 或 `npm ci`。Swift 版本号独立维护在 `swift-shell/Version.xcconfig` 中；从 GitHub 干净克隆后，执行 `bash swift-shell/build-app.sh`（或对应的 `npm run build:swift:*` 包装命令）即可。构建流程会自动准备 Node.js，并从 npm 镜像下载、校验固定版本的 pnpm CLI 到被 Git 忽略的 `swift-shell/assets/bin/pnpm-pkg/`。
+
+Swift 应用图标由 `swift-shell/app.icon` 管理并由 Xcode 编译；根目录的 `assets/icon.icns` 仅供 Electron 版本使用。
+
+Swift 壳使用 `swift-shell/assets/dsh-desktop-host/` 内置的桥接插件副本，Xcode 构建不再读取根目录的 Electron 插件资源。
+
 全部当前和历史安装包可在 [GitHub Releases](https://github.com/krystal-cao/deepseek-harness-desktop/releases) 查看。
 
 ---

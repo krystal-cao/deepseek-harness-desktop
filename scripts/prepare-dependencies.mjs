@@ -26,18 +26,28 @@ export function prepareBundledBin({ platform = process.platform, root = process.
   // dsh host PATH under a bare "node" name again.
   rmSync(path.join(binDir, 'node'), { force: true })
 
-  // From <app>/Contents/Resources/app/assets/bin to the Electron binary at
-  // <app>/Contents/MacOS/DSH. Named "dsh-node" (not "node") so
-  // prepending this directory to the dsh host PATH never shadows the user's
-  // real node: the dsh agent's shell tools resolve `node` to the system node,
-  // while pnpm keeps using this shim through the explicit path below.
+  // Swift builds provide their standalone runtime through DSH_NODE_BIN.
+  // Electron builds fall back to running their main binary in Node mode.
+  // Named "dsh-node" (not "node") so prepending this directory to PATH never
+  // shadows the user's real node.
   const nodeShimPath = path.join(binDir, 'dsh-node')
   const nodeShim = `#!/bin/sh
-# Bundled Node shim: run the packaged Electron binary in Node mode so the
-# bundled pnpm works without a shell PATH. Referenced by the pnpm wrapper
-# through an explicit path; never exposed as bare "node" on PATH.
 SELF="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-exec env ELECTRON_RUN_AS_NODE=1 "$SELF/../../../../MacOS/DSH" "$@"
+if [ -n "\${DSH_NODE_BIN:-}" ]; then
+  if [ -x "$DSH_NODE_BIN" ]; then
+    exec "$DSH_NODE_BIN" "$@"
+  fi
+  echo "dsh-node: DSH_NODE_BIN is not executable: $DSH_NODE_BIN" >&2
+  exit 127
+fi
+
+ELECTRON_NODE="$SELF/../../../../MacOS/DSH"
+if [ -x "$ELECTRON_NODE" ]; then
+  exec env ELECTRON_RUN_AS_NODE=1 "$ELECTRON_NODE" "$@"
+fi
+
+echo "dsh-node: no bundled Node.js runtime found" >&2
+exit 127
 `
   writeFileSync(nodeShimPath, nodeShim)
   chmodSync(nodeShimPath, 0o755)

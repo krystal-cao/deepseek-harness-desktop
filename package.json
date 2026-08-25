@@ -4,10 +4,7 @@
   "description": "An unofficial desktop wrapper for DSH (DeepSeek Harness).",
   "type": "module",
   "main": "src/main.js",
-  "author": {
-    "name": "Krystal Cao",
-    "email": "jerry.caocc@liunian.org"
-  },
+  "author": "Krystal Cao <jerry.caocc@liunian.org>",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -19,6 +16,17 @@
   },
   "scripts": {
     "start": "electron .",
+    "start:swift": "open \"dist/swift/$(uname -m)/DSH.app\"",
+    "build:swift": "bash swift-shell/build-app.sh",
+    "build:swift:arm64": "DSH_BUILD_ARCH=arm64 bash swift-shell/build-app.sh",
+    "build:swift:x86_64": "DSH_BUILD_ARCH=x86_64 bash swift-shell/build-app.sh",
+    "dist:swift": "npm run dist:swift:all",
+    "predist:swift:all": "npm run build:swift",
+    "dist:swift:all": "bash swift-shell/package-dmg.sh",
+    "predist:swift:arm64": "npm run build:swift:arm64",
+    "dist:swift:arm64": "DSH_BUILD_ARCH=arm64 bash swift-shell/package-dmg.sh",
+    "predist:swift:x64": "npm run build:swift:x86_64",
+    "dist:swift:x64": "DSH_BUILD_ARCH=x86_64 bash swift-shell/package-dmg.sh",
     "test": "node --test test/*.test.js",
     "check:upstream": "node scripts/check-upstream.mjs",
     "bump:dsh": "node scripts/bump-dsh.mjs",
@@ -29,8 +37,11 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "dist:mac": "npm run dist:mac:arm64",
+    "predist:mac:arm64": "node scripts/prepare-macos-package-dependencies.mjs",
     "dist:mac:arm64": "electron-builder --mac dmg zip --arm64 --publish never",
+    "predist:mac:all": "node scripts/prepare-macos-package-dependencies.mjs",
     "dist:mac:all": "electron-builder --mac dmg zip --arm64 --x64 --publish never",
+    "predist:mac:x64": "node scripts/prepare-macos-package-dependencies.mjs",
     "dist:mac:x64": "electron-builder --mac dmg zip --x64 --publish never"
   },
   "dependencies": {
@@ -143,5 +154,6 @@
     "koffi": true,
     "node-pty": true,
     "protobufjs": true
-  }
+  },
+  "keywords": []
 }

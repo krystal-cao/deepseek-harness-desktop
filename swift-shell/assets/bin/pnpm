@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+SELF="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+
+if [ -n "${DSH_NODE_BIN:-}" ] && [ -x "${DSH_NODE_BIN}" ]; then
+  NODE_BIN="${DSH_NODE_BIN}"
+elif [ -x "${SELF}/../node/bin/node" ]; then
+  NODE_BIN="${SELF}/../node/bin/node"
+elif [ -x "${SELF}/../../node/bin/node" ]; then
+  NODE_BIN="${SELF}/../../node/bin/node"
+else
+  echo "swift pnpm: bundled Node.js runtime not found" >&2
+  exit 127
+fi
+
+exec "${NODE_BIN}" "${SELF}/pnpm-pkg/bin/pnpm.cjs" "$@"
