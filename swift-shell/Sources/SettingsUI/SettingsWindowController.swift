@@ -109,7 +109,9 @@ public final class SettingsWindowController: NSWindowController, NSWindowDelegat
         updateTitle(for: SettingsViewModel.shared.selectedCategoryIndex)
         Task {
             await SettingsViewModel.shared.refreshCatalog()
-            await SettingsViewModel.shared.followLatestIfEnabled()
+            // Auto-follow is a startup policy and is handled by AppDelegate.
+            // Opening Settings must not re-apply it after the user manually
+            // selects an older installed version.
             await SettingsViewModel.shared.checkPluginUpdates()
         }
         window?.makeKeyAndOrderFront(nil)
