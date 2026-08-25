@@ -5,8 +5,13 @@ NODE_VERSION="${NODE_VERSION:-v22.23.1}"
 NODE_SOURCE="${DSH_NODE_SOURCE:-auto}"
 REQUESTED_ARCH="${DSH_NODE_ARCH:-$(uname -m)}"
 
-DEST_DIR="$(cd "$(dirname "$0")/.." && pwd)/assets/node"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DEST_DIR="${SCRIPT_DIR}/assets/node"
 mkdir -p "$DEST_DIR/bin"
+
+prepare_pnpm() {
+  bash "${SCRIPT_DIR}/fetch-pnpm.sh"
+}
 
 case "$REQUESTED_ARCH" in
   arm64)
@@ -36,6 +41,7 @@ esac
 if [ "$NODE_SOURCE" = "auto" ] && [ "$REQUESTED_ARCH" != "universal" ] \
   && [ -f "$DEST_DIR/bin/node" ] && [ -x "$DEST_DIR/bin/node" ]; then
   echo "Bundled node already exists at $DEST_DIR/bin/node ($("$DEST_DIR/bin/node" --version))"
+  prepare_pnpm
   exit 0
 fi
 
@@ -49,6 +55,7 @@ if [ "$NODE_SOURCE" = "auto" ] && [ "$REQUESTED_ARCH" != "universal" ]; then
     cp "$SYSTEM_NODE" "$DEST_DIR/bin/node"
     chmod +x "$DEST_DIR/bin/node"
     echo "Copied system node ($("$DEST_DIR/bin/node" --version)) to $DEST_DIR/bin/node"
+    prepare_pnpm
     exit 0
   fi
 fi
@@ -118,3 +125,4 @@ elif [ "$NODE_SOURCE" = "official" ]; then
 fi
 
 echo "Node.js ${NODE_VERSION} (${REQUESTED_ARCH}) installed to $DEST_DIR/bin/node"
+prepare_pnpm

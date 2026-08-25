@@ -5,9 +5,15 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 APP_NAME="DSH"
-APP_VERSION="$(plutil -extract version raw "${REPO_DIR}/package.json")"
+SWIFT_VERSION_CONFIG="${SCRIPT_DIR}/Version.xcconfig"
+APP_VERSION="$(sed -nE 's/^[[:space:]]*SWIFT_APP_VERSION[[:space:]]*=[[:space:]]*([^[:space:]]+).*/\1/p' "${SWIFT_VERSION_CONFIG}" | head -n 1)"
 DIST_DIR="${REPO_DIR}/dist/swift"
 VOLUME_NAME="DSH Desktop ${APP_VERSION}"
+
+if [ -z "${APP_VERSION}" ]; then
+	echo "Swift application version is missing: ${SWIFT_VERSION_CONFIG}" >&2
+	exit 1
+fi
 
 if [ -n "${DSH_BUILD_ARCHES:-}" ]; then
 	read -r -a PACKAGE_ARCHES <<< "${DSH_BUILD_ARCHES}"

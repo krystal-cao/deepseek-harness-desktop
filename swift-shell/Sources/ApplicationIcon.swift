@@ -3,8 +3,7 @@ import AppKit
 @MainActor
 enum ApplicationIcon {
     static let image: NSImage = {
-        if let iconURL = Bundle.main.url(forResource: "DSH", withExtension: "icns"),
-           let bundledIcon = NSImage(contentsOf: iconURL),
+        if let bundledIcon = NSImage(named: NSImage.Name("app")),
            bundledIcon.isValid,
            bundledIcon.representations.contains(where: { $0.pixelsWide > 0 && $0.pixelsHigh > 0 }) {
             return bundledIcon

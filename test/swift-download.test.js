@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 
 const MAIN_WINDOW_SOURCE = fs.readFileSync(
-  new URL('../swift-shell/Sources/DSHShell/MainWindow/MainWindowController.swift', import.meta.url),
+  new URL('../swift-shell/Sources/MainWindow/MainWindowController.swift', import.meta.url),
   'utf8',
 )
 

@@ -7,7 +7,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "DSHShell",
-            path: "Sources/DSHShell"
+            path: "Sources"
         )
     ]
 )

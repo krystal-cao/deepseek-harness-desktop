@@ -5,6 +5,17 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
 const ROOT = fileURLToPath(new URL('../assets/dsh-desktop-host', import.meta.url))
+const SWIFT_ROOT = fileURLToPath(new URL('../swift-shell/assets/dsh-desktop-host', import.meta.url))
+
+test('Swift shell carries an identical bridge plugin copy', () => {
+  for (const file of ['client.js', 'cordis.patch.yml', 'index.js', 'package.json']) {
+    assert.deepEqual(
+      readFileSync(path.join(SWIFT_ROOT, file)),
+      readFileSync(path.join(ROOT, file)),
+      `Swift bridge plugin differs from the Electron source: ${file}`,
+    )
+  }
+})
 
 test('desktop host bundle declares a web client half and its patch', () => {
   const manifest = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'))

@@ -213,10 +213,6 @@ public final class NodeRuntime {
     public func buildEnvironment(customPort: Int? = nil) -> [String: String] {
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = resolveUserPath()
-        // Keep parity with the Electron launcher. It is harmless for the
-        // bundled standalone Node binary and required when a compatible
-        // Electron-as-Node runtime is selected during development.
-        env["ELECTRON_RUN_AS_NODE"] = "1"
         env["NODE_OPTIONS"] = ""
         env["DSH_DESKTOP"] = "1"
         if let nodeBin = resolveNodeBinary() {

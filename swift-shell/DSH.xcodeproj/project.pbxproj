@@ -1,0 +1,421 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		219B7784303D55A30070FBF5 /* app.icon in Resources */ = {isa = PBXBuildFile; fileRef = 219B7783303D55A30070FBF5 /* app.icon */; };
+		E00000000000000000000001 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000010 /* main.swift */; };
+		E00000000000000000000002 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000011 /* AppDelegate.swift */; };
+		E00000000000000000000003 /* ApplicationIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000012 /* ApplicationIcon.swift */; };
+		E00000000000000000000004 /* DshState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000013 /* DshState.swift */; };
+		E00000000000000000000005 /* NodeRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000014 /* NodeRuntime.swift */; };
+		E00000000000000000000006 /* DshSemanticVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000015 /* DshSemanticVersion.swift */; };
+		E00000000000000000000007 /* DshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000016 /* DshService.swift */; };
+		E00000000000000000000008 /* DshVersionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000017 /* DshVersionManager.swift */; };
+		E00000000000000000000009 /* DshPluginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000018 /* DshPluginManager.swift */; };
+		E00000000000000000000010 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000019 /* NotificationManager.swift */; };
+		E00000000000000000000011 /* DshBridgeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000020 /* DshBridgeHandler.swift */; };
+		E00000000000000000000012 /* AboutWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000021 /* AboutWindowController.swift */; };
+		E00000000000000000000013 /* MainWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000022 /* MainWindowController.swift */; };
+		E00000000000000000000014 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000023 /* SettingsViewModel.swift */; };
+		E00000000000000000000015 /* VersionsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000024 /* VersionsTabView.swift */; };
+		E00000000000000000000016 /* PluginsTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000025 /* PluginsTabView.swift */; };
+		E00000000000000000000017 /* GeneralTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000026 /* GeneralTabView.swift */; };
+		E00000000000000000000018 /* AboutTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000027 /* AboutTabView.swift */; };
+		E00000000000000000000019 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000028 /* SettingsView.swift */; };
+		E00000000000000000000020 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000029 /* SettingsWindowController.swift */; };
+		E00000000000000000000021 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D00000000000000000000030 /* AppKit.framework */; };
+		E00000000000000000000022 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D00000000000000000000031 /* WebKit.framework */; };
+		E00000000000000000000023 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D00000000000000000000032 /* SwiftUI.framework */; };
+		E00000000000000000000024 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D00000000000000000000033 /* UserNotifications.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		219B7783303D55A30070FBF5 /* app.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = app.icon; sourceTree = "<group>"; };
+		D00000000000000000000008 /* DSH.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DSH.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D00000000000000000000009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D00000000000000000000010 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		D00000000000000000000011 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		D00000000000000000000012 /* ApplicationIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationIcon.swift; sourceTree = "<group>"; };
+		D00000000000000000000013 /* DshState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DshState.swift; sourceTree = "<group>"; };
+		D00000000000000000000014 /* NodeRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeRuntime.swift; sourceTree = "<group>"; };
+		D00000000000000000000015 /* DshSemanticVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DshSemanticVersion.swift; sourceTree = "<group>"; };
+		D00000000000000000000016 /* DshService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DshService.swift; sourceTree = "<group>"; };
+		D00000000000000000000017 /* DshVersionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DshVersionManager.swift; sourceTree = "<group>"; };
+		D00000000000000000000018 /* DshPluginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DshPluginManager.swift; sourceTree = "<group>"; };
+		D00000000000000000000019 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		D00000000000000000000020 /* DshBridgeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DshBridgeHandler.swift; sourceTree = "<group>"; };
+		D00000000000000000000021 /* AboutWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutWindowController.swift; sourceTree = "<group>"; };
+		D00000000000000000000022 /* MainWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowController.swift; sourceTree = "<group>"; };
+		D00000000000000000000023 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		D00000000000000000000024 /* VersionsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionsTabView.swift; sourceTree = "<group>"; };
+		D00000000000000000000025 /* PluginsTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PluginsTabView.swift; sourceTree = "<group>"; };
+		D00000000000000000000026 /* GeneralTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralTabView.swift; sourceTree = "<group>"; };
+		D00000000000000000000027 /* AboutTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutTabView.swift; sourceTree = "<group>"; };
+		D00000000000000000000028 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		D00000000000000000000029 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		D00000000000000000000030 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
+		D00000000000000000000031 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		D00000000000000000000032 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		D00000000000000000000033 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
+		D00000000000000000000044 /* Version.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Version.xcconfig; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		F00000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E00000000000000000000021 /* AppKit.framework in Frameworks */,
+				E00000000000000000000022 /* WebKit.framework in Frameworks */,
+				E00000000000000000000023 /* SwiftUI.framework in Frameworks */,
+				E00000000000000000000024 /* UserNotifications.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D00000000000000000000003 = {
+			isa = PBXGroup;
+			children = (
+				219B7783303D55A30070FBF5 /* app.icon */,
+				D00000000000000000000005 /* Sources */,
+				D00000000000000000000009 /* Info.plist */,
+				D00000000000000000000044 /* Version.xcconfig */,
+				D00000000000000000000007 /* Frameworks */,
+				D00000000000000000000004 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D00000000000000000000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000008 /* DSH.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000005 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000010 /* main.swift */,
+				D00000000000000000000011 /* AppDelegate.swift */,
+				D00000000000000000000012 /* ApplicationIcon.swift */,
+				D00000000000000000000035 /* State */,
+				D00000000000000000000036 /* Service */,
+				D00000000000000000000037 /* Versions */,
+				D00000000000000000000038 /* Plugins */,
+				D00000000000000000000039 /* Notification */,
+				D00000000000000000000040 /* Bridge */,
+				D00000000000000000000041 /* About */,
+				D00000000000000000000042 /* MainWindow */,
+				D00000000000000000000043 /* SettingsUI */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000007 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000030 /* AppKit.framework */,
+				D00000000000000000000031 /* WebKit.framework */,
+				D00000000000000000000032 /* SwiftUI.framework */,
+				D00000000000000000000033 /* UserNotifications.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000035 /* State */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000013 /* DshState.swift */,
+			);
+			path = State;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000036 /* Service */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000014 /* NodeRuntime.swift */,
+				D00000000000000000000016 /* DshService.swift */,
+			);
+			path = Service;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000037 /* Versions */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000015 /* DshSemanticVersion.swift */,
+				D00000000000000000000017 /* DshVersionManager.swift */,
+			);
+			path = Versions;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000038 /* Plugins */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000018 /* DshPluginManager.swift */,
+			);
+			path = Plugins;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000039 /* Notification */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000019 /* NotificationManager.swift */,
+			);
+			path = Notification;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000040 /* Bridge */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000020 /* DshBridgeHandler.swift */,
+			);
+			path = Bridge;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000041 /* About */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000021 /* AboutWindowController.swift */,
+			);
+			path = About;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000042 /* MainWindow */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000022 /* MainWindowController.swift */,
+			);
+			path = MainWindow;
+			sourceTree = "<group>";
+		};
+		D00000000000000000000043 /* SettingsUI */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000023 /* SettingsViewModel.swift */,
+				D00000000000000000000024 /* VersionsTabView.swift */,
+				D00000000000000000000025 /* PluginsTabView.swift */,
+				D00000000000000000000026 /* GeneralTabView.swift */,
+				D00000000000000000000027 /* AboutTabView.swift */,
+				D00000000000000000000028 /* SettingsView.swift */,
+				D00000000000000000000029 /* SettingsWindowController.swift */,
+			);
+			path = SettingsUI;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D00000000000000000000002 /* DSH */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C00000000000000000000002 /* Build configuration list for PBXNativeTarget "DSH" */;
+			buildPhases = (
+				F00000000000000000000001 /* Sources */,
+				F00000000000000000000002 /* Frameworks */,
+				F00000000000000000000003 /* Resources */,
+				F00000000000000000000004 /* Copy DSH runtime resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DSH;
+			productName = DSH;
+			productReference = D00000000000000000000008 /* DSH.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D00000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2660;
+				ORGANIZATIONNAME = "Krystal Cao";
+				TargetAttributes = {
+					D00000000000000000000002 = {
+						CreatedOnToolsVersion = 26.0;
+						LastSwiftMigration = 2600;
+					};
+				};
+			};
+			buildConfigurationList = C00000000000000000000001 /* Build configuration list for PBXProject "DSH" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = zh_CN;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				zh_CN,
+			);
+			mainGroup = D00000000000000000000003;
+			productRefGroup = D00000000000000000000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D00000000000000000000002 /* DSH */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F00000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				219B7784303D55A30070FBF5 /* app.icon in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		F00000000000000000000004 /* Copy DSH runtime resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Copy DSH runtime resources";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "set -euo pipefail\nSWIFT_ASSETS_DIR=\"${SRCROOT}/assets\"\nRESOURCES_DIR=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\nmkdir -p \"${RESOURCES_DIR}/node/bin\" \"${RESOURCES_DIR}/assets/bin\"\ncp \"${SWIFT_ASSETS_DIR}/dsh-family.json\" \"${RESOURCES_DIR}/assets/dsh-family.json\"\ncp \"${SWIFT_ASSETS_DIR}/bin/pnpm\" \"${RESOURCES_DIR}/assets/bin/pnpm\"\nif [ -d \"${SWIFT_ASSETS_DIR}/node/bin\" ]; then\n\tcp -R \"${SWIFT_ASSETS_DIR}/node/bin/.\" \"${RESOURCES_DIR}/node/bin/\"\nfi\nif [ ! -f \"${SWIFT_ASSETS_DIR}/bin/pnpm-pkg/bin/pnpm.cjs\" ]; then\n\tbash \"${SRCROOT}/fetch-pnpm.sh\"\nfi\ncp -R \"${SWIFT_ASSETS_DIR}/bin/pnpm-pkg\" \"${RESOURCES_DIR}/assets/bin/\"\nif [ ! -d \"${SWIFT_ASSETS_DIR}/dsh-desktop-host\" ]; then\n\techo \"Swift bridge plugin is missing: ${SWIFT_ASSETS_DIR}/dsh-desktop-host\" >&2\n\texit 1\nfi\ncp -R \"${SWIFT_ASSETS_DIR}/dsh-desktop-host\" \"${RESOURCES_DIR}/assets/\"\nchmod +x \"${RESOURCES_DIR}/node/bin/node\" \"${RESOURCES_DIR}/assets/bin/pnpm\" 2>/dev/null || true\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F00000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E00000000000000000000001 /* main.swift in Sources */,
+				E00000000000000000000002 /* AppDelegate.swift in Sources */,
+				E00000000000000000000003 /* ApplicationIcon.swift in Sources */,
+				E00000000000000000000004 /* DshState.swift in Sources */,
+				E00000000000000000000005 /* NodeRuntime.swift in Sources */,
+				E00000000000000000000006 /* DshSemanticVersion.swift in Sources */,
+				E00000000000000000000007 /* DshService.swift in Sources */,
+				E00000000000000000000008 /* DshVersionManager.swift in Sources */,
+				E00000000000000000000009 /* DshPluginManager.swift in Sources */,
+				E00000000000000000000010 /* NotificationManager.swift in Sources */,
+				E00000000000000000000011 /* DshBridgeHandler.swift in Sources */,
+				E00000000000000000000012 /* AboutWindowController.swift in Sources */,
+				E00000000000000000000013 /* MainWindowController.swift in Sources */,
+				E00000000000000000000014 /* SettingsViewModel.swift in Sources */,
+				E00000000000000000000015 /* VersionsTabView.swift in Sources */,
+				E00000000000000000000016 /* PluginsTabView.swift in Sources */,
+				E00000000000000000000017 /* GeneralTabView.swift in Sources */,
+				E00000000000000000000018 /* AboutTabView.swift in Sources */,
+				E00000000000000000000019 /* SettingsView.swift in Sources */,
+				E00000000000000000000020 /* SettingsWindowController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		C00000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		C00000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		C00000000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D00000000000000000000044 /* Version.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = app;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "-";
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_SWIFT_FLAGS = "-parse-as-library";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.krystal-cao.dsh-swift-shell";
+				PRODUCT_NAME = DSH;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		C00000000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D00000000000000000000044 /* Version.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = app;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_IDENTITY = "-";
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_SWIFT_FLAGS = "-parse-as-library";
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.krystal-cao.dsh-swift-shell";
+				PRODUCT_NAME = DSH;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C00000000000000000000001 /* Build configuration list for PBXProject "DSH" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C00000000000000000000003 /* Debug */,
+				C00000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C00000000000000000000002 /* Build configuration list for PBXNativeTarget "DSH" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C00000000000000000000005 /* Debug */,
+				C00000000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D00000000000000000000001 /* Project object */;
+}

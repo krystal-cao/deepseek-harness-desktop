@@ -182,7 +182,7 @@ test('dshFamilyPins covers every pinned plugin package', () => {
 })
 
 test('Swift runtime family manifest stays in sync with desktop dependency pins', () => {
-  const manifest = JSON.parse(readFileSync(new URL('../assets/dsh-family.json', import.meta.url), 'utf8'))
+  const manifest = JSON.parse(readFileSync(new URL('../swift-shell/assets/dsh-family.json', import.meta.url), 'utf8'))
   assert.deepEqual(manifest.packages, dshFamilyPins())
 })
 

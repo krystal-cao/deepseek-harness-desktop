@@ -4,11 +4,11 @@ import test from 'node:test'
 import vm from 'node:vm'
 
 const MAIN_WINDOW_SOURCE = fs.readFileSync(
-  new URL('../swift-shell/Sources/DSHShell/MainWindow/MainWindowController.swift', import.meta.url),
+  new URL('../swift-shell/Sources/MainWindow/MainWindowController.swift', import.meta.url),
   'utf8',
 )
 const BRIDGE_SOURCE = fs.readFileSync(
-  new URL('../swift-shell/Sources/DSHShell/Bridge/DshBridgeHandler.swift', import.meta.url),
+  new URL('../swift-shell/Sources/Bridge/DshBridgeHandler.swift', import.meta.url),
   'utf8',
 )
 const BUILD_SOURCE = fs.readFileSync(

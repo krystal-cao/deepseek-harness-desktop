@@ -1,0 +1,24 @@
+{
+  "name": "dsh-desktop-host",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Desktop host bridge plugin for DSH Desktop: reports readiness and theme changes to the Electron shell.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": ["theme", "sessions", "commandUi", "locale"]
+    }
+  }
+}
