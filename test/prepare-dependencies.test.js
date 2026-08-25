@@ -7,7 +7,7 @@ import test from 'node:test'
 
 import { prepareBundledBin } from '../scripts/prepare-dependencies.mjs'
 
-test('bundled pnpm shim prefers the standalone Node runtime supplied by Swift', () => {
+test('bundled pnpm shim uses the packaged Electron binary as Node runtime', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'dsh-bundled-bin-'))
   try {
     const pnpmCli = path.join(root, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs')
@@ -19,15 +19,13 @@ test('bundled pnpm shim prefers the standalone Node runtime supplied by Swift', 
     const shim = path.join(root, 'assets', 'bin', 'dsh-node')
     chmodSync(shim, 0o755)
     const content = readFileSync(shim, 'utf8')
-    assert.match(content, /DSH_NODE_BIN/)
     assert.match(content, /\.\.\/\.\.\/\.\.\/\.\.\/MacOS\/DSH/)
 
     const result = spawnSync(shim, ['standalone-node'], {
       encoding: 'utf8',
-      env: { ...process.env, DSH_NODE_BIN: '/bin/echo' },
     })
-    assert.equal(result.status, 0)
-    assert.equal(result.stdout.trim(), 'standalone-node')
+    assert.equal(result.status, 127)
+    assert.match(result.stderr, /no bundled Node\.js runtime found/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

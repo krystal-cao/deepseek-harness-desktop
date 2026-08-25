@@ -5,11 +5,6 @@ output/
 *.log
 .DS_Store
 assets/bin/
-swift-shell/assets/node/
-swift-shell/DSH.xcodeproj/**/xcuserdata/
-# The Swift shell downloads its pinned pnpm CLI on demand; keep the generated
-# bundle out of source control just like the architecture-specific Node runtime.
-swift-shell/assets/bin/pnpm-pkg/
 .codex/
 CONVERSATION_HANDOVER.md
 HANDOVER.md

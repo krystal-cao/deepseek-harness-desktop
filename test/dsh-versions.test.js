@@ -181,11 +181,6 @@ test('dshFamilyPins covers every pinned plugin package', () => {
   assert.ok(!pins.includes('@deepseek-ai/dsh'))
 })
 
-test('Swift runtime family manifest stays in sync with desktop dependency pins', () => {
-  const manifest = JSON.parse(readFileSync(new URL('../swift-shell/assets/dsh-family.json', import.meta.url), 'utf8'))
-  assert.deepEqual(manifest.packages, dshFamilyPins())
-})
-
 test('resolveAlignedFamily keeps only versions published by the registry', async () => {
   const family = await resolveAlignedFamily({
     version: '0.1.0-rc.6',

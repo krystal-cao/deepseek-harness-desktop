@@ -26,21 +26,12 @@ export function prepareBundledBin({ platform = process.platform, root = process.
   // dsh host PATH under a bare "node" name again.
   rmSync(path.join(binDir, 'node'), { force: true })
 
-  // Swift builds provide their standalone runtime through DSH_NODE_BIN.
-  // Electron builds fall back to running their main binary in Node mode.
-  // Named "dsh-node" (not "node") so prepending this directory to PATH never
-  // shadows the user's real node.
+  // Run the packaged Electron binary in Node mode. Named "dsh-node" (not
+  // "node") so prepending this directory to PATH never shadows the user's
+  // real node.
   const nodeShimPath = path.join(binDir, 'dsh-node')
   const nodeShim = `#!/bin/sh
 SELF="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-if [ -n "\${DSH_NODE_BIN:-}" ]; then
-  if [ -x "$DSH_NODE_BIN" ]; then
-    exec "$DSH_NODE_BIN" "$@"
-  fi
-  echo "dsh-node: DSH_NODE_BIN is not executable: $DSH_NODE_BIN" >&2
-  exit 127
-fi
-
 ELECTRON_NODE="$SELF/../../../../MacOS/DSH"
 if [ -x "$ELECTRON_NODE" ]; then
   exec env ELECTRON_RUN_AS_NODE=1 "$ELECTRON_NODE" "$@"

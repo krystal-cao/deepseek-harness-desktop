@@ -1,8 +1,0 @@
-// Swift shell release metadata. Keep this independent from Electron's package.json.
-SWIFT_APP_VERSION = 0.3.5
-SWIFT_APP_BUILD = 2
-MARKETING_VERSION = $(SWIFT_APP_VERSION)
-CURRENT_PROJECT_VERSION = $(SWIFT_APP_BUILD)
-
-// Sparkle's public Ed25519 key is stored in Info.plist. The private key must
-// remain in the release machine's Keychain and must never enter the repo.
