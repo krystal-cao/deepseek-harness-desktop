@@ -32,6 +32,8 @@
 		E00000000000000000000022 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D00000000000000000000031 /* WebKit.framework */; };
 		E00000000000000000000023 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D00000000000000000000032 /* SwiftUI.framework */; };
 		E00000000000000000000024 /* UserNotifications.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D00000000000000000000033 /* UserNotifications.framework */; };
+		E00000000000000000000025 /* AppUpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000045 /* AppUpdateManager.swift */; };
+		E00000000000000000000026 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = D00000000000000000000047 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -63,6 +65,7 @@
 		D00000000000000000000032 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		D00000000000000000000033 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		D00000000000000000000044 /* Version.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Version.xcconfig; sourceTree = "<group>"; };
+		D00000000000000000000045 /* AppUpdateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdateManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,6 +77,7 @@
 				E00000000000000000000022 /* WebKit.framework in Frameworks */,
 				E00000000000000000000023 /* SwiftUI.framework in Frameworks */,
 				E00000000000000000000024 /* UserNotifications.framework in Frameworks */,
+				E00000000000000000000026 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -115,6 +119,7 @@
 				D00000000000000000000041 /* About */,
 				D00000000000000000000042 /* MainWindow */,
 				D00000000000000000000043 /* SettingsUI */,
+				D00000000000000000000046 /* Updates */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -210,6 +215,14 @@
 			path = SettingsUI;
 			sourceTree = "<group>";
 		};
+		D00000000000000000000046 /* Updates */ = {
+			isa = PBXGroup;
+			children = (
+				D00000000000000000000045 /* AppUpdateManager.swift */,
+			);
+			path = Updates;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -227,6 +240,9 @@
 			dependencies = (
 			);
 			name = DSH;
+			packageProductDependencies = (
+				D00000000000000000000047 /* Sparkle */,
+			);
 			productName = DSH;
 			productReference = D00000000000000000000008 /* DSH.app */;
 			productType = "com.apple.product-type.application";
@@ -257,6 +273,9 @@
 				zh_CN,
 			);
 			mainGroup = D00000000000000000000003;
+			packageReferences = (
+				D00000000000000000000048 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			productRefGroup = D00000000000000000000004 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -320,6 +339,7 @@
 				E00000000000000000000018 /* AboutTabView.swift in Sources */,
 				E00000000000000000000019 /* SettingsView.swift in Sources */,
 				E00000000000000000000020 /* SettingsWindowController.swift in Sources */,
+				E00000000000000000000025 /* AppUpdateManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -416,6 +436,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D00000000000000000000048 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D00000000000000000000047 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D00000000000000000000048 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D00000000000000000000001 /* Project object */;
 }

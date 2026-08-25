@@ -35,6 +35,7 @@ export MACOSX_DEPLOYMENT_TARGET="${DEPLOYMENT_TARGET}"
 APP_NAME="DSH"
 SWIFT_VERSION_CONFIG="${SCRIPT_DIR}/Version.xcconfig"
 APP_VERSION="$(sed -nE 's/^[[:space:]]*SWIFT_APP_VERSION[[:space:]]*=[[:space:]]*([^[:space:]]+).*/\1/p' "${SWIFT_VERSION_CONFIG}" | head -n 1)"
+APP_BUILD="$(sed -nE 's/^[[:space:]]*SWIFT_APP_BUILD[[:space:]]*=[[:space:]]*([^[:space:]]+).*/\1/p' "${SWIFT_VERSION_CONFIG}" | head -n 1)"
 DIST_DIR="${REPO_DIR}/dist/swift"
 APP_ICON_SOURCE="${SCRIPT_DIR}/app.icon"
 APP_ICON_NAME="app"
@@ -56,6 +57,10 @@ if [ ! -d "${SWIFT_BRIDGE_SOURCE}" ] || [ ! -s "${SWIFT_BRIDGE_SOURCE}/package.j
 fi
 if [ -z "${APP_VERSION}" ]; then
 	echo "Swift application version is missing: ${SWIFT_VERSION_CONFIG}" >&2
+	exit 1
+fi
+if [ -z "${APP_BUILD}" ]; then
+	echo "Swift application build number is missing: ${SWIFT_VERSION_CONFIG}" >&2
 	exit 1
 fi
 
@@ -95,7 +100,7 @@ for BUILD_ARCH in "${BUILD_ARCHES[@]}"; do
 		ARCHS="${BUILD_ARCH}" \
 		ONLY_ACTIVE_ARCH=NO \
 		MARKETING_VERSION="${APP_VERSION}" \
-		CURRENT_PROJECT_VERSION="${APP_VERSION}" \
+		CURRENT_PROJECT_VERSION="${APP_BUILD}" \
 		MACOSX_DEPLOYMENT_TARGET="${DEPLOYMENT_TARGET}" \
 		CODE_SIGNING_ALLOWED=NO \
 		CODE_SIGNING_REQUIRED=NO \

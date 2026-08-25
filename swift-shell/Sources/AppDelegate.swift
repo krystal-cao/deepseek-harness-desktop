@@ -1,9 +1,14 @@
 import AppKit
+import Sparkle
 import WebKit
 
 @MainActor
 public final class AppDelegate: NSObject, NSApplicationDelegate {
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        // Keep one updater for the whole app. Sparkle starts its automatic
+        // checker from the Info.plist settings and the same controller backs
+        // the menu item and About settings row.
+        _ = AppUpdateManager.shared
         setupAppMenu()
         NotificationManager.shared.requestAuthorization()
         MainWindowController.shared.launch()
@@ -40,6 +45,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(NSMenuItem.separator())
         appMenu.addItem(withTitle: "设置与版本管理...", action: #selector(openSettings), keyEquivalent: ",")
         appMenu.addItem(withTitle: "重启 DSH 服务", action: #selector(restartService), keyEquivalent: "r")
+
+        let checkForUpdatesItem = NSMenuItem(
+            title: "检查更新…",
+            action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
+            keyEquivalent: ""
+        )
+        checkForUpdatesItem.target = AppUpdateManager.shared.updaterController
+        appMenu.addItem(checkForUpdatesItem)
+
         appMenu.addItem(withTitle: "显示主窗口", action: #selector(showMainWindow), keyEquivalent: "0")
         appMenu.addItem(NSMenuItem.separator())
 

@@ -56,6 +56,7 @@ const SWIFT_SOURCES = [
   'SettingsUI/AboutTabView.swift',
   'SettingsUI/SettingsView.swift',
   'SettingsUI/SettingsWindowController.swift',
+  'Updates/AppUpdateManager.swift',
 ]
 
 test('Swift shell Xcode project owns the complete native app target', () => {
@@ -66,6 +67,9 @@ test('Swift shell Xcode project owns the complete native app target', () => {
   assert.match(PROJECT_SOURCE, /ASSETCATALOG_COMPILER_APPICON_NAME = app/)
   assert.match(PROJECT_SOURCE, /baseConfigurationReference = .*Version\.xcconfig/)
   assert.match(PROJECT_SOURCE, /OTHER_SWIFT_FLAGS = "-parse-as-library"/)
+  assert.match(PROJECT_SOURCE, /XCRemoteSwiftPackageReference "Sparkle"/)
+  assert.match(PROJECT_SOURCE, /minimumVersion = 2\.9\.3/)
+  assert.match(PROJECT_SOURCE, /productName = Sparkle/)
   assert.match(PROJECT_SOURCE, /Copy DSH runtime resources/)
   assert.match(PROJECT_SOURCE, /SWIFT_ASSETS_DIR=\\"\$\{SRCROOT\}\/assets\\"/)
   assert.match(PROJECT_SOURCE, /SWIFT_ASSETS_DIR.*dsh-family\.json/)
@@ -110,4 +114,8 @@ test('Swift build delegates compilation to xcodebuild and keeps the app metadata
   assert.match(INFO_PLIST_SOURCE, /<key>CFBundleIconName<\/key>\s*<string>app<\/string>/)
   assert.doesNotMatch(INFO_PLIST_SOURCE, /CFBundleIconFile/)
   assert.match(INFO_PLIST_SOURCE, /<string>\$\(MACOSX_DEPLOYMENT_TARGET\)<\/string>/)
+  assert.match(INFO_PLIST_SOURCE, /<key>SUEnableAutomaticChecks<\/key>\s*<true\/>/)
+  assert.match(INFO_PLIST_SOURCE, /<key>SUFeedURL<\/key>\s*<string>https:\/\/raw\.githubusercontent\.com\//)
+  assert.match(INFO_PLIST_SOURCE, /<key>SUVerifyUpdateBeforeExtraction<\/key>\s*<false\/>/)
+  assert.match(BUILD_SOURCE, /SWIFT_APP_BUILD/)
 })

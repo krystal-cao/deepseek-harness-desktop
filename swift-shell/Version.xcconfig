@@ -1,4 +1,9 @@
 // Swift shell release metadata. Keep this independent from Electron's package.json.
 SWIFT_APP_VERSION = 0.3.5
+SWIFT_APP_BUILD = 1
 MARKETING_VERSION = $(SWIFT_APP_VERSION)
-CURRENT_PROJECT_VERSION = $(SWIFT_APP_VERSION)
+CURRENT_PROJECT_VERSION = $(SWIFT_APP_BUILD)
+
+// Before publishing signed updates, add Sparkle's SUPublicEDKey to Info.plist
+// and enable SUVerifyUpdateBeforeExtraction. The private key must never enter
+// the repo.

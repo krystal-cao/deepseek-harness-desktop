@@ -1,4 +1,5 @@
 import AppKit
+import Sparkle
 import SwiftUI
 
 public struct AboutTabView: View {
@@ -58,6 +59,10 @@ public struct AboutTabView: View {
                 footer: "DSH Desktop 是非官方社区项目，与 DeepSeek 不存在隶属或官方合作关系。"
             ) {
                 AboutValueRow(title: "版本", value: appVersion)
+
+                SettingsDivider()
+
+                AboutCheckForUpdatesRow(updater: AppUpdateManager.shared.updater)
 
                 SettingsDivider()
 
@@ -148,6 +153,46 @@ public struct AboutTabView: View {
 
     private var groupStroke: Color {
         colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.035)
+    }
+}
+
+private struct AboutCheckForUpdatesRow: View {
+    @ObservedObject private var viewModel: CheckForUpdatesViewModel
+    private let updater: SPUUpdater
+
+    init(updater: SPUUpdater) {
+        self.updater = updater
+        viewModel = CheckForUpdatesViewModel(updater: updater)
+    }
+
+    var body: some View {
+        Button {
+            updater.checkForUpdates()
+        } label: {
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("检查更新")
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(.primary)
+
+                    Text("从 GitHub 检查 Swift 版 DSH 新版本。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 16)
+
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 24, height: 24)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!viewModel.canCheckForUpdates)
     }
 }
 
