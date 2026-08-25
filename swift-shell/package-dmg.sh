@@ -8,6 +8,7 @@ APP_NAME="DSH"
 SWIFT_VERSION_CONFIG="${SCRIPT_DIR}/Version.xcconfig"
 APP_VERSION="$(sed -nE 's/^[[:space:]]*SWIFT_APP_VERSION[[:space:]]*=[[:space:]]*([^[:space:]]+).*/\1/p' "${SWIFT_VERSION_CONFIG}" | head -n 1)"
 DIST_DIR="${REPO_DIR}/dist/swift"
+BUILD_DIR="${SCRIPT_DIR}/.build"
 VOLUME_NAME="DSH Desktop ${APP_VERSION}"
 
 if [ -z "${APP_VERSION}" ]; then
@@ -81,3 +82,11 @@ for PACKAGE_ARCH in "${PACKAGE_ARCHES[@]}"; do
 	trap - EXIT
 	echo "✅ ${ARTIFACT_ARCH} DMG completed: ${DMG_PATH}"
 done
+
+# The derived Xcode products are only needed while producing the application
+# bundles. Keep them when packaging fails for diagnostics, but remove them
+# after every requested architecture has produced a verified DMG.
+if [ -d "${BUILD_DIR}" ]; then
+	rm -rf "${BUILD_DIR}"
+	echo "✅ Cleaned Swift build artifacts: ${BUILD_DIR}"
+fi

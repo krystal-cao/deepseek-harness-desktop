@@ -39,6 +39,8 @@ public struct VersionsTabView: View {
                 }
             }
 
+            versionCompatibilityNotice
+
             if viewModel.isInstallingVersion {
                 HStack(spacing: 10) {
                     ProgressView().controlSize(.small)
@@ -112,6 +114,20 @@ public struct VersionsTabView: View {
                 }
             }
         }
+    }
+
+    private var versionCompatibilityNotice: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("版本兼容性说明")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            Text("1. 部分插件可能尚未适配最新上游版本；如遇兼容性问题，请联系相关插件开发者进行适配。\n2. 上游版本可能包含破坏性更新；安装新版本后，即使旧版本仍同时保留在本机，也可能无法继续使用。")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 2)
     }
 
     @ViewBuilder
