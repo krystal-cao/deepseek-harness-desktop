@@ -34,7 +34,9 @@
 	<true/>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/krystal-cao/deepseek-harness-desktop/main/appcast-swift.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>cJQCfMWONqsv4dEXCrnfcVDGHCnlNsd77Xa4BHF9d5M=</string>
 	<key>SUVerifyUpdateBeforeExtraction</key>
-	<false/>
+	<true/>
 </dict>
 </plist>

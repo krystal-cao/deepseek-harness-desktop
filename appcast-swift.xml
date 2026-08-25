@@ -46,7 +46,7 @@
 - macOS 构建使用 ad-hoc 签名，首次打开如遇拦截，请右键选择“打开”，或前往“系统设置 → 隐私与安全性”放行。
 - 这是 Swift 原生壳预发布版本，不替代 Electron 正式版本。
 ]]></description>
-            <enclosure url="https://github.com/krystal-cao/deepseek-harness-desktop/releases/download/v0.3.5-swift/DSH-Desktop-0.3.5-arm64.dmg" length="45636280" type="application/octet-stream"/>
+            <enclosure url="https://github.com/krystal-cao/deepseek-harness-desktop/releases/download/v0.3.5-swift/DSH-Desktop-0.3.5-arm64.dmg" length="46591275" type="application/octet-stream" sparkle:edSignature="aya88a/bkkj4QEgwlsKz6bUyyxvSklDFFQ4khy8rScOHpKaIlLe1qSBLlOZ/J07p3sldXtlk1CM+CIT7uEdxAw=="/>
         </item>
         <item>
             <title>0.3.5</title>
@@ -89,7 +89,7 @@
 - macOS 构建使用 ad-hoc 签名，首次打开如遇拦截，请右键选择“打开”，或前往“系统设置 → 隐私与安全性”放行。
 - 这是 Swift 原生壳预发布版本，不替代 Electron 正式版本。
 ]]></description>
-            <enclosure url="https://github.com/krystal-cao/deepseek-harness-desktop/releases/download/v0.3.5-swift/DSH-Desktop-0.3.5-x64.dmg" length="46848037" type="application/octet-stream"/>
+            <enclosure url="https://github.com/krystal-cao/deepseek-harness-desktop/releases/download/v0.3.5-swift/DSH-Desktop-0.3.5-x64.dmg" length="47666680" type="application/octet-stream" sparkle:edSignature="hPRFPz1y2EQM7eJnoWk1/yYUdeq47W7zjIXUANzp6IhUr9EhWtxjmIANLouzDDIfnh1Wc6ZadoT/E6OOQqRwBQ=="/>
         </item>
     </channel>
 </rss>

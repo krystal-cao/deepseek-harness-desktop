@@ -116,6 +116,7 @@ test('Swift build delegates compilation to xcodebuild and keeps the app metadata
   assert.match(INFO_PLIST_SOURCE, /<string>\$\(MACOSX_DEPLOYMENT_TARGET\)<\/string>/)
   assert.match(INFO_PLIST_SOURCE, /<key>SUEnableAutomaticChecks<\/key>\s*<true\/>/)
   assert.match(INFO_PLIST_SOURCE, /<key>SUFeedURL<\/key>\s*<string>https:\/\/raw\.githubusercontent\.com\//)
-  assert.match(INFO_PLIST_SOURCE, /<key>SUVerifyUpdateBeforeExtraction<\/key>\s*<false\/>/)
+  assert.match(INFO_PLIST_SOURCE, /<key>SUPublicEDKey<\/key>\s*<string>[A-Za-z0-9+/=]+<\/string>/)
+  assert.match(INFO_PLIST_SOURCE, /<key>SUVerifyUpdateBeforeExtraction<\/key>\s*<true\/>/)
   assert.match(BUILD_SOURCE, /SWIFT_APP_BUILD/)
 })

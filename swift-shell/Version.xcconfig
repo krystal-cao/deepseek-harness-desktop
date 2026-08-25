@@ -4,6 +4,5 @@ SWIFT_APP_BUILD = 1
 MARKETING_VERSION = $(SWIFT_APP_VERSION)
 CURRENT_PROJECT_VERSION = $(SWIFT_APP_BUILD)
 
-// Before publishing signed updates, add Sparkle's SUPublicEDKey to Info.plist
-// and enable SUVerifyUpdateBeforeExtraction. The private key must never enter
-// the repo.
+// Sparkle's public Ed25519 key is stored in Info.plist. The private key must
+// remain in the release machine's Keychain and must never enter the repo.
