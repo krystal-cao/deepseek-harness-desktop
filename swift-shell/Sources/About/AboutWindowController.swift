@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 public final class AboutWindowController: NSWindowController {
     public static let shared = AboutWindowController()
+    private var appearanceObserver: NSObjectProtocol?
 
     private init() {
         let hostingController = NSHostingController(rootView: AboutWindowView())
@@ -22,8 +23,24 @@ public final class AboutWindowController: NSWindowController {
         win.isOpaque = true
         win.backgroundColor = .windowBackgroundColor
         win.hasShadow = true
+        DshNativeAppearance.apply(to: win)
 
         super.init(window: win)
+        appearanceObserver = NotificationCenter.default.addObserver(
+            forName: DshNativeAppearance.didChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.applyNativeAppearance()
+            }
+        }
+    }
+
+    deinit {
+        if let appearanceObserver {
+            NotificationCenter.default.removeObserver(appearanceObserver)
+        }
     }
 
     required init?(coder: NSCoder) {
@@ -31,9 +48,15 @@ public final class AboutWindowController: NSWindowController {
     }
 
     public func show() {
+        applyNativeAppearance()
         window?.center()
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func applyNativeAppearance() {
+        guard let window else { return }
+        DshNativeAppearance.apply(to: window)
     }
 }
 

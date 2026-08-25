@@ -892,6 +892,7 @@ public final class MainWindowController: NSWindowController, NSWindowDelegate, W
         // theme control is available. Re-read it when the bridge publishes a
         // theme snapshot so the settings page follows plugin changes quickly.
         Task { @MainActor in
+            DshNativeAppearance.update(colorScheme: colorScheme)
             SettingsViewModel.shared.refreshExternalThemeFromBridge()
         }
     }
