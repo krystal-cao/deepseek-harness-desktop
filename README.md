@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/krystal-cao/deepseek-harness-desktop/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/krystal-cao/deepseek-harness-desktop?style=flat-square&color=171513" /></a>
+  <a href="https://github.com/summer-521/deepseek-harness-desktop/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/summer-521/deepseek-harness-desktop?style=flat-square&color=171513" /></a>
   <a href="LICENSE"><img alt="许可证：MIT" src="https://img.shields.io/badge/License-MIT-171513.svg?style=flat-square" /></a>
-  <a href="https://github.com/krystal-cao/deepseek-harness-desktop/actions/workflows/release.yml"><img alt="发行构建" src="https://github.com/krystal-cao/deepseek-harness-desktop/actions/workflows/release.yml/badge.svg" /></a>
+  <a href="https://github.com/summer-521/deepseek-harness-desktop/actions/workflows/release.yml"><img alt="发行构建" src="https://github.com/summer-521/deepseek-harness-desktop/actions/workflows/release.yml/badge.svg" /></a>
   <img alt="macOS" src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-171513.svg?style=flat-square" />
 </p>
 
@@ -27,10 +27,10 @@ DSH Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。�
 
 | 平台 | 架构 | 安装包 | 下载 |
 | --- | --- | --- | --- |
-| macOS | Apple Silicon | DMG / ZIP | [下载](https://github.com/krystal-cao/deepseek-harness-desktop/releases/latest) |
-| macOS | Intel | DMG / ZIP | [下载](https://github.com/krystal-cao/deepseek-harness-desktop/releases/latest) |
+| macOS | Apple Silicon | DMG / ZIP | [下载](https://github.com/summer-521/deepseek-harness-desktop/releases/latest) |
+| macOS | Intel | DMG / ZIP | [下载](https://github.com/summer-521/deepseek-harness-desktop/releases/latest) |
 
-全部当前和历史安装包可在 [GitHub Releases](https://github.com/krystal-cao/deepseek-harness-desktop/releases) 查看。
+全部当前和历史安装包可在 [GitHub Releases](https://github.com/summer-521/deepseek-harness-desktop/releases) 查看。
 
 ---
 

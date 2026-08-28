@@ -299,7 +299,7 @@ function createAppMenu() {
     onCheckForUpdates: () => void updater?.checkForUpdates({ manual: true }),
     onRestartService: () => void restartDshService(),
     onOpenVersionManager: () => openVersionManagerWindow(),
-    onOpenGithub: () => void shell.openExternal('https://github.com/krystal-cao/deepseek-harness-desktop'),
+    onOpenGithub: () => void shell.openExternal('https://github.com/summer-521/deepseek-harness-desktop'),
   })))
 }
 

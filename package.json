@@ -8,11 +8,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/krystal-cao/deepseek-harness-desktop.git"
+    "url": "git+https://github.com/summer-521/deepseek-harness-desktop.git"
   },
-  "homepage": "https://github.com/krystal-cao/deepseek-harness-desktop",
+  "homepage": "https://github.com/summer-521/deepseek-harness-desktop",
   "bugs": {
-    "url": "https://github.com/krystal-cao/deepseek-harness-desktop/issues"
+    "url": "https://github.com/summer-521/deepseek-harness-desktop/issues"
   },
   "scripts": {
     "start": "electron .",
@@ -68,7 +68,7 @@
     "artifactName": "DSH-Desktop-${version}-${arch}.${ext}",
     "publish": {
       "provider": "github",
-      "owner": "krystal-cao",
+      "owner": "summer-521",
       "repo": "deepseek-harness-desktop"
     },
     "asar": true,
