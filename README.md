@@ -16,6 +16,9 @@
   <img alt="macOS" src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-171513.svg?style=flat-square" />
 </p>
 
+> [!WARNING]
+> 本仓库已停止维护，项目已迁移至 [DeepSeek Harness Swift](https://github.com/summer-521/deepseek-harness-swift)。后续的新功能、问题修复和版本发布请前往新仓库；本仓库仅保留 Electron 版本的历史代码。
+
 DSH Desktop 将官方 DeepSeek Harness Web 体验封装为独立桌面应用。无需手动启动 CLI 或管理端口，打开应用即可使用完整 Harness 界面。
 
 本项目专注于桌面宿主能力，模型、会话、设置、插件和 Agent 能力均由官方 `@deepseek-ai/dsh` 提供。同时提供优雅的桌面宿主扩展（如 Claude Code 暖色风主题、命令说明汉化、版本与插件管理面板、任务完成桌面通知等）。
